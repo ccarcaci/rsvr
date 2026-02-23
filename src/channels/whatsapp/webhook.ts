@@ -69,7 +69,7 @@ export const create_whatsapp_routes = (
             const reply = await handler(incoming)
             await client.send_text_message(msg.from, reply)
           } catch (err) {
-            logger.error("Error processing WhatsApp message", err)
+            logger.error("Error processing WhatsApp message", { error: err })
           }
         }
       }

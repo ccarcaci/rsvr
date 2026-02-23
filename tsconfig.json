@@ -1,3 +1,8 @@
+// This file is NOT used for compilation — Bun runs TypeScript natively.
+// It exists solely for typescript-language-server (used by Helix editor) to
+// recognize this as a TypeScript project and provide LSP features (completions,
+// diagnostics, go-to-definition, etc.). Without it, the language server does
+// not activate. See: https://github.com/helix-editor/helix/wiki/Language-Server-Configurations#typescript
 {
   "compilerOptions": {
     "target": "ESNext",
@@ -6,15 +11,9 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
     "types": ["bun"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "tests"]
+  "exclude": ["node_modules", "dist"]
 }

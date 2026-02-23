@@ -19,7 +19,7 @@ export const create_telegram_bot = (token: string, handler: message_handler): Bo
       const reply = await handler(incoming)
       await ctx.reply(reply)
     } catch (err) {
-      logger.error("Error processing Telegram text message", err)
+      logger.error("Error processing Telegram text message", { error: err })
       await ctx.reply("Sorry, something went wrong. Please try again.")
     }
   })
@@ -40,13 +40,13 @@ export const create_telegram_bot = (token: string, handler: message_handler): Bo
       const reply = await handler(incoming)
       await ctx.reply(reply)
     } catch (err) {
-      logger.error("Error processing Telegram voice message", err)
+      logger.error("Error processing Telegram voice message", { error: err })
       await ctx.reply("Sorry, I couldn't process your voice message. Please try again.")
     }
   })
 
   bot.catch((err) => {
-    logger.error("Telegram bot error", err)
+    logger.error("Telegram bot error", { error: err })
   })
 
   return bot
