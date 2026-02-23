@@ -1,5 +1,5 @@
-import { describe, expect, it } from "@jest/globals"
-import { init_intent_parser, parse_intent } from "../../src/parser/intent"
+import { describe, expect, it } from "bun:test"
+import { init_intent_parser, parse_intent } from "./intent"
 
 const create_mock_client = (response_text: string) =>
   ({

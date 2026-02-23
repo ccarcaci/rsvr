@@ -4,22 +4,17 @@
 # Tool paths
 BUN := bun
 BIOME := bunx biome
-JEST := bunx jest
 VERSION_CHECK_SCRIPT := ./scripts/check_bun_version.sh
 UPDATES_CHECK_SCRIPT := ./scripts/check_updates.sh
 
 # Directories
 SRC_DIR := src
-TEST_DIR := tests
 DATA_DIR := data
 DIST_DIR := dist
 
 # Files
 ENTRY_POINT := $(SRC_DIR)/index.ts
 DB_FILE := $(DATA_DIR)/rsvr.db
-
-# Jest configuration for ESM mode
-export NODE_OPTIONS := --experimental-vm-modules
 
 # Default target - show help
 .DEFAULT_GOAL := help
@@ -64,25 +59,19 @@ start: ## Start the server
 ##@ Testing & Quality
 
 .PHONY: test
-test: ## Run Jest tests (with ESM support)
+test: ## Run tests with Bun native test runner
 	@echo "Running tests..."
-	@$(JEST)
+	@$(BUN) test $(SRC_DIR)/
 
 .PHONY: lint
-lint: ## Run Biome linter on src/ and tests/
+lint: ## Run Biome linter on src/
 	@echo "Running Biome linter..."
 	@$(BIOME) check $(SRC_DIR)/
-	@if [ -d "$(TEST_DIR)" ]; then \
-		$(BIOME) check $(TEST_DIR)/; \
-	fi
 
 .PHONY: format
-format: ## Auto-format code with Biome in src/ and tests/
+format: ## Auto-format code with Biome in src/
 	@echo "Formatting code..."
 	@$(BIOME) check --write $(SRC_DIR)/
-	@if [ -d "$(TEST_DIR)" ]; then \
-		$(BIOME) check --write $(TEST_DIR)/; \
-	fi
 
 .PHONY: check
 check: lint test ## Run lint and test together
