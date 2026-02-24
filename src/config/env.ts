@@ -1,3 +1,5 @@
+import { parseArgs } from "node:util"
+
 export interface config {
   port: number
   telegram_bot_token: string
@@ -9,32 +11,53 @@ export interface config {
   database_path: string
 }
 
-export const load_config = (): config => {
+const parse_cli_args = (): Record<string, string> => {
+  const { values } = parseArgs({
+    args: Bun.argv.slice(2),
+    options: {
+      telegram_bot_token: { type: "string" },
+      whatsapp_verify_token: { type: "string" },
+      whatsapp_access_token: { type: "string" },
+      whatsapp_phone_number_id: { type: "string" },
+      anthropic_api_key: { type: "string" },
+      openai_api_key: { type: "string" },
+    },
+    strict: false,
+  })
+  return values as Record<string, string>
+}
+
+const load_configs = (): config => {
+  const cli_args = parse_cli_args()
   const missing: string[] = []
 
-  const required = (name: string): string => {
-    const value = process.env[name]
+  const required = (cli_key: string, env_key: string): string => {
+    const value = cli_args[cli_key] || process.env[env_key]
     if (!value) {
-      missing.push(name)
+      missing.push(env_key)
       return ""
     }
     return value
   }
 
-  const config: config = {
+  const cfg: config = {
     port: Number(process.env.PORT) || 3000,
-    telegram_bot_token: required("TELEGRAM_BOT_TOKEN"),
-    whatsapp_verify_token: required("WHATSAPP_VERIFY_TOKEN"),
-    whatsapp_access_token: required("WHATSAPP_ACCESS_TOKEN"),
-    whatsapp_phone_number_id: required("WHATSAPP_PHONE_NUMBER_ID"),
-    anthropic_api_key: required("ANTHROPIC_API_KEY"),
-    openai_api_key: required("OPENAI_API_KEY"),
+    telegram_bot_token: required("telegram_bot_token", "TELEGRAM_BOT_TOKEN"),
+    whatsapp_verify_token: required("whatsapp_verify_token", "WHATSAPP_VERIFY_TOKEN"),
+    whatsapp_access_token: required("whatsapp_access_token", "WHATSAPP_ACCESS_TOKEN"),
+    whatsapp_phone_number_id: required("whatsapp_phone_number_id", "WHATSAPP_PHONE_NUMBER_ID"),
+    anthropic_api_key: required("anthropic_api_key", "ANTHROPIC_API_KEY"),
+    openai_api_key: required("openai_api_key", "OPENAI_API_KEY"),
     database_path: process.env.DATABASE_PATH || "./data/rsvr.db",
   }
 
   if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(", ")}`)
+    throw new Error(`Missing required config: ${missing.join(", ")}`)
   }
 
-  return config
+  return cfg
 }
+
+//  --
+
+export const configs = load_configs()

@@ -1,4 +1,4 @@
-import { get_database } from "./client"
+import { db } from "./client"
 
 export interface user_row {
   id: number
@@ -32,12 +32,10 @@ export interface reservation_row {
 }
 
 export const find_user_by_phone = (phone: string): user_row | null => {
-  const db = get_database()
   return db.query<user_row, [string]>("SELECT * FROM users WHERE phone = ?").get(phone)
 }
 
 export const find_user_by_telegram_id = (telegram_id: string): user_row | null => {
-  const db = get_database()
   return db.query<user_row, [string]>("SELECT * FROM users WHERE telegram_id = ?").get(telegram_id)
 }
 
@@ -46,7 +44,6 @@ export const create_user = (
   identifier: string,
   name?: string,
 ): user_row => {
-  const db = get_database()
   const field = channel === "whatsapp" ? "phone" : "telegram_id"
   db.query(`INSERT OR IGNORE INTO users (${field}, channel, name) VALUES (?, ?, ?)`).run(
     identifier,
@@ -67,7 +64,6 @@ export const check_availability = (
   time: string,
   party_size: number,
 ): time_slot_row | null => {
-  const db = get_database()
   return db
     .query<time_slot_row, [string, string, string, number]>(
       "SELECT * FROM time_slots WHERE domain = ? AND date = ? AND time = ? AND (capacity - booked) >= ?",
@@ -82,7 +78,6 @@ export const create_reservation = (
   party_size: number,
   notes?: string,
 ): reservation_row => {
-  const db = get_database()
   db.query(
     "INSERT INTO reservations (user_id, time_slot_id, domain, party_size, notes) VALUES (?, ?, ?, ?, ?)",
   ).run(user_id, time_slot_id, domain, party_size, notes ?? null)
@@ -103,7 +98,6 @@ export const create_reservation = (
 }
 
 export const cancel_reservation = (reservation_id: number): boolean => {
-  const db = get_database()
   const reservation = db
     .query<reservation_row, [number]>(
       "SELECT * FROM reservations WHERE id = ? AND status = 'confirmed'",
@@ -124,7 +118,6 @@ export const cancel_reservation = (reservation_id: number): boolean => {
 }
 
 export const list_reservations = (user_id: number): reservation_row[] => {
-  const db = get_database()
   return db
     .query<reservation_row, [number]>(
       "SELECT * FROM reservations WHERE user_id = ? AND status = 'confirmed' ORDER BY created_at DESC",

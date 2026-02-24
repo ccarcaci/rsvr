@@ -1,11 +1,14 @@
-import type { config } from "../../config/env"
+import { configs } from "../../config/env"
 import { logger } from "../../shared/logger"
 
 const GRAPH_API_BASE = "https://graph.facebook.com/v21.0"
 
-export const create_whatsapp_client = (cfg: config) => {
-  const { whatsapp_access_token, whatsapp_phone_number_id } = cfg
+export type whatsapp_client_type = {
+  send_text_message: (to: string, text: string) => Promise<void>,
+  download_media: (media_id: string) => Promise<Buffer>,
+}
 
+const create_whatsapp_client = (whatsapp_access_token: string, whatsapp_phone_number_id: string): whatsapp_client_type => {
   const send_text_message = async (to: string, text: string): Promise<void> => {
     const url = `${GRAPH_API_BASE}/${whatsapp_phone_number_id}/messages`
     const response = await fetch(url, {
@@ -54,4 +57,6 @@ export const create_whatsapp_client = (cfg: config) => {
   return { send_text_message, download_media }
 }
 
-export type whatsapp_client = ReturnType<typeof create_whatsapp_client>
+//  --
+
+export const whatsapp_client = create_whatsapp_client(configs.whatsapp_access_token, configs.whatsapp_phone_number_id)

@@ -1,20 +1,10 @@
-import OpenAI from "openai"
 import { logger } from "../shared/logger"
+import { openai_client } from "./client/openai"
 
-let client: OpenAI
-
-export const init_transcriber = (api_key: string): void => {
-  client = new OpenAI({ apiKey: api_key })
-}
-
-export const transcribe_audio = async (buffer: Buffer, mime_type: string): Promise<string> => {
-  if (!client) {
-    throw new Error("Transcriber not initialized. Call init_transcriber() first.")
-  }
-
+export const transcribe_audio = async (buffer: BlobPart, mime_type: string): Promise<string> => {
   const file = new File([buffer], `voice.${extension_from_mime(mime_type)}`, { type: mime_type })
 
-  const response = await client.audio.transcriptions.create({
+  const response = await openai_client.audio.transcriptions.create({
     model: "gpt-4o-mini-transcribe",
     file,
   })

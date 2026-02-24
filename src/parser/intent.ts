@@ -1,23 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk"
 import { logger } from "../shared/logger"
+import { client } from "./client/anthropic"
 import { INTENT_SYSTEM_PROMPT, build_intent_user_prompt } from "./prompts"
 import type { intent } from "./types"
 
-let client: Anthropic
-
-export const init_intent_parser = (api_key_or_client: string | Anthropic): void => {
-  if (typeof api_key_or_client === "string") {
-    client = new Anthropic({ apiKey: api_key_or_client })
-  } else {
-    client = api_key_or_client
-  }
-}
-
 export const parse_intent = async (text: string): Promise<intent> => {
-  if (!client) {
-    throw new Error("intent parser not initialized. Call init_intent_parser() first.")
-  }
-
   const today = new Date().toISOString().split("T")[0]
 
   const response = await client.messages.create({

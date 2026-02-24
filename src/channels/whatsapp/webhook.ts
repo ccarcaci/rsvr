@@ -1,9 +1,10 @@
 import { Hono } from "hono"
-import type { config } from "../../config/env"
 import { logger } from "../../shared/logger"
 import type { incoming_message, message_handler } from "../types"
-import type { whatsapp_client } from "./client"
 import { download_voice_note } from "./media"
+import { whatsapp_client } from "./client"
+import { configs } from "../../config/env"
+import { handle_message } from "../../reservations/service"
 
 interface whatsapp_webhook_entry {
   changes: Array<{
@@ -19,9 +20,8 @@ interface whatsapp_webhook_entry {
   }>
 }
 
-export const create_whatsapp_routes = (
-  cfg: config,
-  client: whatsapp_client,
+const create_whatsapp_routes = (
+  whatsapp_verify_token: string,
   handler: message_handler,
 ): Hono => {
   const app = new Hono()
@@ -31,7 +31,7 @@ export const create_whatsapp_routes = (
     const token = c.req.query("hub.verify_token")
     const challenge = c.req.query("hub.challenge")
 
-    if (mode === "subscribe" && token === cfg.whatsapp_verify_token) {
+    if (mode === "subscribe" && token === whatsapp_verify_token) {
       logger.info("WhatsApp webhook verified")
       return c.text(challenge ?? "", 200)
     }
@@ -61,13 +61,13 @@ export const create_whatsapp_routes = (
             if (msg.type === "text" && msg.text) {
               incoming.text = msg.text.body
             } else if (msg.type === "audio" && msg.audio) {
-              const voice = await download_voice_note(client, msg.audio.id)
+              const voice = await download_voice_note(whatsapp_client, msg.audio.id)
               incoming.voice_buffer = voice.buffer
               incoming.voice_mime_type = voice.mime_type
             }
 
             const reply = await handler(incoming)
-            await client.send_text_message(msg.from, reply)
+            await whatsapp_client.send_text_message(msg.from, reply)
           } catch (err) {
             logger.error("Error processing WhatsApp message", { error: err })
           }
@@ -80,3 +80,7 @@ export const create_whatsapp_routes = (
 
   return app
 }
+
+//  --
+
+export const whatsapp_routes = create_whatsapp_routes(configs.whatsapp_verify_token, handle_message)

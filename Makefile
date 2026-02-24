@@ -30,8 +30,8 @@ help: ## Show this help message
 
 ##@ Setup
 
-.PHONY: check-version
-check-version: ## Check that installed Bun version matches .bun-version
+.PHONY: check_version
+check_version: ## Check that installed Bun version matches .bun-version
 	@echo "Checking Bun version..."
 	@$(VERSION_CHECK_SCRIPT)
 
@@ -41,20 +41,29 @@ install: ## Install dependencies using bun
 	@$(BUN) install
 
 .PHONY: setup
-setup: check-version install ## Full project setup (check version + install deps)
+setup: check_version install ## Full project setup (check version + install deps)
 	@echo "Setup complete!"
 
 ##@ Development
 
+# Mock CLI args used for local dev — override by passing real env vars in production
+MOCK_ARGS := \
+	--telegram_bot_token mock_telegram_bot_token \
+	--whatsapp_verify_token mock_whatsapp_verify_token \
+	--whatsapp_access_token mock_whatsapp_access_token \
+	--whatsapp_phone_number_id mock_whatsapp_phone_number_id \
+	--anthropic_api_key mock_anthropic_api_key \
+	--openai_api_key mock_openai_api_key
+
 .PHONY: dev
 dev: ## Start development server with watch mode
 	@echo "Starting development server with watch mode..."
-	@$(BUN) --watch run $(ENTRY_POINT)
+	@$(BUN) --watch run $(ENTRY_POINT) $(MOCK_ARGS)
 
 .PHONY: start
 start: ## Start the server
 	@echo "Starting server..."
-	@$(BUN) run $(ENTRY_POINT)
+	@$(BUN) run $(ENTRY_POINT) $(MOCK_ARGS)
 
 ##@ Testing & Quality
 
@@ -62,6 +71,11 @@ start: ## Start the server
 test: ## Run tests with Bun native test runner
 	@echo "Running tests..."
 	@$(BUN) test $(SRC_DIR)/
+
+.PHONY: test_debug
+test_debug: ## Run tests with Bun native test runner
+	@echo "Running tests..."
+	@$(BUN) test --inspect-brk $(SRC_DIR)/
 
 .PHONY: lint
 lint: ## Run Biome linter on src/
@@ -83,8 +97,8 @@ check: lint test ## Run lint and test together
 updates: ## Check for dependency and Bun version updates
 	@$(UPDATES_CHECK_SCRIPT)
 
-.PHONY: updates-changelog
-updates-changelog: ## Check updates with changelogs for outdated packages
+.PHONY: updates_changelog
+updates_changelog: ## Check updates with changelogs for outdated packages
 	@$(UPDATES_CHECK_SCRIPT) --changelog
 
 ##@ Cleanup
@@ -98,7 +112,7 @@ clean: ## Remove node_modules, *.db, data/, dist/
 	@rm -rf $(DIST_DIR)
 	@echo "Clean complete!"
 
-.PHONY: clean-all
-clean-all: clean ## Clean everything including bun lockfile
+.PHONY: clean_all
+clean_all: clean ## Clean everything including bun lockfile
 	@rm -f bun.lockb
 	@echo "Deep clean complete!"
