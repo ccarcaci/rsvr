@@ -1,9 +1,11 @@
 import { Bot } from "grammy"
+import { configs } from "../../config/env"
+import { handle_message } from "../../reservations/service"
 import { logger } from "../../shared/logger"
 import type { incoming_message, message_handler } from "../types"
 import { download_voice_note } from "./media"
 
-export const create_telegram_bot = (token: string, handler: message_handler): Bot => {
+const create_telegram_bot = (token: string, handler: message_handler): Bot => {
   const bot = new Bot(token)
 
   bot.on("message:text", async (ctx) => {
@@ -51,3 +53,7 @@ export const create_telegram_bot = (token: string, handler: message_handler): Bo
 
   return bot
 }
+
+//  --
+
+export const telegram_bot = create_telegram_bot(configs.telegram_bot_token, handle_message)

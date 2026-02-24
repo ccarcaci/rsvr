@@ -4,7 +4,9 @@ import { parse_intent } from "./intent"
 
 describe("parse_intent", () => {
   it("should parse a restaurant reservation intent", async () => {
-    mock_anthropic_client('{"action":"reserve","domain":"restaurant","date":"2026-03-01","time":"19:00","party_size":4}')
+    mock_anthropic_client(
+      '{"action":"reserve","domain":"restaurant","date":"2026-03-01","time":"19:00","party_size":4}',
+    )
 
     const intent = await parse_intent("Book a table for 4 on March 1st at 7pm")
     expect(intent.action).toBe("reserve")
@@ -45,7 +47,8 @@ describe("parse_intent", () => {
 
   it("should parse a doctor appointment intent", async () => {
     mock_anthropic_client(
-        '{"action":"reserve","domain":"doctor","date":"2026-03-05","time":"10:00","notes":"annual checkup"}')
+      '{"action":"reserve","domain":"doctor","date":"2026-03-05","time":"10:00","notes":"annual checkup"}',
+    )
     const intent = await parse_intent(
       "I need a doctor appointment on March 5th at 10am for my annual checkup",
     )
@@ -57,7 +60,9 @@ describe("parse_intent", () => {
   })
 
   it("should parse a salon booking intent", async () => {
-    mock_anthropic_client('{"action":"reserve","domain":"salon","date":"2026-02-28","time":"14:00"}')
+    mock_anthropic_client(
+      '{"action":"reserve","domain":"salon","date":"2026-02-28","time":"14:00"}',
+    )
     const intent = await parse_intent("Book me a haircut on Feb 28 at 2pm")
     expect(intent.action).toBe("reserve")
     if (intent.action === "reserve") {

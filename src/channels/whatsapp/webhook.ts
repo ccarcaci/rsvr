@@ -1,10 +1,10 @@
 import { Hono } from "hono"
-import { logger } from "../../shared/logger"
-import type { incoming_message, message_handler } from "../types"
-import { download_voice_note } from "./media"
-import { whatsapp_client } from "./client"
 import { configs } from "../../config/env"
 import { handle_message } from "../../reservations/service"
+import { logger } from "../../shared/logger"
+import type { incoming_message, message_handler } from "../types"
+import { whatsapp_client } from "./client"
+import { download_voice_note } from "./media"
 
 interface whatsapp_webhook_entry {
   changes: Array<{
@@ -20,10 +20,7 @@ interface whatsapp_webhook_entry {
   }>
 }
 
-const create_whatsapp_routes = (
-  whatsapp_verify_token: string,
-  handler: message_handler,
-): Hono => {
+const create_whatsapp_routes = (whatsapp_verify_token: string, handler: message_handler): Hono => {
   const app = new Hono()
 
   app.get("/webhook/whatsapp", (c) => {

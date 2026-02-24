@@ -1,8 +1,8 @@
 import { Database } from "bun:sqlite"
 import { mkdirSync, readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
-import { logger } from "../shared/logger"
 import { configs } from "../config/env"
+import { logger } from "../shared/logger"
 
 const init_database = (db_path: string): Database => {
   const resolved_path = resolve(db_path)

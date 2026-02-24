@@ -4,11 +4,14 @@ import { logger } from "../../shared/logger"
 const GRAPH_API_BASE = "https://graph.facebook.com/v21.0"
 
 export type whatsapp_client_type = {
-  send_text_message: (to: string, text: string) => Promise<void>,
-  download_media: (media_id: string) => Promise<Buffer>,
+  send_text_message: (to: string, text: string) => Promise<void>
+  download_media: (media_id: string) => Promise<Buffer>
 }
 
-const create_whatsapp_client = (whatsapp_access_token: string, whatsapp_phone_number_id: string): whatsapp_client_type => {
+const create_whatsapp_client = (
+  whatsapp_access_token: string,
+  whatsapp_phone_number_id: string,
+): whatsapp_client_type => {
   const send_text_message = async (to: string, text: string): Promise<void> => {
     const url = `${GRAPH_API_BASE}/${whatsapp_phone_number_id}/messages`
     const response = await fetch(url, {
@@ -59,4 +62,7 @@ const create_whatsapp_client = (whatsapp_access_token: string, whatsapp_phone_nu
 
 //  --
 
-export const whatsapp_client = create_whatsapp_client(configs.whatsapp_access_token, configs.whatsapp_phone_number_id)
+export const whatsapp_client = create_whatsapp_client(
+  configs.whatsapp_access_token,
+  configs.whatsapp_phone_number_id,
+)
