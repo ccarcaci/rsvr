@@ -1,9 +1,9 @@
 import { logger } from "../shared/logger"
 import { client } from "./client/anthropic"
 import { INTENT_SYSTEM_PROMPT, build_intent_user_prompt } from "./prompts"
-import type { intent } from "./types"
+import type { intent_type } from "./types"
 
-export const parse_intent = async (text: string): Promise<intent> => {
+export const parse_intent = async (text: string): Promise<intent_type> => {
   const today = new Date().toISOString().split("T")[0]
 
   const response = await client.messages.create({
@@ -19,7 +19,7 @@ export const parse_intent = async (text: string): Promise<intent> => {
   }
 
   try {
-    const parsed = JSON.parse(content.text) as intent
+    const parsed = JSON.parse(content.text) as intent_type
     if (!parsed.action) {
       return { action: "unknown", raw_text: text }
     }

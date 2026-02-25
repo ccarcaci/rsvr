@@ -2,14 +2,14 @@ import { Bot } from "grammy"
 import { configs } from "../../config/env"
 import { handle_message } from "../../reservations/service"
 import { logger } from "../../shared/logger"
-import type { incoming_message, message_handler } from "../types"
+import type { incoming_message_type, message_handler_type } from "../types"
 import { download_voice_note } from "./media"
 
-const create_telegram_bot = (token: string, handler: message_handler): Bot => {
+const create_telegram_bot = (token: string, handler: message_handler_type): Bot => {
   const bot = new Bot(token)
 
   bot.on("message:text", async (ctx) => {
-    const incoming: incoming_message = {
+    const incoming: incoming_message_type = {
       channel: "telegram",
       sender_id: String(ctx.from.id),
       sender_name: ctx.from.first_name,
@@ -30,7 +30,7 @@ const create_telegram_bot = (token: string, handler: message_handler): Bot => {
     try {
       const voice = await download_voice_note(ctx.api, ctx.message.voice.file_id)
 
-      const incoming: incoming_message = {
+      const incoming: incoming_message_type = {
         channel: "telegram",
         sender_id: String(ctx.from.id),
         sender_name: ctx.from.first_name,

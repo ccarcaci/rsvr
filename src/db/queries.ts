@@ -1,6 +1,6 @@
 import { db } from "./client"
 
-export interface user_row {
+export type user_row_type = {
   id: number
   phone: string | null
   telegram_id: string | null
@@ -9,7 +9,7 @@ export interface user_row {
   created_at: string
 }
 
-export interface time_slot_row {
+export type time_slot_row_type = {
   id: number
   domain: string
   date: string
@@ -19,7 +19,7 @@ export interface time_slot_row {
   metadata: string | null
 }
 
-export interface reservation_row {
+export type reservation_row_type = {
   id: number
   user_id: number
   time_slot_id: number
@@ -31,19 +31,21 @@ export interface reservation_row {
   updated_at: string
 }
 
-export const find_user_by_phone = (phone: string): user_row | null => {
-  return db.query<user_row, [string]>("SELECT * FROM users WHERE phone = ?").get(phone)
+export const find_user_by_phone = (phone: string): user_row_type | null => {
+  return db.query<user_row_type, [string]>("SELECT * FROM users WHERE phone = ?").get(phone)
 }
 
-export const find_user_by_telegram_id = (telegram_id: string): user_row | null => {
-  return db.query<user_row, [string]>("SELECT * FROM users WHERE telegram_id = ?").get(telegram_id)
+export const find_user_by_telegram_id = (telegram_id: string): user_row_type | null => {
+  return db
+    .query<user_row_type, [string]>("SELECT * FROM users WHERE telegram_id = ?")
+    .get(telegram_id)
 }
 
 export const create_user = (
   channel: "whatsapp" | "telegram",
   identifier: string,
   name?: string,
-): user_row => {
+): user_row_type => {
   const field = channel === "whatsapp" ? "phone" : "telegram_id"
   db.query(`INSERT OR IGNORE INTO users (${field}, channel, name) VALUES (?, ?, ?)`).run(
     identifier,
@@ -63,9 +65,9 @@ export const check_availability = (
   date: string,
   time: string,
   party_size: number,
-): time_slot_row | null => {
+): time_slot_row_type | null => {
   return db
-    .query<time_slot_row, [string, string, string, number]>(
+    .query<time_slot_row_type, [string, string, string, number]>(
       "SELECT * FROM time_slots WHERE domain = ? AND date = ? AND time = ? AND (capacity - booked) >= ?",
     )
     .get(domain, date, time, party_size)
@@ -77,7 +79,7 @@ export const create_reservation = (
   domain: string,
   party_size: number,
   notes?: string,
-): reservation_row => {
+): reservation_row_type => {
   db.query(
     "INSERT INTO reservations (user_id, time_slot_id, domain, party_size, notes) VALUES (?, ?, ?, ?, ?)",
   ).run(user_id, time_slot_id, domain, party_size, notes ?? null)
@@ -89,7 +91,7 @@ export const create_reservation = (
     throw new Error("Failed to get last insert rowid")
   }
   const result = db
-    .query<reservation_row, [number]>("SELECT * FROM reservations WHERE id = ?")
+    .query<reservation_row_type, [number]>("SELECT * FROM reservations WHERE id = ?")
     .get(row.id)
   if (!result) {
     throw new Error(`Failed to find reservation after insert: ${row.id}`)
@@ -99,7 +101,7 @@ export const create_reservation = (
 
 export const cancel_reservation = (reservation_id: number): boolean => {
   const reservation = db
-    .query<reservation_row, [number]>(
+    .query<reservation_row_type, [number]>(
       "SELECT * FROM reservations WHERE id = ? AND status = 'confirmed'",
     )
     .get(reservation_id)
@@ -117,9 +119,9 @@ export const cancel_reservation = (reservation_id: number): boolean => {
   return true
 }
 
-export const list_reservations = (user_id: number): reservation_row[] => {
+export const list_reservations = (user_id: number): reservation_row_type[] => {
   return db
-    .query<reservation_row, [number]>(
+    .query<reservation_row_type, [number]>(
       "SELECT * FROM reservations WHERE user_id = ? AND status = 'confirmed' ORDER BY created_at DESC",
     )
     .all(user_id)

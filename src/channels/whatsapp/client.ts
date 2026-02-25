@@ -5,7 +5,7 @@ const GRAPH_API_BASE = "https://graph.facebook.com/v21.0"
 
 export type whatsapp_client_type = {
   send_text_message: (to: string, text: string) => Promise<void>
-  download_media: (media_id: string) => Promise<Buffer>
+  download_media: (media_id: string) => Promise<Uint8Array<ArrayBuffer>>
 }
 
 const create_whatsapp_client = (
@@ -35,7 +35,7 @@ const create_whatsapp_client = (
     }
   }
 
-  const download_media = async (media_id: string): Promise<Buffer> => {
+  const download_media = async (media_id: string): Promise<Uint8Array<ArrayBuffer>> => {
     const meta_url = `${GRAPH_API_BASE}/${media_id}`
     const meta_response = await fetch(meta_url, {
       headers: { Authorization: `Bearer ${whatsapp_access_token}` },
@@ -54,7 +54,7 @@ const create_whatsapp_client = (
       throw new Error(`Failed to download media: ${media_response.status}`)
     }
 
-    return Buffer.from(await media_response.arrayBuffer())
+    return new Uint8Array(await media_response.arrayBuffer())
   }
 
   return { send_text_message, download_media }

@@ -1,17 +1,17 @@
-export type reservation_status = "confirmed" | "cancelled"
+export type reservation_status_type = "confirmed" | "cancelled"
 
-export interface reservation {
+export type reservation_type = {
   id: number
   user_id: number
   time_slot_id: number
   domain: string
   party_size: number
-  status: reservation_status
+  status: reservation_status_type
   notes: string | null
   created_at: string
 }
 
-export interface time_slot {
+export type time_slot_type = {
   id: number
   domain: string
   date: string

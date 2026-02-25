@@ -1,38 +1,44 @@
-export type domain = "restaurant" | "doctor" | "salon"
+export type domain_type = "restaurant" | "doctor" | "salon"
 
-export interface reserve_intent {
+export type reserve_intent_type = {
   action: "reserve"
-  domain?: domain
+  domain?: domain_type
   date?: string
   time?: string
   party_size?: number
   notes?: string
 }
 
-export interface cancel_intent {
+export type cancel_intent_type = {
   action: "cancel"
   reservation_id?: number
 }
 
-export interface list_intent {
+export type list_intent_type = {
   action: "list"
 }
 
-export interface help_intent {
+export type help_intent_type = {
   action: "help"
 }
 
-export interface unknown_intent {
+export type unknown_intent_type = {
   action: "unknown"
   raw_text: string
 }
 
-export type intent = reserve_intent | cancel_intent | list_intent | help_intent | unknown_intent
+export type intent_type =
+  | reserve_intent_type
+  | cancel_intent_type
+  | list_intent_type
+  | help_intent_type
+  | unknown_intent_type
 
-export const is_reserve_intent = (i: intent): i is reserve_intent => i.action === "reserve"
+export const is_reserve_intent = (i: intent_type): i is reserve_intent_type =>
+  i.action === "reserve"
 
-export const is_cancel_intent = (i: intent): i is cancel_intent => i.action === "cancel"
+export const is_cancel_intent = (i: intent_type): i is cancel_intent_type => i.action === "cancel"
 
-export const is_list_intent = (i: intent): i is list_intent => i.action === "list"
+export const is_list_intent = (i: intent_type): i is list_intent_type => i.action === "list"
 
-export const is_help_intent = (i: intent): i is help_intent => i.action === "help"
+export const is_help_intent = (i: intent_type): i is help_intent_type => i.action === "help"

@@ -1,11 +1,11 @@
-import type { incoming_message } from "../channels/types"
+import type { incoming_message_type } from "../channels/types"
 import * as db from "../db/queries"
 import { parse_intent } from "../parser/intent"
 import { is_cancel_intent, is_list_intent, is_reserve_intent } from "../parser/types"
 import { logger } from "../shared/logger"
 import { transcribe_audio } from "../voice/transcribe"
 
-export const handle_message = async (message: incoming_message): Promise<string> => {
+export const handle_message = async (message: incoming_message_type): Promise<string> => {
   let text = message.text
 
   if (!text && message.voice_buffer) {

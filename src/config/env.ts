@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util"
 
-export interface config {
+export type config_type = {
   port: number
   telegram_bot_token: string
   whatsapp_verify_token: string
@@ -27,7 +27,7 @@ const parse_cli_args = (): Record<string, string> => {
   return values as Record<string, string>
 }
 
-const load_configs = (): config => {
+const load_configs = (): config_type => {
   const cli_args = parse_cli_args()
   const missing: string[] = []
 
@@ -40,7 +40,7 @@ const load_configs = (): config => {
     return value
   }
 
-  const cfg: config = {
+  const cfg: config_type = {
     port: Number(process.env.PORT) || 3000,
     telegram_bot_token: required("telegram_bot_token", "TELEGRAM_BOT_TOKEN"),
     whatsapp_verify_token: required("whatsapp_verify_token", "WHATSAPP_VERIFY_TOKEN"),

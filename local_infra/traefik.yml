@@ -1,0 +1,30 @@
+# Traefik v3 static configuration
+# Used with Dokploy on a plain Podman setup (no Docker Swarm).
+# The Podman socket is bind-mounted to /var/run/docker.sock inside the
+# container, so Traefik uses the standard Docker provider path.
+
+# Enable the API and dashboard (insecure — local dev only, never in production).
+api:
+  dashboard: true
+  insecure: true
+
+# Entry points define the ports Traefik listens on inside the container.
+# The host-side port mapping is configured in the podman run --publish flags.
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+  # The traefik entrypoint is required when api.insecure is true.
+  traefik:
+    address: ":8080"
+
+# Docker provider — reads routing rules from container labels.
+# Points to the Podman socket mounted at the standard Docker path.
+# exposedByDefault: false means containers must opt in with
+#   traefik.enable=true label.
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    watch: true

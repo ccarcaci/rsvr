@@ -2,11 +2,11 @@ import { Hono } from "hono"
 import { configs } from "../../config/env"
 import { handle_message } from "../../reservations/service"
 import { logger } from "../../shared/logger"
-import type { incoming_message, message_handler } from "../types"
+import type { incoming_message_type, message_handler_type } from "../types"
 import { whatsapp_client } from "./client"
 import { download_voice_note } from "./media"
 
-interface whatsapp_webhook_entry {
+type whatsapp_webhook_entry_type = {
   changes: Array<{
     value: {
       messages?: Array<{
@@ -20,7 +20,10 @@ interface whatsapp_webhook_entry {
   }>
 }
 
-const create_whatsapp_routes = (whatsapp_verify_token: string, handler: message_handler): Hono => {
+const create_whatsapp_routes = (
+  whatsapp_verify_token: string,
+  handler: message_handler_type,
+): Hono => {
   const app = new Hono()
 
   app.get("/webhook/whatsapp", (c) => {
@@ -37,7 +40,7 @@ const create_whatsapp_routes = (whatsapp_verify_token: string, handler: message_
 
   app.post("/webhook/whatsapp", async (c) => {
     const body = await c.req.json()
-    const entries = body.entry as whatsapp_webhook_entry[] | undefined
+    const entries = body.entry as whatsapp_webhook_entry_type[] | undefined
 
     if (!entries) return c.json({ status: "ok" })
 
@@ -48,7 +51,7 @@ const create_whatsapp_routes = (whatsapp_verify_token: string, handler: message_
 
         for (const msg of messages) {
           try {
-            const incoming: incoming_message = {
+            const incoming: incoming_message_type = {
               channel: "whatsapp",
               sender_id: msg.from,
               sender_name: change.value.contacts?.[0]?.profile.name,
