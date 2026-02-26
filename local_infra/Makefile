@@ -84,46 +84,63 @@ start: ## Start the Dokploy stack (Podman must be running)
 	\
 	# ------------------------------------------------------------------ \
 	# Containers                                                           \
+	# Start existing containers; create and run them if they don't exist. \
 	# ------------------------------------------------------------------ \
-	podman run --detach \
-		--restart=always \
-		--name dokploy-postgres \
-		--network dokploy-network \
-		--env POSTGRES_USER=dokploy \
-		--env POSTGRES_DB=dokploy \
-		--env POSTGRES_PASSWORD=amukds4wi9001583845717ad2 \
-		--volume dokploy-postgres:/var/lib/postgresql/data \
-		docker.io/library/postgres:16; \
-	podman run --detach \
-		--restart=always \
-		--name dokploy-redis \
-		--network dokploy-network \
-		--volume dokploy-redis:/data:Z \
-		docker.io/library/redis:7; \
-	podman run --detach \
-		--restart=always \
-		--name dokploy \
-		--network dokploy-network \
-		--publish 3000:3000 \
-		--env ADVERTISE_ADDR=$(ADVERTISE_ADDR) \
-		--env DOCKER_HOST=unix:///var/run/docker.sock \
-		--volume "$$PODMAN_SOCK":/var/run/docker.sock \
-		--volume dokploy-config:/etc/dokploy \
-		--volume dokploy-home:/root/.docker \
-		docker.io/dokploy/dokploy:latest; \
-	podman run --detach \
-		--restart=always \
-		--name dokploy-traefik \
-		--network dokploy-network \
-		--publish 8080:8080/tcp \
-		--publish 3001:80/tcp \
-		--publish 3002:443/tcp \
-		--publish 3002:443/udp \
-		--env DOCKER_HOST=unix:///var/run/docker.sock \
-		--volume dokploy-traefik-config:/etc/traefik \
-		--volume dokploy-traefik-dynamic:/etc/dokploy/traefik/dynamic \
-		--volume "$$PODMAN_SOCK":/var/run/docker.sock \
-		docker.io/library/traefik:v3.6.1
+	if podman container exists dokploy-postgres 2>/dev/null; then \
+		podman start dokploy-postgres; \
+	else \
+		podman run --detach \
+			--restart=always \
+			--name dokploy-postgres \
+			--network dokploy-network \
+			--env POSTGRES_USER=dokploy \
+			--env POSTGRES_DB=dokploy \
+			--env POSTGRES_PASSWORD=amukds4wi9001583845717ad2 \
+			--volume dokploy-postgres:/var/lib/postgresql/data \
+			docker.io/library/postgres:16; \
+	fi; \
+	if podman container exists dokploy-redis 2>/dev/null; then \
+		podman start dokploy-redis; \
+	else \
+		podman run --detach \
+			--restart=always \
+			--name dokploy-redis \
+			--network dokploy-network \
+			--volume dokploy-redis:/data:Z \
+			docker.io/library/redis:7; \
+	fi; \
+	if podman container exists dokploy 2>/dev/null; then \
+		podman start dokploy; \
+	else \
+		podman run --detach \
+			--restart=always \
+			--name dokploy \
+			--network dokploy-network \
+			--publish 3000:3000 \
+			--env ADVERTISE_ADDR=$(ADVERTISE_ADDR) \
+			--env DOCKER_HOST=unix:///var/run/docker.sock \
+			--volume "$$PODMAN_SOCK":/var/run/docker.sock \
+			--volume dokploy-config:/etc/dokploy \
+			--volume dokploy-home:/root/.docker \
+			docker.io/dokploy/dokploy:latest; \
+	fi; \
+	if podman container exists dokploy-traefik 2>/dev/null; then \
+		podman start dokploy-traefik; \
+	else \
+		podman run --detach \
+			--restart=always \
+			--name dokploy-traefik \
+			--network dokploy-network \
+			--publish 8080:8080/tcp \
+			--publish 3001:80/tcp \
+			--publish 3002:443/tcp \
+			--publish 3002:443/udp \
+			--env DOCKER_HOST=unix:///var/run/docker.sock \
+			--volume dokploy-traefik-config:/etc/traefik \
+			--volume dokploy-traefik-dynamic:/etc/dokploy/traefik/dynamic \
+			--volume "$$PODMAN_SOCK":/var/run/docker.sock \
+			docker.io/library/traefik:v3.6.1; \
+	fi
 	@echo "Dokploy starting at http://localhost:3000"
 
 .PHONY: stop

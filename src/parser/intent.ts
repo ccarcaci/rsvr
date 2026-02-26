@@ -1,6 +1,6 @@
 import { logger } from "../shared/logger"
 import { client } from "./client/anthropic"
-import { INTENT_SYSTEM_PROMPT, build_intent_user_prompt } from "./prompts"
+import { build_intent_user_prompt, INTENT_SYSTEM_PROMPT } from "./prompts"
 import type { intent_type } from "./types"
 
 export const parse_intent = async (text: string): Promise<intent_type> => {

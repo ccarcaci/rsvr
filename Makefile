@@ -67,8 +67,8 @@ start: ## Start the server
 
 ##@ Testing & Quality
 
-.PHONY: test
-test: ## Run tests with Bun native test runner
+.PHONY: ci_test
+ci_test: ## Run tests with Bun native test runner
 	@echo "Running tests..."
 	@$(BUN) test $(SRC_DIR)/
 
@@ -83,13 +83,29 @@ lint: ## Run Biome linter on src/
 	@$(BIOME) check $(SRC_DIR)/
 
 .PHONY: format
-format: ## Auto-format code with Biome in src/
-	@echo "Formatting code..."
+format: ## Fix formatting, linting (safe fixes), and import sorting with Biome
+	@echo "Fixing formatting, linting, and import sorting..."
 	@$(BIOME) check --write $(SRC_DIR)/
 
 .PHONY: check
-check: lint test ## Run lint and test together
+check: lint ci_test ## Run lint and test together
 	@echo "All checks passed!"
+
+##@ CI
+
+.PHONY: ci_check
+ci_check: ## Check formatting, import sorting, and linting (read-only, fails on violations)
+	@echo "Running CI checks (format + imports + lint)..."
+	@$(BIOME) ci $(SRC_DIR)/
+
+.PHONY: ci_sec
+ci_sec: ## Audit production dependencies for known vulnerabilities (bun audit --prod)
+	@echo "Running security audit (production deps)..."
+	@$(BUN) audit --prod
+
+.PHONY: ci_fast
+ci_fast: check_version ci_check ci_test ci_sec ## Run ci-check, ci-test, and ci-sec in order
+	@echo "All CI checks passed!"
 
 ##@ Updates
 
