@@ -13,9 +13,9 @@ Reservation system via WhatsApp and Telegram messaging. Handles text messages an
 - **Telegram**: grammY
 - **WhatsApp**: Business Cloud API (official Meta)
 - **Voice transcription**: OpenAI `gpt-4o-mini-transcribe`
-- **Intent parsing**: Claude Haiku 4.5
+- **Intent parsing & agent**: Claude Opus (multi-step tool_use agent loop for reservations)
 - **Linting/Formatting**: Biome
-- **Testing**: Jest with ts-jest
+- **Testing**: Bun native test runner (`bun test`) — tests co-located with source in `src/`
 - **Build system**: Makefile (all commands live here, not in package.json)
 
 ## Code Conventions
@@ -80,12 +80,31 @@ src/
     whatsapp/           # Webhook + Cloud API client
     telegram/           # grammY bot
   voice/transcribe.ts   # OpenAI STT
-  parser/               # Claude Haiku intent extraction
+  parser/               # Intent extraction (legacy, being replaced)
+    intent.test.ts      # Parser tests
+  agent/                # Claude Opus tool_use loop (NEW)
+    agent.ts            # Agent entry point
+    agent.test.ts       # Agent tests
+    tools.ts            # 6 tool definitions
+    tool_handlers.ts    # Tool implementations
+    session.ts          # Session store (in-memory, TTL)
+    types.ts            # Type definitions
+    prompts.ts          # System prompt
+  api/                  # CRUD REST API (NEW)
+    bookings.ts         # Booking endpoints
+    middleware/
+      auth.ts           # API key middleware
+  calendar/             # Multi-calendar sync (NEW, Phase 2/3)
+    sync.ts             # Calendar sync hooks
+    adapters/
+      google.ts         # Google Calendar adapter (Phase 3)
+      m365.ts           # Microsoft 365 adapter (Phase 3)
   reservations/         # Business logic
+    service.ts          # Reservation service
   shared/logger.ts      # Logger
-tests/
-  parser/intent.test.ts
 ```
+
+**Test co-location**: Tests live in the same directory as their implementations (e.g., `src/agent/agent.test.ts` alongside `src/agent/agent.ts`). Makefile runs `bun test $(SRC_DIR)/` to discover all `*.test.ts` files.
 
 ## Commands (Makefile)
 
@@ -97,18 +116,30 @@ make install        # Install dependencies
 make check-version  # Verify Bun version matches .bun-version
 make start          # Start server
 make dev            # Start with watch mode
-make test           # Run Jest tests
-make lint           # Biome lint check (src/ + tests/)
-make format         # Biome auto-format (src/ + tests/)
+make test           # Run Bun tests (bun test src/)
+make lint           # Biome lint check (src/)
+make format         # Biome auto-format (src/)
 make check          # Run lint + test together
 make clean          # Remove node_modules, *.db, data/, dist/
 make clean-all      # Clean everything including lockfile
 ```
 
+**Testing**: Uses Bun's native test runner. Tests are co-located with source files in `src/` (e.g., `src/agent/agent.test.ts`). To add mocks, register them in `bunfig.toml` under the `preload` array so they are available before test files import.
+
 ## Bun Version
 
 Locked in `.bun-version`. Check with `make check-version`.
 Update: `bun upgrade --version <new_version>` then update `.bun-version`.
+
+## Architecture: Multi-Calendar Integration Phased Approach
+
+The system uses a phased rollout for external calendar support to minimize MVP complexity:
+
+- **Phase 1 (MVP)**: SQLite is the source of truth. No external calendar integration. Stub hooks in `src/calendar/sync.ts` for later phases.
+- **Phase 2**: Cal.com Cloud REST API as a multi-calendar proxy. Clients connect their Google Calendar, Outlook, or Apple Calendar to Cal.com; rsvr speaks to one REST API.
+- **Phase 3**: Native adapters for Google Calendar, Microsoft 365, and CalDAV (Apple, Nextcloud, Radicale) for clients who refuse Cal.com.
+
+See `@architecture/20260203_general_architecture.md` for full architectural design, including the 6 Claude Opus agent tools, CRUD REST API, session management, and security model.
 
 ## Infrastructure
 
