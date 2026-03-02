@@ -8,6 +8,7 @@ export type config_type = {
   whatsapp_phone_number_id: string
   anthropic_api_key: string
   openai_api_key: string
+  internal_api_key: string
   database_path: string
 }
 
@@ -21,6 +22,7 @@ const parse_cli_args = (): Record<string, string> => {
       whatsapp_phone_number_id: { type: "string" },
       anthropic_api_key: { type: "string" },
       openai_api_key: { type: "string" },
+      internal_api_key: { type: "string" },
     },
     strict: false,
   })
@@ -48,6 +50,7 @@ const load_configs = (): config_type => {
     whatsapp_phone_number_id: required("whatsapp_phone_number_id", "WHATSAPP_PHONE_NUMBER_ID"),
     anthropic_api_key: required("anthropic_api_key", "ANTHROPIC_API_KEY"),
     openai_api_key: required("openai_api_key", "OPENAI_API_KEY"),
+    internal_api_key: required("internal_api_key", "INTERNAL_API_KEY"),
     database_path: process.env.DATABASE_PATH || "./data/rsvr.db",
   }
 

@@ -126,3 +126,9 @@ export const list_reservations = (user_id: number): reservation_row_type[] => {
     )
     .all(user_id)
 }
+
+export const get_slot_by_id = (slot_id: number): time_slot_row_type | null => {
+  return db
+    .query<time_slot_row_type, [number]>("SELECT * FROM time_slots WHERE id = ?")
+    .get(slot_id)
+}

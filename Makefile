@@ -53,7 +53,8 @@ MOCK_ARGS := \
 	--whatsapp_access_token mock_whatsapp_access_token \
 	--whatsapp_phone_number_id mock_whatsapp_phone_number_id \
 	--anthropic_api_key mock_anthropic_api_key \
-	--openai_api_key mock_openai_api_key
+	--openai_api_key mock_openai_api_key \
+	--internal_api_key mock_internal_api_key
 
 .PHONY: dev
 dev: ## Start development server with watch mode
