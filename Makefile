@@ -118,6 +118,24 @@ updates: ## Check for dependency and Bun version updates
 updates_changelog: ## Check updates with changelogs for outdated packages
 	@$(UPDATES_CHECK_SCRIPT) --changelog
 
+##@ Monitoring
+
+# Port must match the PORT env var passed at startup (default: 3000)
+PORT ?= 3000
+BASE_URL := http://localhost:$(PORT)
+
+.PHONY: curl_status
+curl_status: ## Call GET /status — basic liveness check
+	curl --verbose --fail $(BASE_URL)/status | $(BUN) -e "process.stdin.setEncoding('utf8'); let d=''; process.stdin.on('data',c=>d+=c); process.stdin.on('end',()=>console.log(JSON.stringify(JSON.parse(d),null,2)))"
+
+.PHONY: curl_health
+curl_health: ## Call GET /health — component health check
+	curl --verbose --fail $(BASE_URL)/health | $(BUN) -e "process.stdin.setEncoding('utf8'); let d=''; process.stdin.on('data',c=>d+=c); process.stdin.on('end',()=>console.log(JSON.stringify(JSON.parse(d),null,2)))"
+
+.PHONY: curl_metrics
+curl_metrics: ## Call GET /metrics — request metrics
+	curl --verbose --fail $(BASE_URL)/metrics
+
 ##@ Cleanup
 
 .PHONY: clean

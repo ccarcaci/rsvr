@@ -1,32 +1,7 @@
-import { beforeEach, describe, expect, it, mock } from "bun:test"
+import { beforeEach, describe, expect, it } from "bun:test"
+import { mock_db_queries } from "./mock"
 
-// Mutable state that mock functions delegate to — reassigned per test
-let check_availability: (...args: unknown[]) => unknown = () => null
-let create_reservation: (...args: unknown[]) => unknown = () => {
-  throw new Error("not configured")
-}
-let list_reservations: (...args: unknown[]) => unknown = () => []
-let get_slot_by_id: (...args: unknown[]) => unknown = () => null
-
-// Register module mocks before any import of the module under test.
-// The closures reference the mutable variables above, so reassigning them per test works.
-mock.module("../db/queries", () => ({
-  check_availability: (...args: unknown[]) => check_availability(...args),
-  create_reservation: (...args: unknown[]) => create_reservation(...args),
-  list_reservations: (...args: unknown[]) => list_reservations(...args),
-  // Unused stubs to satisfy the import
-  find_user_by_phone: () => null,
-  find_user_by_telegram_id: () => null,
-  create_user: () => null,
-  cancel_reservation: () => false,
-}))
-
-mock.module("./queries", () => ({
-  get_slot_by_id: (...args: unknown[]) => get_slot_by_id(...args),
-  get_reservation_by_id: () => null,
-}))
-
-// Import must happen after mock.module registrations
+// Import must happen after mock registrations performed by the preloaded mock file
 const { handle_check_availability } = await import("./tool_handlers")
 const { handle_create_booking } = await import("./tool_handlers")
 const { handle_list_bookings } = await import("./tool_handlers")
@@ -55,11 +30,11 @@ const RESERVATION = {
 
 describe("handle_check_availability", () => {
   beforeEach(() => {
-    check_availability = () => null
+    mock_db_queries({ check_availability: () => null })
   })
 
   it("returns slot data when available", () => {
-    check_availability = () => SLOT
+    mock_db_queries({ check_availability: () => SLOT })
 
     const result = handle_check_availability({
       domain: "restaurant",
@@ -80,7 +55,7 @@ describe("handle_check_availability", () => {
   })
 
   it("returns error when no slot available", () => {
-    check_availability = () => null
+    mock_db_queries({ check_availability: () => null })
 
     const result = handle_check_availability({
       domain: "restaurant",
@@ -136,10 +111,12 @@ describe("handle_check_availability", () => {
 
   it("defaults party_size to 1 when not provided", () => {
     let received_party_size = -1
-    check_availability = (_d: unknown, _dt: unknown, _t: unknown, ps: unknown) => {
-      received_party_size = ps as number
-      return SLOT
-    }
+    mock_db_queries({
+      check_availability: (_d: unknown, _dt: unknown, _t: unknown, ps: unknown) => {
+        received_party_size = ps as number
+        return SLOT
+      },
+    })
 
     handle_check_availability({ domain: "restaurant", date: "2099-12-31", time: "19:00" })
     expect(received_party_size).toBe(1)
@@ -148,8 +125,10 @@ describe("handle_check_availability", () => {
 
 describe("handle_create_booking", () => {
   beforeEach(() => {
-    get_slot_by_id = () => SLOT
-    create_reservation = () => RESERVATION
+    mock_db_queries({
+      get_slot_by_id: () => SLOT,
+      create_reservation: () => RESERVATION,
+    })
   })
 
   it("creates booking when slot has sufficient capacity", () => {
@@ -170,7 +149,10 @@ describe("handle_create_booking", () => {
   })
 
   it("returns error when slot does not exist", () => {
-    get_slot_by_id = () => null
+    mock_db_queries({
+      get_slot_by_id: () => null,
+      create_reservation: () => RESERVATION,
+    })
 
     const result = handle_create_booking(1, {
       slot_id: 999,
@@ -185,7 +167,10 @@ describe("handle_create_booking", () => {
   })
 
   it("returns error when slot domain does not match requested domain", () => {
-    get_slot_by_id = () => ({ ...SLOT, domain: "salon" })
+    mock_db_queries({
+      get_slot_by_id: () => ({ ...SLOT, domain: "salon" }),
+      create_reservation: () => RESERVATION,
+    })
 
     const result = handle_create_booking(1, {
       slot_id: 42,
@@ -201,7 +186,10 @@ describe("handle_create_booking", () => {
 
   it("returns error when remaining capacity is insufficient (race condition guard)", () => {
     // Slot has 3 total, 2 already booked = 1 remaining; requesting 3
-    get_slot_by_id = () => ({ ...SLOT, capacity: 3, booked: 2 })
+    mock_db_queries({
+      get_slot_by_id: () => ({ ...SLOT, capacity: 3, booked: 2 }),
+      create_reservation: () => RESERVATION,
+    })
 
     const result = handle_create_booking(1, {
       slot_id: 42,
@@ -230,10 +218,13 @@ describe("handle_create_booking", () => {
 
   it("defaults party_size to 1 when not provided", () => {
     let received_party_size = -1
-    create_reservation = (_uid: unknown, _sid: unknown, _d: unknown, ps: unknown) => {
-      received_party_size = ps as number
-      return RESERVATION
-    }
+    mock_db_queries({
+      get_slot_by_id: () => SLOT,
+      create_reservation: (_uid: unknown, _sid: unknown, _d: unknown, ps: unknown) => {
+        received_party_size = ps as number
+        return RESERVATION
+      },
+    })
 
     handle_create_booking(1, { slot_id: 42, domain: "restaurant" })
     expect(received_party_size).toBe(1)
@@ -242,7 +233,7 @@ describe("handle_create_booking", () => {
 
 describe("handle_list_bookings", () => {
   it("returns empty list when user has no reservations", () => {
-    list_reservations = () => []
+    mock_db_queries({ list_reservations: () => [] })
 
     const result = handle_list_bookings(1, {})
     expect(result.ok).toBe(true)
@@ -253,7 +244,7 @@ describe("handle_list_bookings", () => {
   })
 
   it("returns mapped reservation list", () => {
-    list_reservations = () => [RESERVATION]
+    mock_db_queries({ list_reservations: () => [RESERVATION] })
 
     const result = handle_list_bookings(1, {})
     expect(result.ok).toBe(true)
