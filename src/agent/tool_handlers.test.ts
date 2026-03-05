@@ -33,7 +33,7 @@ describe("tool_handlers", () => {
       mock_db_module.check_availability.mockReturnValue(null)
     })
 
-    test("returns slot data when available", () => {
+    test("returns_slot_data_when_available", () => {
       //  --  arrange
       mock_db_module.check_availability.mockReturnValue(SLOT)
 
@@ -57,7 +57,7 @@ describe("tool_handlers", () => {
       }
     })
 
-    test("returns error when no slot available", () => {
+    test("returns_error_when_no_slot_available", () => {
       //  --  arrange
       mock_db_module.check_availability.mockReturnValue(null)
 
@@ -76,7 +76,7 @@ describe("tool_handlers", () => {
       }
     })
 
-    test("rejects invalid domain", () => {
+    test("rejects_invalid_domain", () => {
       //  --  arrange
       // (no additional setup — default mock returns null)
 
@@ -94,7 +94,7 @@ describe("tool_handlers", () => {
       }
     })
 
-    test("rejects invalid date format", () => {
+    test("rejects_invalid_date_format", () => {
       //  --  arrange
       // (no additional setup — default mock returns null)
 
@@ -112,7 +112,7 @@ describe("tool_handlers", () => {
       }
     })
 
-    test("rejects invalid time format", () => {
+    test("rejects_invalid_time_format", () => {
       //  --  arrange
       // (no additional setup — default mock returns null)
 
@@ -130,7 +130,7 @@ describe("tool_handlers", () => {
       }
     })
 
-    test("defaults party_size to 1 when not provided", () => {
+    test("defaults_party_size_to_1_when_not_provided", () => {
       //  --  arrange
       let received_party_size = -1
       mock_db_module.check_availability.mockImplementation(
@@ -158,7 +158,7 @@ describe("tool_handlers", () => {
       mock_db_module.create_reservation.mockReturnValue(RESERVATION)
     })
 
-    test("creates booking when slot has sufficient capacity", () => {
+    test("creates_booking_when_slot_has_sufficient_capacity", () => {
       //  --  arrange
       // (beforeEach sets up SLOT with capacity 10, booked 2)
 
@@ -180,7 +180,7 @@ describe("tool_handlers", () => {
       }
     })
 
-    test("returns error when slot does not exist", () => {
+    test("returns_error_when_slot_does_not_exist", () => {
       //  --  arrange
       mock_db_module.get_slot_by_id.mockReturnValue(null)
 
@@ -198,7 +198,7 @@ describe("tool_handlers", () => {
       }
     })
 
-    test("returns error when slot domain does not match requested domain", () => {
+    test("returns_error_when_slot_domain_does_not_match_requested_domain", () => {
       //  --  arrange
       mock_db_module.get_slot_by_id.mockReturnValue({ ...SLOT, domain: "salon" })
 
@@ -216,7 +216,7 @@ describe("tool_handlers", () => {
       }
     })
 
-    test("returns error when remaining capacity is insufficient (race condition guard)", () => {
+    test("returns_error_when_remaining_capacity_is_insufficient_(race_condition_guard)", () => {
       //  --  arrange
       // Slot has 3 total, 2 already booked = 1 remaining; requesting 3
       mock_db_module.get_slot_by_id.mockReturnValue({ ...SLOT, capacity: 3, booked: 2 })
@@ -235,7 +235,7 @@ describe("tool_handlers", () => {
       }
     })
 
-    test("rejects invalid domain", () => {
+    test("rejects_invalid_domain", () => {
       //  --  arrange
       // (beforeEach sets up valid SLOT; domain validation fires before slot lookup)
 
@@ -253,7 +253,7 @@ describe("tool_handlers", () => {
       }
     })
 
-    test("defaults party_size to 1 when not provided", () => {
+    test("defaults_party_size_to_1_when_not_provided", () => {
       //  --  arrange
       let received_party_size = -1
       mock_db_module.create_reservation.mockImplementation(
@@ -272,7 +272,7 @@ describe("tool_handlers", () => {
   })
 
   describe("handle_list_bookings", () => {
-    test("returns empty list when user has no reservations", () => {
+    test("returns_empty_list_when_user_has_no_reservations", () => {
       //  --  arrange
       mock_db_module.list_reservations.mockReturnValue([])
 
@@ -287,7 +287,7 @@ describe("tool_handlers", () => {
       }
     })
 
-    test("returns mapped reservation list", () => {
+    test("returns_mapped_reservation_list", () => {
       //  --  arrange
       mock_db_module.list_reservations.mockReturnValue([RESERVATION])
 

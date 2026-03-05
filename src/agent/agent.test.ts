@@ -34,7 +34,7 @@ mock.module("./tool_handlers", () => mock_tool_handlers_module)
 const agent = await import("./agent")
 
 describe("run_agent", () => {
-  test("returns assistant text on end_turn", async () => {
+  test("returns_assistant_text_on_end_turn", async () => {
     //  --  arrange
     mock_anthropic_module.messages_create.mockImplementation(async () =>
       make_end_turn("How can I help you today?"),
@@ -47,7 +47,7 @@ describe("run_agent", () => {
     expect(result).toBe("How can I help you today?")
   })
 
-  test("dispatches tool_use and returns final text after tool round-trip", async () => {
+  test("dispatches_tool_use_and_returns_final_text_after_tool_round-trip", async () => {
     //  --  arrange
     let call_count = 0
 
@@ -86,7 +86,7 @@ describe("run_agent", () => {
     expect(call_count).toBe(2)
   })
 
-  test("returns error message when tool call limit is exceeded", async () => {
+  test("returns_error_message_when_tool_call_limit_is_exceeded", async () => {
     //  --  arrange
     // Always returns tool_use to drive the loop into the limit
     mock_tool_handlers_module.handle_check_availability.mockReturnValue({
@@ -109,7 +109,7 @@ describe("run_agent", () => {
     expect(result).toBe("Something went wrong, please try again.")
   })
 
-  test("returns connection error message when API throws", async () => {
+  test("returns_connection_error_message_when_api_throws", async () => {
     //  --  arrange
     mock_anthropic_module.messages_create.mockImplementation(async () => {
       throw new Error("Network error")
@@ -122,7 +122,7 @@ describe("run_agent", () => {
     expect(result).toBe("I'm having trouble connecting. Please try again in a moment.")
   })
 
-  test("handles unknown tool name by passing error result back to model", async () => {
+  test("handles_unknown_tool_name_by_passing_error_result_back_to_model", async () => {
     //  --  arrange
     let call_count = 0
 
@@ -142,7 +142,7 @@ describe("run_agent", () => {
     expect(call_count).toBe(2)
   })
 
-  test("returns fallback when end_turn response has no text block", async () => {
+  test("returns_fallback_when_end_turn_response_has_no_text_block", async () => {
     //  --  arrange
     mock_anthropic_module.messages_create.mockImplementation(async () => ({
       content: [],

@@ -12,7 +12,7 @@ mock.module("./client/anthropic", () => ({
 const intent_module = await import("./intent")
 
 describe("parse_intent", () => {
-  test("should parse a restaurant reservation intent", async () => {
+  test("should_parse_a_restaurant_reservation_intent", async () => {
     //  --  arrange
     mock_anthropic_module.messages_create.mockResolvedValue({
       content: [
@@ -36,7 +36,7 @@ describe("parse_intent", () => {
     }
   })
 
-  test("should parse a cancellation intent", async () => {
+  test("should_parse_a_cancellation_intent", async () => {
     //  --  arrange
     mock_anthropic_module.messages_create.mockResolvedValue({
       content: [{ type: "text" as const, text: '{"action":"cancel","reservation_id":42}' }],
@@ -52,7 +52,7 @@ describe("parse_intent", () => {
     }
   })
 
-  test("should parse a list intent", async () => {
+  test("should_parse_a_list_intent", async () => {
     //  --  arrange
     mock_anthropic_module.messages_create.mockResolvedValue({
       content: [{ type: "text" as const, text: '{"action":"list"}' }],
@@ -65,7 +65,7 @@ describe("parse_intent", () => {
     expect(intent.action).toBe("list")
   })
 
-  test("should parse a help intent", async () => {
+  test("should_parse_a_help_intent", async () => {
     //  --  arrange
     mock_anthropic_module.messages_create.mockResolvedValue({
       content: [{ type: "text" as const, text: '{"action":"help"}' }],
@@ -78,7 +78,7 @@ describe("parse_intent", () => {
     expect(intent.action).toBe("help")
   })
 
-  test("should return unknown for unparseable responses", async () => {
+  test("should_return_unknown_for_unparseable_responses", async () => {
     //  --  arrange
     mock_anthropic_module.messages_create.mockResolvedValue({
       content: [{ type: "text" as const, text: "I'm not sure what you mean" }],
@@ -91,7 +91,7 @@ describe("parse_intent", () => {
     expect(intent.action).toBe("unknown")
   })
 
-  test("should parse a doctor appointment intent", async () => {
+  test("should_parse_a_doctor_appointment_intent", async () => {
     //  --  arrange
     mock_anthropic_module.messages_create.mockResolvedValue({
       content: [
@@ -115,7 +115,7 @@ describe("parse_intent", () => {
     }
   })
 
-  test("should parse a salon booking intent", async () => {
+  test("should_parse_a_salon_booking_intent", async () => {
     //  --  arrange
     mock_anthropic_module.messages_create.mockResolvedValue({
       content: [
