@@ -1,4 +1,4 @@
-import { describe, expect, test, mock } from "bun:test"
+import { describe, expect, mock, test } from "bun:test"
 import { mock_anthropic_module } from "./mock"
 
 const make_end_turn = (text: string) => ({
@@ -22,19 +22,21 @@ const make_tool_use = (tool_id: string, tool_name: string, input: Record<string,
 })
 
 mock.module("../parser/client/anthropic", () => ({
-    client: {
-      messages: {
-        create: mock_anthropic_module.messages_create,
-      },
+  client: {
+    messages: {
+      create: mock_anthropic_module.messages_create,
     },
-  }))
+  },
+}))
 
-  const agent = await import("./agent")
+const agent = await import("./agent")
 
 describe("run_agent", () => {
   test("returns assistant text on end_turn", async () => {
     //  --  arrange
-    mock_anthropic_module.messages_create.mockImplementation(async () => make_end_turn("How can I help you today?"))
+    mock_anthropic_module.messages_create.mockImplementation(async () =>
+      make_end_turn("How can I help you today?"),
+    )
 
     //  --  act
     const result = await agent.run_agent(1, "test:end_turn", "Hello")

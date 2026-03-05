@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, mock } from "bun:test"
+import { beforeEach, describe, expect, mock, test } from "bun:test"
 import { mock_db_module } from "./mock"
 
 const SLOT = {
@@ -133,13 +133,19 @@ describe("tool_handlers", () => {
     test("defaults party_size to 1 when not provided", () => {
       //  --  arrange
       let received_party_size = -1
-      mock_db_module.check_availability.mockImplementation((_d: unknown, _dt: unknown, _t: unknown, ps: unknown) => {
-        received_party_size = ps as number
-        return SLOT
-      })
+      mock_db_module.check_availability.mockImplementation(
+        (_d: unknown, _dt: unknown, _t: unknown, ps: unknown) => {
+          received_party_size = ps as number
+          return SLOT
+        },
+      )
 
       //  --  act
-      handlers.handle_check_availability({ domain: "restaurant", date: "2099-12-31", time: "19:00" })
+      handlers.handle_check_availability({
+        domain: "restaurant",
+        date: "2099-12-31",
+        time: "19:00",
+      })
 
       //  --  assert
       expect(received_party_size).toBe(1)
@@ -250,10 +256,12 @@ describe("tool_handlers", () => {
     test("defaults party_size to 1 when not provided", () => {
       //  --  arrange
       let received_party_size = -1
-      mock_db_module.create_reservation.mockImplementation((_uid: unknown, _sid: unknown, _d: unknown, ps: unknown) => {
-        received_party_size = ps as number
-        return RESERVATION
-      })
+      mock_db_module.create_reservation.mockImplementation(
+        (_uid: unknown, _sid: unknown, _d: unknown, ps: unknown) => {
+          received_party_size = ps as number
+          return RESERVATION
+        },
+      )
 
       //  --  act
       handlers.handle_create_booking(1, { slot_id: 42, domain: "restaurant" })

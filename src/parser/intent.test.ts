@@ -1,4 +1,4 @@
-import { describe, expect, test, mock } from "bun:test"
+import { describe, expect, mock, test } from "bun:test"
 import { mock_anthropic_module } from "./client/mock"
 
 mock.module("./client/anthropic", () => ({
@@ -119,7 +119,10 @@ describe("parse_intent", () => {
     //  --  arrange
     mock_anthropic_module.messages_create.mockResolvedValue({
       content: [
-        { type: "text" as const, text: '{"action":"reserve","domain":"salon","date":"2026-02-28","time":"14:00"}' },
+        {
+          type: "text" as const,
+          text: '{"action":"reserve","domain":"salon","date":"2026-02-28","time":"14:00"}',
+        },
       ],
     })
 
