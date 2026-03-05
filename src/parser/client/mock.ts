@@ -1,15 +1,10 @@
-import { mock } from "bun:test"
+import { Mock, mock } from "bun:test"
 
-export const mock_anthropic_client = (response_text: string) => {
-  mock.module("./anthropic", () => ({
-    client: {
-      messages: {
-        create: async () => ({
-          content: [{ type: "text" as const, text: response_text }],
-        }),
-      },
-    },
-  }))
+type mock_fn_type = (...args: any[]) => any
+
+type mock_anthropic_type = {
+  messages_create: Mock<mock_fn_type>
 }
-
-mock_anthropic_client("")
+export const mock_anthropic_module: mock_anthropic_type = {
+  messages_create: mock(),
+}

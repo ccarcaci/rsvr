@@ -1,5 +1,2 @@
 [install]
 peer = false
-
-[test]
-preload = ["./src/parser/client/mock", "./src/agent/mock"]

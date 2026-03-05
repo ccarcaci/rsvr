@@ -1,7 +1,7 @@
 import { logger } from "../shared/logger"
 import { openai_client } from "./client/openai"
 
-export const transcribe_audio = async (buffer: BlobPart, mime_type: string): Promise<string> => {
+export const transcribe_audio = async (buffer: Uint8Array<ArrayBuffer>, mime_type: string): Promise<string> => {
   const file = new File([buffer], `voice.${extension_from_mime(mime_type)}`, { type: mime_type })
 
   const response = await openai_client.audio.transcriptions.create({

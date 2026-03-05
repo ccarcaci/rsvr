@@ -18,10 +18,10 @@ logger.info("Monitoring routes registered (/status, /health, /metrics)")
 
 //  --
 
+logger.info("Booting Telegram bot")
 telegram_bot.start().catch((err) => {
   logger.warn("Telegram bot cannot start, check token validity", { err: err })
 })
-logger.info("Telegram bot started")
 
 //  --
 

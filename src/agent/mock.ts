@@ -1,42 +1,31 @@
-import { mock } from "bun:test"
+import { Mock, mock } from "bun:test"
 
-export const mock_anthropic_client = (impl: (...args: unknown[]) => unknown) => {
-  mock.module("../parser/client/anthropic", () => ({
-    client: {
-      messages: {
-        create: async (...args: unknown[]) => impl(...args),
-      },
-    },
-  }))
+type mock_fn_type = (...args: any[]) => any
+
+type mock_anthropic_type = {
+  messages_create: Mock<mock_fn_type>
+}
+export const mock_anthropic_module: mock_anthropic_type = {
+  messages_create: mock(),
 }
 
-export const mock_db_queries = (overrides: {
-  check_availability?: (...args: unknown[]) => unknown
-  create_reservation?: (...args: unknown[]) => unknown
-  list_reservations?: (...args: unknown[]) => unknown
-  get_slot_by_id?: (...args: unknown[]) => unknown
-}) => {
-  mock.module("../db/queries", () => ({
-    check_availability: overrides.check_availability ?? (() => null),
-    create_reservation:
-      overrides.create_reservation ??
-      (() => {
-        throw new Error("not configured")
-      }),
-    list_reservations: overrides.list_reservations ?? (() => []),
-    get_slot_by_id: overrides.get_slot_by_id ?? (() => null),
-    // Unused stubs to satisfy the import
-    find_user_by_phone: () => null,
-    find_user_by_telegram_id: () => null,
-    create_user: () => null,
-    cancel_reservation: () => false,
-  }))
+type mock_db_type = {
+  find_user_by_phone: Mock<mock_fn_type>
+  find_user_by_telegram_id: Mock<mock_fn_type>
+  create_user: Mock<mock_fn_type>
+  check_availability: Mock<mock_fn_type>
+  create_reservation: Mock<mock_fn_type>
+  cancel_reservation: Mock<mock_fn_type>
+  list_reservations: Mock<mock_fn_type>
+  get_slot_by_id: Mock<mock_fn_type>
 }
-
-mock_anthropic_client(async () => ({
-  content: [],
-  stop_reason: "end_turn",
-  stop_sequence: null,
-}))
-
-mock_db_queries({})
+export const mock_db_module: mock_db_type = {
+  find_user_by_phone: mock(),
+  find_user_by_telegram_id: mock(),
+  create_user: mock(),
+  check_availability: mock(),
+  create_reservation: mock(),
+  cancel_reservation: mock(),
+  list_reservations: mock(),
+  get_slot_by_id: mock(),
+}

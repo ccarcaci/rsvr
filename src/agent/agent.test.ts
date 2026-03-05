@@ -1,7 +1,5 @@
-import { beforeEach, describe, expect, it } from "bun:test"
-import { mock_anthropic_client } from "./mock"
-
-const { run_agent } = await import("./agent")
+import { describe, expect, test, mock } from "bun:test"
+import { mock_anthropic_module } from "./mock"
 
 const make_end_turn = (text: string) => ({
   content: [{ type: "text" as const, text }],
@@ -23,22 +21,33 @@ const make_tool_use = (tool_id: string, tool_name: string, input: Record<string,
   stop_sequence: null,
 })
 
+mock.module("../parser/client/anthropic", () => ({
+    client: {
+      messages: {
+        create: mock_anthropic_module.messages_create,
+      },
+    },
+  }))
+
+  const agent = await import("./agent")
+
 describe("run_agent", () => {
-  beforeEach(() => {
-    mock_anthropic_client(async () => make_end_turn("Default response"))
-  })
+  test("returns assistant text on end_turn", async () => {
+    //  --  arrange
+    mock_anthropic_module.messages_create.mockImplementation(async () => make_end_turn("How can I help you today?"))
 
-  it("returns assistant text on end_turn", async () => {
-    mock_anthropic_client(async () => make_end_turn("How can I help you today?"))
+    //  --  act
+    const result = await agent.run_agent(1, "test:end_turn", "Hello")
 
-    const result = await run_agent(1, "test:end_turn", "Hello")
+    //  --  assert
     expect(result).toBe("How can I help you today?")
   })
 
-  it("dispatches tool_use and returns final text after tool round-trip", async () => {
+  test("dispatches tool_use and returns final text after tool round-trip", async () => {
+    //  --  arrange
     let call_count = 0
 
-    mock_anthropic_client(async () => {
+    mock_anthropic_module.messages_create.mockImplementation(async () => {
       call_count++
       if (call_count === 1) {
         // First call: model wants to check availability
@@ -53,15 +62,19 @@ describe("run_agent", () => {
       return make_end_turn("Sorry, no tables available for that date.")
     })
 
-    const result = await run_agent(1, "test:tool_dispatch", "Book a table")
+    //  --  act
+    const result = await agent.run_agent(1, "test:tool_dispatch", "Book a table")
+
+    //  --  assert
     expect(typeof result).toBe("string")
     expect(result.length).toBeGreaterThan(0)
     expect(call_count).toBe(2)
   })
 
-  it("returns error message when tool call limit is exceeded", async () => {
+  test("returns error message when tool call limit is exceeded", async () => {
+    //  --  arrange
     // Always returns tool_use to drive the loop into the limit
-    mock_anthropic_client(async () =>
+    mock_anthropic_module.messages_create.mockImplementation(async () =>
       make_tool_use("tool_x", "check_availability", {
         domain: "restaurant",
         date: "2099-01-01",
@@ -69,23 +82,31 @@ describe("run_agent", () => {
       }),
     )
 
-    const result = await run_agent(1, "test:loop_limit", "Loop forever")
+    //  --  act
+    const result = await agent.run_agent(1, "test:loop_limit", "Loop forever")
+
+    //  --  assert
     expect(result).toBe("Something went wrong, please try again.")
   })
 
-  it("returns connection error message when API throws", async () => {
-    mock_anthropic_client(async () => {
+  test("returns connection error message when API throws", async () => {
+    //  --  arrange
+    mock_anthropic_module.messages_create.mockImplementation(async () => {
       throw new Error("Network error")
     })
 
-    const result = await run_agent(1, "test:api_error", "Hello")
+    //  --  act
+    const result = await agent.run_agent(1, "test:api_error", "Hello")
+
+    //  --  assert
     expect(result).toBe("I'm having trouble connecting. Please try again in a moment.")
   })
 
-  it("handles unknown tool name by passing error result back to model", async () => {
+  test("handles unknown tool name by passing error result back to model", async () => {
+    //  --  arrange
     let call_count = 0
 
-    mock_anthropic_client(async () => {
+    mock_anthropic_module.messages_create.mockImplementation(async () => {
       call_count++
       if (call_count === 1) {
         return make_tool_use("tool_2", "nonexistent_tool", {})
@@ -93,19 +114,26 @@ describe("run_agent", () => {
       return make_end_turn("I cannot do that.")
     })
 
-    const result = await run_agent(1, "test:unknown_tool", "Do something unsupported")
+    //  --  act
+    const result = await agent.run_agent(1, "test:unknown_tool", "Do something unsupported")
+
+    //  --  assert
     expect(typeof result).toBe("string")
     expect(call_count).toBe(2)
   })
 
-  it("returns fallback when end_turn response has no text block", async () => {
-    mock_anthropic_client(async () => ({
+  test("returns fallback when end_turn response has no text block", async () => {
+    //  --  arrange
+    mock_anthropic_module.messages_create.mockImplementation(async () => ({
       content: [],
       stop_reason: "end_turn" as const,
       stop_sequence: null,
     }))
 
-    const result = await run_agent(1, "test:no_text", "Hello")
+    //  --  act
+    const result = await agent.run_agent(1, "test:no_text", "Hello")
+
+    //  --  assert
     expect(result).toBe("Done.")
   })
 })
