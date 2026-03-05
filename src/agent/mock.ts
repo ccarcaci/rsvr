@@ -30,3 +30,20 @@ export const mock_db_module: mock_db_type = {
   list_reservations: mock(),
   get_slot_by_id: mock(),
 }
+
+type mock_tool_handlers_type = {
+  handle_check_availability: Mock<mock_fn_type>
+  handle_create_booking: Mock<mock_fn_type>
+  handle_list_bookings: Mock<mock_fn_type>
+  handle_get_booking: Mock<mock_fn_type>
+  handle_cancel_booking: Mock<mock_fn_type>
+  handle_reschedule_booking: Mock<mock_fn_type>
+}
+export const mock_tool_handlers_module: mock_tool_handlers_type = {
+  handle_check_availability: mock(),
+  handle_create_booking: mock(),
+  handle_list_bookings: mock(),
+  handle_get_booking: mock(),
+  handle_cancel_booking: mock(),
+  handle_reschedule_booking: mock(),
+}

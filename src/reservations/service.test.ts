@@ -1,14 +1,26 @@
-import { describe, expect, mock, test } from "bun:test"
+import { afterEach, describe, expect, mock, spyOn, test } from "bun:test"
 import type { incoming_message_type } from "../channels/types"
-import { mock_agent_module, mock_db_module, mock_transcribe_module } from "./mock"
+import { mock_anthropic_module, mock_db_module, mock_transcribe_module } from "./mock"
 
 mock.module("../voice/transcribe", () => mock_transcribe_module)
 mock.module("../db/queries", () => mock_db_module)
-mock.module("../agent/agent", () => mock_agent_module)
+mock.module("../parser/client/anthropic", () => ({
+  client: {
+    messages: {
+      create: mock_anthropic_module.messages_create,
+    },
+  },
+}))
 
+const agent_module = await import("../agent/agent")
 const service = await import("./service")
 
 describe("handle_message", () => {
+  afterEach(() => {
+    mock.restore()
+    mock.clearAllMocks()
+  })
+
   test("voice_message_run_agent", async () => {
     //  --  arrange
     const voice_message: incoming_message_type = {
@@ -32,8 +44,7 @@ describe("handle_message", () => {
       created_at: "yesterday",
     })
 
-    const mock_run_agent = mock_agent_module.run_agent
-    mock_run_agent.mockResolvedValue("appointment booked")
+    const mock_run_agent = spyOn(agent_module, "run_agent").mockResolvedValue("appointment booked")
 
     //  --  act
     const result = await service.handle_message(voice_message)

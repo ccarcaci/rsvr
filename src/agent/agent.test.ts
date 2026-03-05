@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from "bun:test"
-import { mock_anthropic_module } from "./mock"
+import { mock_anthropic_module, mock_tool_handlers_module } from "./mock"
 
 const make_end_turn = (text: string) => ({
   content: [{ type: "text" as const, text }],
@@ -29,6 +29,8 @@ mock.module("../parser/client/anthropic", () => ({
   },
 }))
 
+mock.module("./tool_handlers", () => mock_tool_handlers_module)
+
 const agent = await import("./agent")
 
 describe("run_agent", () => {
@@ -48,6 +50,17 @@ describe("run_agent", () => {
   test("dispatches tool_use and returns final text after tool round-trip", async () => {
     //  --  arrange
     let call_count = 0
+
+    mock_tool_handlers_module.handle_check_availability.mockReturnValue({
+      ok: true,
+      data: {
+        slot_id: 1,
+        domain: "restaurant",
+        date: "2099-12-31",
+        time: "19:00",
+        available_capacity: 8,
+      },
+    })
 
     mock_anthropic_module.messages_create.mockImplementation(async () => {
       call_count++
@@ -76,6 +89,11 @@ describe("run_agent", () => {
   test("returns error message when tool call limit is exceeded", async () => {
     //  --  arrange
     // Always returns tool_use to drive the loop into the limit
+    mock_tool_handlers_module.handle_check_availability.mockReturnValue({
+      ok: false,
+      error: "No availability.",
+    })
+
     mock_anthropic_module.messages_create.mockImplementation(async () =>
       make_tool_use("tool_x", "check_availability", {
         domain: "restaurant",
