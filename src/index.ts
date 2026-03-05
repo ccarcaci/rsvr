@@ -10,9 +10,14 @@ const app = new Hono()
 
 app.use("*", metrics_middleware)
 
+//  --
+
 app.get("/", (c) => c.json({ status: "ok", service: "rsvr" }))
 app.route("/", whatsapp_routes)
 logger.info("Whatsapp routes registered")
+
+//  --
+
 app.route("/", monitoring_routes)
 logger.info("Monitoring routes registered (/status, /health, /metrics)")
 

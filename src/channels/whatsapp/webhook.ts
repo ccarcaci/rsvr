@@ -1,41 +1,37 @@
-import { Hono } from "hono"
+import { type Context, Hono } from "hono"
 import { configs } from "../../config/env"
 import { handle_message } from "../../reservations/service"
 import { logger } from "../../shared/logger"
-import type { incoming_message_type, message_handler_type } from "../types"
+import type { incoming_message_type } from "../types"
 import { whatsapp_client } from "./client"
 import { download_voice_note } from "./media"
 
 type whatsapp_webhook_entry_type = {
-  changes: Array<{
+  changes: {
     value: {
-      messages?: Array<{
-        from: string
-        type: string
-        text?: { body: string }
-        audio?: { id: string; mime_type: string }
-      }>
-      contacts?: Array<{ profile: { name: string } }>
+      messages?: whatsapp_message_type[]
+      contacts?: whatsapp_contact_type[]
     }
-  }>
+  }[]
 }
 
-const create_whatsapp_routes = (
-  whatsapp_verify_token: string,
-  handler: message_handler_type,
-): Hono => {
+type whatsapp_message_type = {
+  from: string
+  type: string
+  text?: { body: string }
+  audio?: { id: string; mime_type: string }
+}
+
+type whatsapp_contact_type = { profile: { name: string } }
+
+const create_whatsapp_routes = (): Hono => {
   const app = new Hono()
 
   app.get("/webhook/whatsapp", (c) => {
     const mode = c.req.query("hub.mode")
     const token = c.req.query("hub.verify_token")
     const challenge = c.req.query("hub.challenge")
-
-    if (mode === "subscribe" && token === whatsapp_verify_token) {
-      logger.info("WhatsApp webhook verified")
-      return c.text(challenge ?? "", 200)
-    }
-    return c.text("Forbidden", 403)
+    return whatsapp_verify_challenge(c, mode, token, challenge)
   })
 
   app.post("/webhook/whatsapp", async (c) => {
@@ -44,37 +40,18 @@ const create_whatsapp_routes = (
 
     if (!entries) return c.json({ status: "ok" })
 
-    for (const entry of entries) {
-      for (const change of entry.changes) {
-        const messages = change.value.messages
-        if (!messages) continue
+    const messages_values = entries
+      ?.flatMap((e) => e.changes)
+      .map((c) => c.value)
+      .filter((v) => v.messages !== undefined)
+    const contact = messages_values[0].contacts?.[0]?.profile.name
+    const messages = messages_values.flatMap((mv) => mv.messages) as whatsapp_message_type[] // because undefined messages have been filtere out above
 
-        for (const msg of messages) {
-          try {
-            const incoming: incoming_message_type = {
-              channel: "whatsapp",
-              sender_id: msg.from,
-              sender_name: change.value.contacts?.[0]?.profile.name,
-              raw_payload: msg,
-            }
-
-            if (msg.type === "text" && msg.text) {
-              incoming.text = msg.text.body
-            } else if (msg.type === "audio" && msg.audio) {
-              const voice = await download_voice_note(whatsapp_client, msg.audio.id)
-              incoming.voice_buffer = voice.buffer
-              incoming.voice_mime_type = voice.mime_type
-            }
-
-            const reply = await handler(incoming)
-            await whatsapp_client.send_text_message(msg.from, reply)
-          } catch (err) {
-            logger.error("Error processing WhatsApp message", { error: err })
-          }
-        }
-      }
+    try {
+      whatsapp_messages_handler(messages, contact)
+    } catch (err) {
+      logger.error("Error processing WhatsApp message", { error: err })
     }
-
     return c.json({ status: "ok" })
   })
 
@@ -83,4 +60,41 @@ const create_whatsapp_routes = (
 
 //  --
 
-export const whatsapp_routes = create_whatsapp_routes(configs.whatsapp_verify_token, handle_message)
+const whatsapp_verify_challenge = (
+  c: Context,
+  mode?: string,
+  token?: string,
+  challenge?: string,
+) => {
+  if (mode === "subscribe" && token === configs.whatsapp_verify_token) {
+    logger.info("WhatsApp webhook verified")
+    return c.text(challenge ?? "", 200)
+  }
+  return c.text("Forbidden", 403)
+}
+
+const whatsapp_messages_handler = (messages: whatsapp_message_type[], contact?: string) => {
+  messages?.forEach(async (msg) => {
+    const incoming: incoming_message_type = {
+      channel: "whatsapp",
+      sender_id: msg.from,
+      sender_name: contact,
+      raw_payload: msg,
+    }
+
+    if (msg.type === "text" && msg.text) {
+      incoming.text = msg.text.body
+    } else if (msg.type === "audio" && msg.audio) {
+      const voice = await download_voice_note(whatsapp_client, msg.audio.id)
+      incoming.voice_buffer = voice.buffer
+      incoming.voice_mime_type = voice.mime_type
+    }
+
+    const reply = await handle_message(incoming)
+    await whatsapp_client.send_text_message(msg.from, reply)
+  })
+}
+
+//  --
+
+export const whatsapp_routes = create_whatsapp_routes()

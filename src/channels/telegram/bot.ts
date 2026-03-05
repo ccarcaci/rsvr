@@ -2,10 +2,10 @@ import { Bot } from "grammy"
 import { configs } from "../../config/env"
 import { handle_message } from "../../reservations/service"
 import { logger } from "../../shared/logger"
-import type { incoming_message_type, message_handler_type } from "../types"
+import type { incoming_message_type } from "../types"
 import { download_voice_note } from "./media"
 
-const create_telegram_bot = (token: string, handler: message_handler_type): Bot => {
+const create_telegram_bot = (token: string): Bot => {
   const bot = new Bot(token)
 
   bot.on("message:text", async (ctx) => {
@@ -18,7 +18,7 @@ const create_telegram_bot = (token: string, handler: message_handler_type): Bot 
     }
 
     try {
-      const reply = await handler(incoming)
+      const reply = await handle_message(incoming)
       await ctx.reply(reply)
     } catch (err) {
       logger.error("Error processing Telegram text message", { error: err })
@@ -39,7 +39,7 @@ const create_telegram_bot = (token: string, handler: message_handler_type): Bot 
         raw_payload: ctx.message,
       }
 
-      const reply = await handler(incoming)
+      const reply = await handle_message(incoming)
       await ctx.reply(reply)
     } catch (err) {
       logger.error("Error processing Telegram voice message", { error: err })
@@ -56,4 +56,4 @@ const create_telegram_bot = (token: string, handler: message_handler_type): Bot 
 
 //  --
 
-export const telegram_bot = create_telegram_bot(configs.telegram_bot_token, handle_message)
+export const telegram_bot = create_telegram_bot(configs.telegram_bot_token)
