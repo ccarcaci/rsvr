@@ -1,21 +1,210 @@
-PARALLEL CODE REVIEW — CONSOLIDATED REPORT
+# Code Review & Fixes Report
 
-  Scope: full codebase review
-  Reason: forced via --full flag
-  Files reviewed: 31
+**Scope:** Full codebase review
+**Files reviewed:** 31 TypeScript source files
+**Date:** 2026-03-05
+**Status:** 8 critical issues identified; 9 recommendations prioritized
 
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
-  Critical Issues (requires immediate attention)
+## 🔒 Critical Issues (BLOCKING — Address Immediately)
 
-  - [security-reviewer] WhatsApp webhook accepts requests without HMAC-SHA256 signature verification — allows forging arbitrary reservation events
-  - [security-reviewer] In-memory session store has no TTL eviction — unbounded memory growth, DoS vulnerability
-  - [security-reviewer] Booking creation not atomic — TOCTOU race condition — allows overbooking of slots
-  - [code-reviewer] create_reservation uses last_insert_rowid() fragility — if logic changes, wrong ID may be returned
-  - [code-reviewer] Session memory grows unboundedly — no cleanup or history length cap
-  - [personal-style-reviewer] 4 levels of nesting in webhook.ts — violates 2-level TypeScript limit
-  - [personal-style-reviewer] run_agent exceeds 50-line limit (75 lines, no justifying comment)
-  - [code-reviewer] Duplicate get_slot_by_id definition — defined in both src/agent/queries.ts and src/db/queries.ts
+### 1. WhatsApp Webhook HMAC-SHA256 Verification Missing
+- **Location:** `src/channels/whatsapp/webhook.ts:41-79`
+- **Risk Level:** 🔴 CRITICAL — Allows forging arbitrary reservation events
+- **Impact:** Attacker can create/cancel any reservation without authentication
+- **Fix:**
+  1. Read raw request body before parsing JSON
+  2. Compute `HMAC-SHA256(app_secret, raw_body)`
+  3. Constant-time compare against `X-Hub-Signature-256` header
+  4. Reject with 403 on mismatch
+- **Effort:** ~20 minutes
+
+### 2. In-Memory Session DoS (Unbounded Memory Growth)
+- **Location:** `src/agent/session.ts:3-15`
+- **Risk Level:** 🔴 CRITICAL — DoS vector; attacker exhausts heap
+- **Current State:** No TTL eviction; conversation history grows indefinitely
+- **Fix:**
+  1. Add TTL-based cleanup: remove sessions with `last_active > 30min old`
+  2. Cap message history per session: `MAX_HISTORY = 40` messages
+  3. Use `setInterval` or cleanup on write
+- **Effort:** ~15 minutes
+
+### 3. Booking Creation Race Condition (TOCTOU → Overbooking)
+- **Locations:** `src/agent/tool_handlers.ts:83-101`, `src/db/queries.ts:76-100`
+- **Risk Level:** 🔴 CRITICAL — Concurrent requests can overbooking slots
+- **Current State:** Capacity check happens separately from INSERT/UPDATE; not atomic
+- **Fix:**
+  ```ts
+  const reservation = db.transaction(() => {
+    const slot = get_slot_by_id(slot_id)
+    if (!slot || slot.capacity - slot.booked < party_size) throw new Error(...)
+    // INSERT reservation
+    // UPDATE time_slots
+    return reservation
+  })()
+  ```
+- **Effort:** ~10 minutes
+
+### 4. Fragile `last_insert_rowid()` Usage
+- **Location:** `src/db/queries.ts:89-95`
+- **Risk Level:** 🟠 HIGH — Fragile; wrong ID returned if logic changes
+- **Current State:** INSERT reservation → UPDATE time_slots → SELECT last_insert_rowid()
+- **Problem:** If another INSERT occurs between reservation INSERT and UPDATE (e.g., via trigger), wrong ID returned
+- **Fix:** Capture `last_insert_rowid()` immediately after reservation INSERT, before UPDATE
+- **Effort:** ~5 minutes
+
+### 5. Duplicate `get_slot_by_id` Definition
+- **Locations:** `src/db/queries.ts:130-134` (used), `src/agent/queries.ts:4-8` (unused)
+- **Risk Level:** 🟠 HIGH — Maintenance hazard; schema changes must be made twice
+- **Fix:** Delete `src/agent/queries.ts` entirely (tool_handlers already imports from db)
+- **Effort:** ~5 minutes
+
+### 6. Excessive Function Length Without Justification
+- **Locations:**
+  - `src/agent/agent.ts` — `run_agent`: 75 lines (limit: 50)
+  - `src/agent/tool_handlers.ts` — `handle_create_booking`: 55 lines (limit: 50)
+  - `src/metrics/routes.ts` — `render_prometheus`: 63 lines (limit: 50)
+- **Risk Level:** 🟠 HIGH — Reduces readability; violates project style
+- **Fix:** Extract helper functions (e.g., `handle_end_turn()`, `verify_slot_availability()`, `render_uptime_metrics()`)
+- **Effort:** ~30 minutes total
+
+### 7. Excessive Nesting (4 Levels → Violates 2-Level Limit)
+- **Location:** `src/channels/whatsapp/webhook.ts:47-76`
+- **Risk Level:** 🟠 HIGH — Nested `for` + `for` + `try` + `if` = 4 levels
+- **Fix:** Extract `process_change()` and `process_message()` helper functions
+- **Effort:** ~15 minutes
+
+---
+
+## 🟠 High-Priority Concerns
+
+### Missing Monitoring Endpoint Authentication
+- **Locations:** `src/metrics/routes.ts:86-162` (/health, /status, /metrics)
+- **Issue:** No authentication; exposes memory usage, error messages, request paths
+- **Fix:** Gate behind `internal_api_key` middleware (consistent with REST API auth)
+- **Effort:** ~10 minutes
+
+### Missing Input Validation for Edge Cases
+- **Issue:** `notes` field has no length limit (passed from LLM directly to database)
+- **Fix:** Cap notes to 500 characters in `handle_create_booking()`; add SQLite CHECK constraint
+- **Effort:** ~5 minutes
+
+### Missing `cancel_reservation` Ownership Check
+- **Location:** `src/db/queries.ts` (not yet reviewed when unimplemented)
+- **Issue:** `cancel_reservation` takes only `reservation_id`; missing `user_id` ownership check
+- **Fix:** Add `AND user_id = ?` clause before implementing `handle_cancel_booking`
+- **Effort:** ~5 minutes
+
+### Full Transcription Text Logged with PII
+- **Location:** `src/reservations/service.ts:12`
+- **Issue:** Logs phone number + transcription text at INFO level
+- **Fix:** Remove `text` field from log; use hash or last-4-digits of phone if correlation needed
+- **Effort:** ~5 minutes
+
+---
+
+## 📋 Medium-Priority Improvements
+
+### Code Duplication
+1. **Domain validation guard** — Repeated in `handle_check_availability()` and `handle_create_booking()`
+   - Fix: Extract `const INVALID_DOMAIN_ERROR = (domain: string) => "Invalid domain..."`
+   - Effort: ~3 minutes
+
+2. **Party-size validation** — Repeated in two handlers
+   - Fix: Extract `const INVALID_PARTY_SIZE_ERROR = "Party size must be..."`
+   - Effort: ~2 minutes
+
+### Dead Code
+- **`src/parser/intent.ts`** — Legacy intent parser; unused (replaced by Claude Opus agent)
+- **`src/agent/queries.ts`** — Duplicate `get_slot_by_id`; already handled in critical #5
+- Decision: Mark for removal after confirming no production imports
+
+### Parameter Order Violations (Style)
+- **`src/channels/whatsapp/media.ts`** — Argument order: client before media_id (should be reversed)
+- **`src/channels/telegram/media.ts`** — Argument order: api before file_id (should be reversed)
+- **Fix:** Reorder parameters + update call sites (2 files, ~5 minutes)
+
+### Missing Separator Comments
+- Missing `//  --` separators in:
+  - `src/agent/agent.ts` (between helpers and exported run_agent)
+  - `src/agent/session.ts` (between get_session and update_session)
+  - `src/agent/tool_handlers.ts` (between each handler)
+  - `src/shared/logger.ts` (between private log and exported logger object)
+  - `src/voice/transcribe.ts` (between exported transcribe_audio and private helpers)
+- **Fix:** Add missing separators (standardization; ~10 minutes)
+
+### Incorrect Separator Style
+- `src/metrics/registry.ts` and `src/metrics/routes.ts` use `// ----` instead of `//  --`
+- **Fix:** Replace with correct style (~5 minutes)
+
+---
+
+## ✅ Positive Security Controls (Verified)
+
+- ✅ All SQL queries use parameterized placeholders (no string interpolation)
+- ✅ API credentials loaded exclusively from environment (no hardcoded secrets)
+- ✅ WhatsApp verification endpoint correctly validates token
+- ✅ Error messages to users are generic (no internal details exposed)
+- ✅ SQLite schema uses CHECK constraints for defense-in-depth
+- ✅ Agent loop capped at 10 tool calls (prevents infinite loops)
+- ✅ Telegram uses long-polling (no public webhook to protect)
+- ✅ Foreign keys enabled; WAL mode configured
+
+---
+
+## 📊 Recommendations by Priority
+
+### 🔴 Priority 1 — Security & Data Integrity (This Week)
+1. Implement WhatsApp HMAC-SHA256 verification (20min)
+2. Add session TTL eviction + max history cap (15min)
+3. Wrap booking creation in SQLite transaction (10min)
+4. Fix `last_insert_rowid()` timing (5min)
+
+**Estimated effort:** ~50 minutes
+
+### 🟠 Priority 2 — Code Quality & Stability (Next Week)
+5. Delete `src/agent/queries.ts` (5min)
+6. Extract oversized functions (30min)
+7. Fix 4-level nesting in webhook.ts (15min)
+8. Add missing ownership checks to cancel_reservation (5min)
+
+**Estimated effort:** ~55 minutes
+
+### 🟡 Priority 3 — Operations & Monitoring (Backlog)
+9. Gate /health, /status, /metrics behind auth (10min)
+10. Add input validation (notes length, party_size bounds) (10min)
+11. Remove PII from logs (5min)
+12. Fix parameter order violations (5min)
+13. Standardize separator comments (15min)
+
+**Estimated effort:** ~45 minutes
+
+---
+
+## Verification Commands
+
+After fixing, run:
+```bash
+make lint       # Biome checks
+make ci_test    # Full test suite
+make check      # Both together
+```
+
+---
+
+## Files Summary
+
+**Reviewed:** 31 files
+**Critical Issues:** 7
+**High-Priority:** 4
+**Medium-Priority:** 8
+
+**Most Critical Files:**
+- `src/channels/whatsapp/webhook.ts` — Security + nesting violations
+- `src/agent/session.ts` — DoS vulnerability
+- `src/db/queries.ts` — Race condition + fragility
+- `src/agent/tool_handlers.ts` — Function size + race condition consumer
 
   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
