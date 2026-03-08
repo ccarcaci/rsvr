@@ -4,7 +4,10 @@
       "WebSearch",
       "WebFetch(domain:biomejs.dev)",
       "WebFetch(domain:docs.dokploy.com)",
-      "WebFetch(domain:docs.podman.io)"
+      "WebFetch(domain:docs.podman.io)",
+      "WebFetch(domain:developers.facebook.com)",
+      "WebFetch(domain:whatsapp.github.io)",
+      "WebFetch(domain:medium.com)"
     ]
   }
 }
