@@ -476,39 +476,28 @@ sequenceDiagram
 
 | #  | Gap                                          | Risk                                              | Recommendation                                                                                     |
 |----|----------------------------------------------|----------------------------------------------------|-----------------------------------------------------------------------------------------------------|
-| 1  | **No `X-Hub-Signature-256` validation**      | Any party can POST to `/webhook/whatsapp` and      | Add `WHATSAPP_APP_SECRET` to config. Validate HMAC-SHA256 of the raw request body against the       |
-|    |                                              | impersonate messages. This is a spoofing vector.   | `X-Hub-Signature-256` header. Reject requests that fail validation with HTTP 401.                   |
-| 2  | **No `object` field check**                  | Malformed or unrelated payloads are processed      | Check `body.object === "whatsapp_business_account"` before processing entries.                       |
-|    |                                              | without validation.                                |                                                                                                      |
+| 1  | **No `X-Hub-Signature-256` validation**      | Any party can POST to `/webhook/whatsapp` and impersonate messages. This is a spoofing vector | Add `WHATSAPP_APP_SECRET` to config. Validate HMAC-SHA256 of the raw request body against the `X-Hub-Signature-256` header. Reject requests that fail validation with HTTP 401. |
+| 2  | **No `object` field check**                  | Malformed or unrelated payloads are processed without validation.                             | Check `body.object === "whatsapp_business_account"` before processing entries.                                                                                                   |
 
 ### MODERATE -- Robustness
 
-| #  | Gap                                                | Impact                                         | Recommendation                                                                                   |
-|----|----------------------------------------------------|-------------------------------------------------|---------------------------------------------------------------------------------------------------|
-| 3  | **`forEach` with async callback** (webhook.ts:77)  | Unhandled promise rejections. Errors inside     | Use `Promise.all(messages.map(...))` or fire-and-forget with explicit `.catch()` per message.     |
-|    |                                                    | async callbacks are silently lost.              |                                                                                                    |
-| 4  | **No message deduplication**                       | Meta retries for up to 7 days. Duplicate        | Track processed `message.id` values (e.g., in SQLite or in-memory set with TTL) and skip          |
-|    |                                                    | messages may produce duplicate replies.         | already-seen IDs.                                                                                  |
-| 5  | **Status notifications not handled**               | Sent/delivered/read status webhooks are          | Add a branch for `statuses` in the value object. At minimum, log them. Optionally, update          |
-|    |                                                    | silently ignored.                               | a message status in the database.                                                                  |
-| 6  | **Send response not parsed**                       | Cannot track outbound message IDs for           | Parse the send response to extract `messages[0].id`. Store for correlation with delivery statuses. |
-|    |                                                    | delivery confirmation.                          |                                                                                                    |
+| #  | Gap                                                | Impact                                                                           | Recommendation                                                                                                              |
+|----|----------------------------------------------------|----------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| 3  | **`forEach` with async callback** (webhook.ts:77)  | Unhandled promise rejections. Errors inside async callbacks are silently lost.   | Use `Promise.all(messages.map(...))` or fire-and-forget with explicit `.catch()` per message.                               |
+| 4  | **No message deduplication**                       | Meta retries for up to 7 days. Duplicate messages may produce duplicate replies. | Track processed `message.id` values (e.g., in SQLite or in-memory set with TTL) and skip already-seen IDs.                  |
+| 5  | **Status notifications not handled**               | Sent/delivered/read status webhooks are silently ignored.                        | Add a branch for `statuses` in the value object. At minimum, log them. Optionally, update a message status in the database. |
+| 6  | **Send response not parsed**                       | Cannot track outbound message IDs for delivery confirmation.                     | Parse the send response to extract `messages[0].id`. Store for correlation with delivery statuses.                          |
 
 ### MINOR -- Data Fidelity
 
-| #  | Gap                                                | Impact                                          | Recommendation                                                                                  |
-|----|----------------------------------------------------|-------------------------------------------------|-------------------------------------------------------------------------------------------------|
-| 7  | **MIME type hardcoded to `"audio/ogg"`**           | If WhatsApp sends audio in a different format    | Use the `mime_type` from the webhook payload (`msg.audio.mime_type`) instead of hardcoding.      |
-|    | (media.ts:8)                                       | (e.g., `audio/mpeg`), transcription may fail.   | Alternatively, use the MIME type from the step-1 media metadata response.                       |
-| 8  | **Audio `sha256` not verified**                    | Downloaded media integrity is not confirmed.     | Compare the SHA256 of the downloaded buffer against `audio.sha256` from the webhook payload.     |
-| 9  | **`timestamp` and `id` not extracted**             | No audit trail of when messages were sent or     | Add `id` and `timestamp` to `whatsapp_message_type`. Pass through to `incoming_message_type`.   |
-|    |                                                    | their unique identifiers.                       |                                                                                                  |
-| 10 | **`metadata` not typed**                           | `phone_number_id` and `display_phone_number`     | Add `metadata` to `whatsapp_webhook_entry_type`. Useful for multi-number routing.                |
-|    |                                                    | are not available for multi-number setups.      |                                                                                                  |
-| 11 | **`audio.voice` not checked**                      | Cannot distinguish voice notes from audio file   | Check `audio.voice === true` if different handling is desired.                                   |
-|    |                                                    | attachments (sent as regular files).            |                                                                                                  |
-| 12 | **API version hardcoded to `v21.0`**               | Will become stale as Meta deprecates old         | Consider making the API version configurable or establishing a version upgrade cadence.          |
-|    | (client.ts:4)                                      | versions (typically ~2 year lifecycle).          |                                                                                                  |
+| #  | Gap                                                          | Impact                                                                                      | Recommendation                                                                                                                     |
+|----|--------------------------------------------------------------|---------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| 7  | **MIME type hardcoded to `"audio/ogg"`** (media.ts:8)        | If WhatsApp sends audio in a different format (e.g., `audio/mpeg`), transcription may fail. | Use `mime_type` from the webhook payload (`msg.audio.mime_type`) or from the step-1 media metadata response instead of hardcoding. |
+| 8  | **Audio `sha256` not verified**                              | Downloaded media integrity is not confirmed.                                                | Compare the SHA256 of the downloaded buffer against `audio.sha256` from the webhook payload.                                       |
+| 9  | **`timestamp` and `id` not extracted**                       | No audit trail of when messages were sent or their unique identifiers.                      | Add `id` and `timestamp` to `whatsapp_message_type`. Pass through to `incoming_message_type`.                                      |
+| 10 | **`metadata` not typed**                                     | `phone_number_id` and `display_phone_number` are not available for multi-number setups.     | Add `metadata` to `whatsapp_webhook_entry_type`. Useful for multi-number routing.                                                  |
+| 11 | **`audio.voice` not checked**                                | Cannot distinguish voice notes from audio file attachments (sent as regular files).         | Check `audio.voice === true` if different handling is desired.                                                                     |
+| 12 | **API version hardcoded to `v21.0`** (client.ts:4)           | Will become stale as Meta deprecates old versions (typically ~2 year lifecycle).             | Consider making the API version configurable or establishing a version upgrade cadence.                                            |
 
 ---
 

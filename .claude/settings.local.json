@@ -7,7 +7,9 @@
       "WebFetch(domain:docs.podman.io)",
       "WebFetch(domain:developers.facebook.com)",
       "WebFetch(domain:whatsapp.github.io)",
-      "WebFetch(domain:medium.com)"
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)"
     ]
   }
 }

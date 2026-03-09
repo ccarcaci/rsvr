@@ -60,17 +60,13 @@ const create_whatsapp_routes = (): Hono => {
 
 //  --
 
-const whatsapp_verify_challenge = (
-  c: Context,
-  mode?: string,
-  token?: string,
-  challenge?: string,
-) => {
-  if (mode === "subscribe" && token === configs.whatsapp_verify_token) {
-    logger.info("WhatsApp webhook verified")
-    return c.text(challenge ?? "", 200)
+const whatsapp_verify_challenge = (c: Context, mode?: string, token?: string, challenge?: string) => {
+  if (mode !== "subscribe" || token !== configs.whatsapp_verify_token || challenge === undefined) {
+    return c.text("Forbidden", 403)
   }
-  return c.text("Forbidden", 403)
+
+  logger.info("WhatsApp webhook verified")
+  return c.text(challenge ?? "", 200)
 }
 
 const whatsapp_messages_handler = (messages: whatsapp_message_type[], contact?: string) => {

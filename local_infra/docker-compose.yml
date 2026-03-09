@@ -1,0 +1,231 @@
+# docker-compose.yml — rsvr application stack
+#
+# Deployment target: Dokploy (https://dokploy.com)
+# Dokploy reads this file and manages the container lifecycle. The file can
+# also be used with plain `docker compose up` or `podman-compose up` for local
+# development, provided the dokploy-network already exists on the host.
+#
+# Network topology
+# ─────────────────────────────────────────────────────────────────────────────
+# All services join `dokploy-network`, the bridge network created by the
+# local_infra/Makefile start target. Traefik — running as a separate container
+# managed by Dokploy — watches this network for labelled services and routes
+# external HTTPS traffic to them.
+#
+# Internal service-to-service communication uses Docker DNS names:
+#   whap → rsvr  :  http://rsvr:3000/channels/whatsapp/webhook
+#
+# Volumes
+# ─────────────────────────────────────────────────────────────────────────────
+# rsvr-data      — SQLite database for rsvr (/app/data inside the container)
+# whap-templates — Optional message templates for the whap mock server
+#
+# Both volumes are named (Docker-managed) so data survives container restarts
+# and image upgrades without needing a bind mount or a host path.
+#
+# Environment variables
+# ─────────────────────────────────────────────────────────────────────────────
+# No .env file is committed (project convention). Supply variables via:
+#   - Dokploy's "Environment" panel in the UI (recommended for production)
+#   - A local `.env.local` file excluded from version control, passed with
+#     `docker compose --env-file .env.local up`
+#   - Inline on the CLI: KEY=value docker compose up
+#
+# Required variables must all be set before the rsvr container will start.
+# The config loader (src/config/env.ts) throws at startup if any are missing.
+
+---
+name: rsvr
+
+services:
+
+  # ── rsvr ──────────────────────────────────────────────────────────────────
+  # Main reservation service. Handles WhatsApp and Telegram messages, runs the
+  # Claude Opus agent loop, and exposes a REST API for booking management.
+  #
+  # Dockerfile: local_infra/Dockerfile
+  # Binary:     /app/rsvr (compiled from src/index.ts via `bun build --compile`)
+  # User:       rsvr (UID 1001, non-root)
+  rsvr:
+    build:
+      # Build context is the repo root so COPY can reach src/, tsconfig.json,
+      # bun.lock, and package.json from a single context.
+      context: ..
+      dockerfile: local_infra/Dockerfile
+
+    # Explicit container name makes it reachable on the network by a stable DNS
+    # name and simplifies log tailing and exec commands.
+    container_name: rsvr
+
+    restart: unless-stopped
+
+    # ── Environment variables ────────────────────────────────────────────────
+    # Required — the app throws at startup if any of these are absent.
+    # Supply via Dokploy UI, .env.local, or inline on the CLI.
+    environment:
+      # HTTP server port. Defaults to 3000; keep in sync with EXPOSE and the
+      # Traefik label below if you change it.
+      PORT: ${PORT:-3000}
+
+      # SQLite database file path inside the container.
+      # Defaults to ./data/rsvr.db which resolves to /app/data/rsvr.db.
+      # The rsvr-data volume is mounted at /app/data so the file is persisted.
+      DATABASE_PATH: ${DATABASE_PATH:-./data/rsvr.db}
+
+      # Telegram Bot API token (obtain from @BotFather).
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+
+      # WhatsApp Business Cloud API credentials.
+      # In local dev these values can be arbitrary strings because whap does not
+      # validate them — but they must be non-empty for the config loader to pass.
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
+
+      # AI provider keys.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+      # Internal REST API key — used by the api/middleware/auth.ts layer to
+      # authenticate requests to the /api/* booking endpoints.
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+
+    # ── Volumes ──────────────────────────────────────────────────────────────
+    volumes:
+      # Named volume backed by Podman/Docker — survives container replacement.
+      # The Dockerfile already declares VOLUME ["/app/data"] as a hint; the
+      # explicit mount here ensures the named volume (not an anonymous one) is
+      # used so data can be inspected and backed up by name.
+      - rsvr-data:/app/data
+
+    # ── Networking ───────────────────────────────────────────────────────────
+    networks:
+      - dokploy-network
+
+    # ── Health check ─────────────────────────────────────────────────────────
+    # /health performs a live SQLite ping. A 200 response means both the HTTP
+    # server and the database are operational.
+    # The Dockerfile already embeds a HEALTHCHECK instruction; this compose-level
+    # definition takes precedence and makes the parameters explicit so they can be
+    # reviewed without opening the Dockerfile.
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:${PORT:-3000}/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+    # ── Traefik routing labels ────────────────────────────────────────────────
+    # Traefik discovers these labels via the Docker provider defined in
+    # local_infra/traefik.yml. Traffic arriving on the `websecure` entrypoint
+    # for the rsvr hostname is forwarded to port 3000 inside this container.
+    #
+    # TODO: Replace `rsvr.example.com` with the actual public hostname before
+    # deploying. In Dokploy this is configured via the domain field in the UI,
+    # which injects the correct label automatically.
+    labels:
+      traefik.enable: "true"
+      # Router — match incoming requests by hostname.
+      traefik.http.routers.rsvr.rule: "Host(`${RSVR_HOSTNAME:-rsvr.example.com}`)"
+      traefik.http.routers.rsvr.entrypoints: "websecure"
+      traefik.http.routers.rsvr.tls: "true"
+      # Let's Encrypt TLS via Traefik's ACME resolver (configured in traefik.yml).
+      traefik.http.routers.rsvr.tls.certresolver: "letsencrypt"
+      # Service — tell Traefik which container port to forward to.
+      traefik.http.services.rsvr.loadbalancer.server.port: "${PORT:-3000}"
+
+  # ── whap ──────────────────────────────────────────────────────────────────
+  # WhatsApp Business Cloud API mock. Emulates the Meta Cloud API endpoints
+  # locally so the rsvr app can send and receive WhatsApp messages without a
+  # real Meta Business account.
+  #
+  # Source:     https://github.com/fdarian/whap
+  # Dockerfile: local_infra/Dockerfile_whap
+  # Binary:     /app/whap (compiled via `bun build --compile`)
+  # User:       whap (UID 1001, non-root)
+  #
+  # whap forwards incoming message events to rsvr's webhook endpoint via the
+  # Docker internal network, so no public DNS or TLS is required for this path.
+  whap:
+    build:
+      # The whap Dockerfile is self-contained (clones upstream at build time),
+      # so the build context only needs to be local_infra/.
+      context: ..
+      dockerfile: local_infra/Dockerfile_whap
+
+    container_name: whap
+
+    restart: unless-stopped
+
+    # ── Dependency ordering ───────────────────────────────────────────────────
+    # whap must be able to reach rsvr's webhook immediately on startup.
+    # depends_on with condition: service_healthy ensures rsvr is fully up (health
+    # check passing) before whap starts forwarding events.
+    depends_on:
+      rsvr:
+        condition: service_healthy
+
+    # ── Environment variables ────────────────────────────────────────────────
+    environment:
+      # WEBHOOK_URL — where whap forwards incoming message notifications.
+      # Uses Docker DNS to reach the rsvr container on the shared network.
+      # The path matches the WhatsApp webhook route registered in
+      # src/channels/whatsapp/webhook.ts.
+      WEBHOOK_URL: ${WHAP_WEBHOOK_URL:-http://rsvr:3000/channels/whatsapp/webhook}
+
+    # ── Volumes ──────────────────────────────────────────────────────────────
+    volumes:
+      # Optional: mount custom message templates into the whap server.
+      # The Dockerfile creates /app/templates so the server starts without
+      # templates; bind-mount or populate this volume to add custom ones.
+      - whap-templates:/app/templates
+
+    # ── Networking ───────────────────────────────────────────────────────────
+    networks:
+      - dokploy-network
+
+    # ── Health check ─────────────────────────────────────────────────────────
+    # /status returns JSON with uptime and message counts.
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:3010/status"]
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+    # ── Traefik routing labels ────────────────────────────────────────────────
+    # whap's UI/API is exposed via Traefik for local inspection (e.g. sending
+    # test messages via the whap dashboard). This is optional and can be removed
+    # in production if the mock is not needed.
+    #
+    # TODO: Replace `whap.example.com` with the actual hostname, or remove these
+    # labels entirely if you do not need external access to the whap dashboard.
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.whap.rule: "Host(`${WHAP_HOSTNAME:-whap.example.com}`)"
+      traefik.http.routers.whap.entrypoints: "websecure"
+      traefik.http.routers.whap.tls: "true"
+      traefik.http.routers.whap.tls.certresolver: "letsencrypt"
+      traefik.http.services.whap.loadbalancer.server.port: "3010"
+
+# ── Networks ───────────────────────────────────────────────────────────────────
+# dokploy-network is created externally by the local_infra/Makefile start target
+# (or by Dokploy itself on the server). Declaring it as `external: true` prevents
+# compose from trying to create a duplicate and causes a clear error if the
+# network does not exist yet.
+networks:
+  dokploy-network:
+    external: true
+
+# ── Volumes ────────────────────────────────────────────────────────────────────
+# Named volumes are managed by Docker/Podman. They persist across `down`/`up`
+# cycles and can be inspected with `docker volume inspect <name>`.
+# To back up the SQLite database: `docker run --rm -v rsvr-data:/data -v
+# $(pwd):/backup alpine tar czf /backup/rsvr-data.tar.gz -C /data .`
+volumes:
+  rsvr-data:
+    # driver: local is the default; declared explicitly for clarity.
+    driver: local
+
+  whap-templates:
+    driver: local
