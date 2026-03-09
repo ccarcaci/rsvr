@@ -60,7 +60,12 @@ const create_whatsapp_routes = (): Hono => {
 
 //  --
 
-const whatsapp_verify_challenge = (c: Context, mode?: string, token?: string, challenge?: string) => {
+const whatsapp_verify_challenge = (
+  c: Context,
+  mode?: string,
+  token?: string,
+  challenge?: string,
+) => {
   if (mode !== "subscribe" || token !== configs.whatsapp_verify_token || challenge === undefined) {
     return c.text("Forbidden", 403)
   }
