@@ -1,9 +1,13 @@
-# docker-compose.yml — rsvr application stack
+# docker-compose.dokploy.yml — rsvr application stack for Dokploy deployment
 #
-# Deployment target: Dokploy (https://dokploy.com)
-# Dokploy reads this file and manages the container lifecycle. The file can
-# also be used with plain `docker compose up` or `podman-compose up` for local
-# development, provided the dokploy-network already exists on the host.
+# This compose file uses pre-built Docker images instead of building from source.
+# Images must be built locally and available to the Dokploy container via Docker socket.
+#
+# Build images locally with:
+#   make build_images
+#
+# Deploy to Dokploy with:
+#   make deploy
 #
 # Network topology
 # ─────────────────────────────────────────────────────────────────────────────
@@ -25,7 +29,7 @@
 #
 # Environment variables
 # ─────────────────────────────────────────────────────────────────────────────
-# No .env file is committed (project convention). Supply variables via:
+# Supply variables via:
 #   - Dokploy's "Environment" panel in the UI (recommended for production)
 #   - A local `.env.local` file excluded from version control, passed with
 #     `docker compose --env-file .env.local up`
@@ -43,15 +47,10 @@ services:
   # Main reservation service. Handles WhatsApp and Telegram messages, runs the
   # Claude Opus agent loop, and exposes a REST API for booking management.
   #
-  # Dockerfile: local_infra/Dockerfile
-  # Binary:     /app/rsvr (compiled from src/index.ts via `bun build --compile`)
-  # User:       rsvr (UID 1001, non-root)
+  # Image: rsvr:latest (built locally via: make build_images)
+  # User:  rsvr (UID 1001, non-root)
   rsvr:
-    build:
-      # Build context is the repo root so COPY can reach src/, tsconfig.json,
-      # bun.lock, and package.json from a single context.
-      context: ..
-      dockerfile: local_infra/Dockerfile
+    image: rsvr:latest
 
     # Explicit container name makes it reachable on the network by a stable DNS
     # name and simplifies log tailing and exec commands.
@@ -63,7 +62,7 @@ services:
     # Required — the app throws at startup if any of these are absent.
     # Supply via Dokploy UI, .env.local, or inline on the CLI.
     environment:
-      # HTTP server port. Defaults to 3000; keep in sync with EXPOSE and the
+      # HTTP server port. Defaults to 3000; keep in sync with the
       # Traefik label below if you change it.
       PORT: ${PORT:-3000}
 
@@ -93,9 +92,6 @@ services:
     # ── Volumes ──────────────────────────────────────────────────────────────
     volumes:
       # Named volume backed by Podman/Docker — survives container replacement.
-      # The Dockerfile already declares VOLUME ["/app/data"] as a hint; the
-      # explicit mount here ensures the named volume (not an anonymous one) is
-      # used so data can be inspected and backed up by name.
       - rsvr-data:/app/data
 
     # ── Networking ───────────────────────────────────────────────────────────
@@ -105,9 +101,6 @@ services:
     # ── Health check ─────────────────────────────────────────────────────────
     # /health performs a live SQLite ping. A 200 response means both the HTTP
     # server and the database are operational.
-    # The Dockerfile already embeds a HEALTHCHECK instruction; this compose-level
-    # definition takes precedence and makes the parameters explicit so they can be
-    # reviewed without opening the Dockerfile.
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:${PORT:-3000}/health"]
       interval: 15s
@@ -139,19 +132,13 @@ services:
   # locally so the rsvr app can send and receive WhatsApp messages without a
   # real Meta Business account.
   #
-  # Source:     https://github.com/fdarian/whap
-  # Dockerfile: local_infra/Dockerfile_whap
-  # Binary:     /app/whap (compiled via `bun build --compile`)
-  # User:       whap (UID 1001, non-root)
+  # Image: whap:latest (built locally via: make build_images)
+  # User:  whap (UID 1001, non-root)
   #
   # whap forwards incoming message events to rsvr's webhook endpoint via the
   # Docker internal network, so no public DNS or TLS is required for this path.
   whap:
-    build:
-      # The whap Dockerfile is self-contained (clones upstream at build time),
-      # so the build context only needs to be local_infra/.
-      context: ..
-      dockerfile: local_infra/Dockerfile_whap
+    image: whap:latest
 
     container_name: whap
 
@@ -176,8 +163,6 @@ services:
     # ── Volumes ──────────────────────────────────────────────────────────────
     volumes:
       # Optional: mount custom message templates into the whap server.
-      # The Dockerfile creates /app/templates so the server starts without
-      # templates; bind-mount or populate this volume to add custom ones.
       - whap-templates:/app/templates
 
     # ── Networking ───────────────────────────────────────────────────────────

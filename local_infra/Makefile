@@ -72,8 +72,16 @@ INFRA_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 # Change this if Dokploy is running on a remote server.
 DOKPLOY_URL ?= http://localhost:3000/api
 
-# Path to the docker-compose.yml pushed to Dokploy on deploy.
-COMPOSE_FILE ?= $(INFRA_DIR)docker-compose.yml
+# Path to the docker-compose.dokploy.yml pushed to Dokploy on deploy.
+# This file uses pre-built images instead of build: blocks.
+COMPOSE_FILE ?= $(INFRA_DIR)dokploy_compose_local.yml
+
+# Docker image names (must match the image: references in docker-compose.dokploy.yml)
+RSVR_IMAGE ?= rsvr:latest
+WHAP_IMAGE ?= whap:latest
+
+# Repository root (parent directory of local_infra/)
+REPO_ROOT := $(dir $(INFRA_DIR))
 
 # Default target — show help
 .DEFAULT_GOAL := help
@@ -242,6 +250,22 @@ delete: ## Destroy the stack and permanently delete ALL Dokploy data
 		2>/dev/null || true
 	@podman network rm dokploy-network 2>/dev/null || true
 
+##@ Docker Image Build
+
+.PHONY: build_images
+build_images: ## Build rsvr and whap Docker images locally
+	@echo "Building Docker images..."
+	@docker build \
+		--file $(INFRA_DIR)Dockerfile \
+		--tag $(RSVR_IMAGE) \
+		$(REPO_ROOT)
+	@echo "Built $(RSVR_IMAGE)"
+	@docker build \
+		--file $(INFRA_DIR)Dockerfile_whap \
+		--tag $(WHAP_IMAGE) \
+		$(REPO_ROOT)
+	@echo "Built $(WHAP_IMAGE)"
+
 ##@ Dokploy API
 
 # Local dev API key — hardcoded, no security concerns (local Dokploy instance only).
@@ -253,7 +277,7 @@ DOKPLOY_DEV_AK = QijsEsUKjjDfOgaRqJqMiDwKJBEHuQbknlCzXlGsPRiLgpvSNeLAjPKJiFFneWJ
 COMPOSE_ID = 8QN5h7nSk92SSSgWCJGlO
 
 .PHONY: deploy
-deploy: ## Push docker-compose.yml to Dokploy and redeploy
+deploy: build_images ## Build Docker images locally, then deploy to Dokploy
 	@if [ -z "$(COMPOSE_ID)" ]; then echo "Error: COMPOSE_ID is not set."; exit 1; fi
 	@echo "Pushing $(COMPOSE_FILE) to compose service $(COMPOSE_ID)..."
 	@COMPOSE_CONTENT=$$(cat "$(COMPOSE_FILE)" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))"); \
