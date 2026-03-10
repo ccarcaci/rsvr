@@ -1,5 +1,5 @@
 import { type Context, Hono } from "hono"
-import { configs } from "../../config/env"
+import { configs } from "../../config/args"
 import { handle_message } from "../../reservations/service"
 import { logger } from "../../shared/logger"
 import type { incoming_message_type } from "../types"

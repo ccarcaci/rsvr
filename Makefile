@@ -46,8 +46,11 @@ setup: check_version install ## Full project setup (check version + install deps
 
 ##@ Development
 
-# Mock CLI args used for local dev — override by passing real env vars in production
+# Mock CLI args used for local dev — all config comes from CLI arguments, not environment variables.
+# Pass real values by replacing the mock_* defaults or by overriding MOCK_ARGS on the command line.
 MOCK_ARGS := \
+	--port 3000 \
+	--database_path ./data/rsvr.db \
 	--telegram_bot_token mock_telegram_bot_token \
 	--whatsapp_verify_token mock_whatsapp_verify_token \
 	--whatsapp_access_token mock_whatsapp_access_token \
@@ -120,7 +123,7 @@ updates_changelog: ## Check updates with changelogs for outdated packages
 
 ##@ Monitoring
 
-# Port must match the PORT env var passed at startup (default: 3000)
+# Port must match the --port CLI arg passed at startup (default: 3000)
 PORT ?= 3000
 BASE_URL := http://localhost:$(PORT)
 

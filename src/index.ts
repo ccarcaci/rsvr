@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { telegram_bot } from "./channels/telegram/bot"
 import { whatsapp_routes } from "./channels/whatsapp/webhook"
-import { configs } from "./config/env"
+import { configs } from "./config/args"
 import { metrics_middleware } from "./metrics/middleware"
 import { monitoring_routes } from "./metrics/routes"
 import { logger } from "./shared/logger"

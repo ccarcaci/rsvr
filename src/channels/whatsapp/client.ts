@@ -1,4 +1,4 @@
-import { configs } from "../../config/env"
+import { configs } from "../../config/args"
 import { logger } from "../../shared/logger"
 
 const GRAPH_API_BASE = "https://graph.facebook.com/v21.0"

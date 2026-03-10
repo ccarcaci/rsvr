@@ -53,12 +53,23 @@ Enforced via Biome `useArrowFunction` rule for function expressions. Function de
 
 Semicolons are omitted. Enforced via Biome `javascript.formatter.semicolons: "asNeeded"`.
 
-### No .env files
+### No .env files — CLI arguments only
 
-Environment variables are passed via CLI:
+All configuration is passed as `--flag value` CLI arguments. No environment
+variables are read by the application; no `.env` files are used.
+
 ```bash
-TELEGRAM_BOT_TOKEN=xxx ANTHROPIC_API_KEY=xxx make start
+bun run src/index.ts \
+  --port 3000 \
+  --database_path ./data/rsvr.db \
+  --telegram_bot_token xxx \
+  --anthropic_api_key xxx \
+  ...
 ```
+
+For local development `make start` and `make dev` supply mock values via
+`MOCK_ARGS` in the Makefile. For production, pass real values directly on the
+command line or via Docker Compose variable substitution in the `command:` block.
 
 ### No ORM
 
@@ -73,7 +84,7 @@ Only add dependencies when absolutely necessary. Prefer built-in Bun APIs and st
 ```
 src/
   index.ts              # Entry point
-  config/env.ts         # Env var validation
+  config/args.ts        # CLI argument parsing and config
   db/                   # SQLite schema, client, queries
   channels/             # WhatsApp and Telegram adapters
     types.ts            # Shared message interfaces
@@ -113,7 +124,7 @@ All commands are in the Makefile. Run `make help` to see all targets.
 ```bash
 make setup          # Full setup: check Bun version + install deps
 make install        # Install dependencies
-make check-version  # Verify Bun version matches .bun-version
+make check_version  # Verify Bun version matches .bun-version
 make start          # Start server
 make dev            # Start with watch mode
 make test           # Run Bun tests (bun test src/)

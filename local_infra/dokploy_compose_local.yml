@@ -27,16 +27,21 @@
 # Both volumes are named (Docker-managed) so data survives container restarts
 # and image upgrades without needing a bind mount or a host path.
 #
-# Environment variables
+# Configuration
 # ─────────────────────────────────────────────────────────────────────────────
-# Supply variables via:
-#   - Dokploy's "Environment" panel in the UI (recommended for production)
-#   - A local `.env.local` file excluded from version control, passed with
-#     `docker compose --env-file .env.local up`
-#   - Inline on the CLI: KEY=value docker compose up
+# src/config/args.ts reads ALL config exclusively from CLI arguments via
+# parseArgs(). No environment variables are used for application config.
 #
-# Required variables must all be set before the rsvr container will start.
-# The config loader (src/config/env.ts) throws at startup if any are missing.
+# All nine values (port, database_path, and the seven secret keys) are passed
+# in the `command:` block below. Setting any of them as environment variables
+# in a compose `environment:` block has no effect on the running app.
+#
+# Default values in the `command:` block are the same mock strings used by
+# `make dev` / `make start` locally. Override for production by supplying the
+# real value in Dokploy's "Environment" panel, a local `.env.local` file
+# (`docker compose --env-file .env.local up`), or inline on the CLI
+# (KEY=value docker compose up). Docker Compose will substitute the value into
+# the command string via `${KEY:-default}` syntax.
 
 ---
 name: rsvr
@@ -58,36 +63,27 @@ services:
 
     restart: unless-stopped
 
-    # ── Environment variables ────────────────────────────────────────────────
-    # Required — the app throws at startup if any of these are absent.
-    # Supply via Dokploy UI, .env.local, or inline on the CLI.
-    environment:
-      # HTTP server port. Defaults to 3000; keep in sync with the
-      # Traefik label below if you change it.
-      PORT: ${PORT:-3000}
-
-      # SQLite database file path inside the container.
-      # Defaults to ./data/rsvr.db which resolves to /app/data/rsvr.db.
-      # The rsvr-data volume is mounted at /app/data so the file is persisted.
-      DATABASE_PATH: ${DATABASE_PATH:-./data/rsvr.db}
-
-      # Telegram Bot API token (obtain from @BotFather).
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-
-      # WhatsApp Business Cloud API credentials.
-      # In local dev these values can be arbitrary strings because whap does not
-      # validate them — but they must be non-empty for the config loader to pass.
-      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN}
-      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN}
-      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
-
-      # AI provider keys.
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-
-      # Internal REST API key — used by the api/middleware/auth.ts layer to
-      # authenticate requests to the /api/* booking endpoints.
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+    # ── CLI arguments ────────────────────────────────────────────────────────
+    # args.ts uses parseArgs() and reads ALL nine config values exclusively
+    # from CLI arguments — not from process.env. Each required flag must be
+    # present and non-empty or the process throws "Missing required CLI args"
+    # at startup. port and database_path have embedded defaults (3000 and
+    # ./data/rsvr.db) but are passed explicitly here for transparency.
+    #
+    # Default values are the same mock strings used by the Makefile MOCK_ARGS.
+    # Override for production via Dokploy's "Environment" panel: set the
+    # corresponding environment variable (e.g. TELEGRAM_BOT_TOKEN=real_token)
+    # and it will be substituted into the command string by Docker Compose.
+    command: >
+      --port                     ${PORT:-3000}
+      --database_path            ${DATABASE_PATH:-./data/rsvr.db}
+      --telegram_bot_token       ${TELEGRAM_BOT_TOKEN:-mock_telegram_bot_token}
+      --whatsapp_verify_token    ${WHATSAPP_VERIFY_TOKEN:-mock_whatsapp_verify_token}
+      --whatsapp_access_token    ${WHATSAPP_ACCESS_TOKEN:-mock_whatsapp_access_token}
+      --whatsapp_phone_number_id ${WHATSAPP_PHONE_NUMBER_ID:-mock_whatsapp_phone_number_id}
+      --anthropic_api_key        ${ANTHROPIC_API_KEY:-mock_anthropic_api_key}
+      --openai_api_key           ${OPENAI_API_KEY:-mock_openai_api_key}
+      --internal_api_key         ${INTERNAL_API_KEY:-mock_internal_api_key}
 
     # ── Volumes ──────────────────────────────────────────────────────────────
     volumes:
@@ -101,31 +97,15 @@ services:
     # ── Health check ─────────────────────────────────────────────────────────
     # /health performs a live SQLite ping. A 200 response means both the HTTP
     # server and the database are operational.
+    # curl is installed in the rsvr image (debian:bookworm-slim does not include
+    # curl or wget by default; see Dockerfile runtime stage).
+    # --fail causes curl to exit non-zero on HTTP 4xx/5xx responses.
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:${PORT:-3000}/health"]
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:${PORT:-3000}/health"]
       interval: 15s
       timeout: 5s
       start_period: 20s
       retries: 3
-
-    # ── Traefik routing labels ────────────────────────────────────────────────
-    # Traefik discovers these labels via the Docker provider defined in
-    # local_infra/traefik.yml. Traffic arriving on the `websecure` entrypoint
-    # for the rsvr hostname is forwarded to port 3000 inside this container.
-    #
-    # TODO: Replace `rsvr.example.com` with the actual public hostname before
-    # deploying. In Dokploy this is configured via the domain field in the UI,
-    # which injects the correct label automatically.
-    labels:
-      traefik.enable: "true"
-      # Router — match incoming requests by hostname.
-      traefik.http.routers.rsvr.rule: "Host(`${RSVR_HOSTNAME:-rsvr.example.com}`)"
-      traefik.http.routers.rsvr.entrypoints: "websecure"
-      traefik.http.routers.rsvr.tls: "true"
-      # Let's Encrypt TLS via Traefik's ACME resolver (configured in traefik.yml).
-      traefik.http.routers.rsvr.tls.certresolver: "letsencrypt"
-      # Service — tell Traefik which container port to forward to.
-      traefik.http.services.rsvr.loadbalancer.server.port: "${PORT:-3000}"
 
   # ── whap ──────────────────────────────────────────────────────────────────
   # WhatsApp Business Cloud API mock. Emulates the Meta Cloud API endpoints
@@ -177,30 +157,6 @@ services:
       timeout: 5s
       start_period: 15s
       retries: 3
-
-    # ── Traefik routing labels ────────────────────────────────────────────────
-    # whap's UI/API is exposed via Traefik for local inspection (e.g. sending
-    # test messages via the whap dashboard). This is optional and can be removed
-    # in production if the mock is not needed.
-    #
-    # TODO: Replace `whap.example.com` with the actual hostname, or remove these
-    # labels entirely if you do not need external access to the whap dashboard.
-    labels:
-      traefik.enable: "true"
-      traefik.http.routers.whap.rule: "Host(`${WHAP_HOSTNAME:-whap.example.com}`)"
-      traefik.http.routers.whap.entrypoints: "websecure"
-      traefik.http.routers.whap.tls: "true"
-      traefik.http.routers.whap.tls.certresolver: "letsencrypt"
-      traefik.http.services.whap.loadbalancer.server.port: "3010"
-
-# ── Networks ───────────────────────────────────────────────────────────────────
-# dokploy-network is created externally by the local_infra/Makefile start target
-# (or by Dokploy itself on the server). Declaring it as `external: true` prevents
-# compose from trying to create a duplicate and causes a clear error if the
-# network does not exist yet.
-networks:
-  dokploy-network:
-    external: true
 
 # ── Volumes ────────────────────────────────────────────────────────────────────
 # Named volumes are managed by Docker/Podman. They persist across `down`/`up`

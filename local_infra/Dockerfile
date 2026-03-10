@@ -16,14 +16,19 @@
 # container. Mount a named volume or host directory at /app/data to persist data
 # across container restarts.
 #
-# Environment variables: all required config is injected via env vars at runtime
-# (no .env file). The config loader (src/config/env.ts) reads from process.env.
-# Required vars:
-#   TELEGRAM_BOT_TOKEN, WHATSAPP_VERIFY_TOKEN, WHATSAPP_ACCESS_TOKEN,
-#   WHATSAPP_PHONE_NUMBER_ID, ANTHROPIC_API_KEY, OPENAI_API_KEY, INTERNAL_API_KEY
-# Optional vars:
-#   PORT            (default: 3000)
-#   DATABASE_PATH   (default: ./data/rsvr.db — resolved relative to /app)
+# Configuration: src/config/args.ts reads ALL config exclusively from CLI
+# arguments via parseArgs(). No environment variables are used for config.
+#
+# All nine values must be passed as --flag value arguments:
+#   --port, --database_path,
+#   --telegram_bot_token, --whatsapp_verify_token, --whatsapp_access_token,
+#   --whatsapp_phone_number_id, --anthropic_api_key, --openai_api_key,
+#   --internal_api_key
+#
+# Example with mock values (for local/testing):
+#   docker run rsvr:latest --port 3000 --database_path ./data/rsvr.db \
+#     --telegram_bot_token mock_telegram_bot_token \
+#     --anthropic_api_key mock_anthropic_api_key ...
 
 # ── Stage 1: builder ──────────────────────────────────────────────────────────
 # Pin to the same Bun major version locked in .bun-version (1.3.x).
@@ -74,12 +79,29 @@ WORKDIR /app
 # --chown ensures the non-root user can execute the file without a separate RUN.
 COPY --from=builder --chown=rsvr:rsvr /build/dist/rsvr ./rsvr
 
+# Copy the database schema to a fixed container path (/app/schema.sql).
+# The compiled binary cannot use import.meta.dir to locate schema.sql because
+# `bun build --compile` embeds TypeScript but not arbitrary non-TS files; at
+# runtime import.meta.dir resolves to the virtual /$bunfs/root/ filesystem which
+# is not accessible via readFileSync. Copying the file here gives the binary a
+# stable absolute path it can always find regardless of how it was started.
+COPY --from=builder --chown=rsvr:rsvr /build/src/db/schema.sql ./schema.sql
+
 # Create the data directory for the SQLite database file.
 # The database path defaults to ./data/rsvr.db (relative to /app).
 # This directory should be backed by a named volume or bind mount in production
 # so data persists across container restarts and image upgrades.
 # Ownership is set to rsvr so the non-root process can create/write the db file.
 RUN mkdir --parents data && chown rsvr:rsvr data
+
+# Install curl for the HEALTHCHECK instruction below.
+# debian:bookworm-slim ships neither curl nor wget; apt-get is the only way to
+# add a lightweight HTTP client. --no-install-recommends keeps the layer small
+# by skipping optional suggested packages. The apt lists are removed immediately
+# after installation to avoid stale package index data in the image layer.
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends curl \
+    && rm --recursive --force /var/lib/apt/lists/*
 
 USER rsvr
 
@@ -92,13 +114,15 @@ VOLUME ["/app/data"]
 EXPOSE 3000
 
 # Health check: /health performs a live SQLite ping and returns HTTP 200 when
-# healthy or 503 when degraded. wget is available in debian:bookworm-slim.
+# healthy or 503 when degraded. curl is installed above in the runtime stage.
+# --fail causes curl to exit non-zero on HTTP 4xx/5xx, which marks the
+# container unhealthy. --silent suppresses progress output.
 # --start-period=20s gives the Telegram bot and DB initialisation time to finish
 # before the first check is evaluated against the --retries threshold.
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
-    CMD wget --quiet --spider http://localhost:${PORT:-3000}/health || exit 1
+    CMD curl --fail --silent http://localhost:${PORT:-3000}/health || exit 1
 
-# Start the compiled binary. All configuration is provided via environment
-# variables (see header comment). No command-line arguments are needed because
-# src/config/env.ts falls back to process.env for every required setting.
+# Start the compiled binary. All nine config values must be passed as CLI
+# arguments (see header comment). In docker-compose, use the `command:` block
+# to supply all --flag values.
 ENTRYPOINT ["./rsvr"]
