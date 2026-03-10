@@ -54,7 +54,7 @@
 #   3. Run:
 #        make deploy
 #   4. Check progress:
-#        make api-status
+#        make api_status
 
 # IP address Dokploy advertises to Traefik for routing.
 # Override at the CLI if your machine has a non-loopback address:
@@ -81,7 +81,7 @@ RSVR_IMAGE ?= rsvr:latest
 WHAP_IMAGE ?= whap:latest
 
 # Repository root (parent directory of local_infra/)
-REPO_ROOT := $(dir $(INFRA_DIR))
+REPO_ROOT := $(dir $(INFRA_DIR))..
 
 # Default target — show help
 .DEFAULT_GOAL := help
@@ -255,12 +255,12 @@ delete: ## Destroy the stack and permanently delete ALL Dokploy data
 .PHONY: build_images
 build_images: ## Build rsvr and whap Docker images locally
 	@echo "Building Docker images..."
-	@docker build \
+	podman build \
 		--file $(INFRA_DIR)Dockerfile \
 		--tag $(RSVR_IMAGE) \
 		$(REPO_ROOT)
 	@echo "Built $(RSVR_IMAGE)"
-	@docker build \
+	podman build \
 		--file $(INFRA_DIR)Dockerfile_whap \
 		--tag $(WHAP_IMAGE) \
 		$(REPO_ROOT)
@@ -296,10 +296,10 @@ deploy: build_images ## Build Docker images locally, then deploy to Dokploy
 		--data "{\"composeId\": \"$(COMPOSE_ID)\"}" \
 		"$(DOKPLOY_URL)/compose.redeploy" \
 		--output /dev/null
-	@echo "Deployed. Check progress with:  make api-status"
+	@echo "Deployed. Check progress with:  make api_status"
 
-.PHONY: api-status
-api-status: ## Show recent deployments for the rsvr compose service
+.PHONY: api_status
+api_status: ## Show recent deployments for the rsvr compose service
 	@if [ -z "$(COMPOSE_ID)" ]; then echo "Error: COMPOSE_ID is not set."; exit 1; fi
 	@curl --silent --fail \
 		--header "x-api-key: $(DOKPLOY_DEV_AK)" \
