@@ -304,3 +304,30 @@ api_status: ## Show recent deployments for the rsvr compose service
 	@curl --silent --fail \
 		--header "x-api-key: $(DOKPLOY_DEV_AK)" \
 		"$(DOKPLOY_URL)/deployment.allByCompose?composeId=$(COMPOSE_ID)"
+
+##@ Testing
+
+# These targets test Traefik routing by hitting localhost:3001 with the Host
+# header that Dokploy injected into the Traefik dynamic config. Traefik listens
+# on port 3001 (mapped from container port 80) and routes requests to the
+# correct backend container based on the Host header.
+#
+# Hostnames come from the Dokploy-injected traefik labels in the compose file.
+
+.PHONY: curl_rsvr_health
+curl_rsvr_health: ## Test rsvr /health endpoint via Traefik (localhost:3001 with Host header)
+	@curl --verbose \
+		--header "Host: rsvr-backend-achoqq-edd390-172-253-228-153.traefik.me" \
+		http://localhost:3001/health
+
+.PHONY: curl_whap_status
+# NOTE: whap /status currently returns 404 — Traefik routing to the whap
+# container is not yet resolving correctly. Use this target to reproduce
+# the issue and verify when it is fixed.
+curl_whap_status: ## Test whap /status endpoint via Traefik (currently returns 404 — routing issue)
+	@curl --verbose \
+		--header "Host: rsvr-backend-achoqq-a3fc6a-172-253-228-153.traefik.me" \
+		http://localhost:3001/status
+
+.PHONY: test_both
+test_both: curl_rsvr_health curl_whap_status ## Test both rsvr /health and whap /status endpoints

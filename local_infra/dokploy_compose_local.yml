@@ -145,14 +145,25 @@ services:
       # Optional: mount custom message templates into the whap server.
       - whap-templates:/app/templates
 
+    # ── Traefik labels ───────────────────────────────────────────────────────
+    # Dokploy injects Host/rule/entrypoint labels automatically but defaults
+    # the backend port to 3000 when no ports: block is present in the service.
+    # whap listens on 3010, so we declare the server port explicitly here.
+    # Dokploy merges labels; a label already present in the compose file is
+    # not overridden by Dokploy's auto-injection.
+    labels:
+      - "traefik.http.services.rsvr-whap.loadbalancer.server.port=3010"
+
     # ── Networking ───────────────────────────────────────────────────────────
     networks:
       - dokploy-network
 
     # ── Health check ─────────────────────────────────────────────────────────
     # /status returns JSON with uptime and message counts.
+    # curl is installed in the whap runtime image (Dockerfile_whap runtime stage).
+    # --fail causes curl to exit non-zero on HTTP 4xx/5xx responses.
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:3010/status"]
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:3010/status"]
       interval: 10s
       timeout: 5s
       start_period: 15s
