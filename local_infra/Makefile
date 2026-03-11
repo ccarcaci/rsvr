@@ -186,7 +186,7 @@ start: ## Start the Dokploy stack (Podman must be running)
 			--volume /run/podman/podman.sock:/var/run/docker.sock \
 			--volume dokploy-config:/etc/dokploy \
 			--volume dokploy-home:/root/.docker \
-			docker.io/dokploy/dokploy:latest; \
+			docker.io/dokploy/dokploy:v0.28.6; \
 	fi; \
 	if podman container exists dokploy-traefik 2>/dev/null; then \
 		podman start dokploy-traefik; \
@@ -318,7 +318,7 @@ api_status: ## Show recent deployments for the rsvr compose service
 curl_rsvr_health: ## Test rsvr /health endpoint via Traefik (localhost:3001 with Host header)
 	@curl --verbose \
 		--header "Host: rsvr-backend-achoqq-edd390-172-253-228-153.traefik.me" \
-		http://localhost:3001/health
+		http://localhost:3001/rsvr/health
 
 .PHONY: curl_whap_status
 # NOTE: whap /status currently returns 404 — Traefik routing to the whap
@@ -327,7 +327,7 @@ curl_rsvr_health: ## Test rsvr /health endpoint via Traefik (localhost:3001 with
 curl_whap_status: ## Test whap /status endpoint via Traefik (currently returns 404 — routing issue)
 	@curl --verbose \
 		--header "Host: rsvr-backend-achoqq-a3fc6a-172-253-228-153.traefik.me" \
-		http://localhost:3001/status
+		http://localhost:3001/whap/status
 
 .PHONY: test_both
 test_both: curl_rsvr_health curl_whap_status ## Test both rsvr /health and whap /status endpoints

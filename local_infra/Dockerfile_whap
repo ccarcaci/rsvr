@@ -80,13 +80,12 @@ EXPOSE 3010
 # Supports phone-specific format: "1234567890:http://host/webhook"
 ENV WEBHOOK_URL=""
 
-# Health check: the /status route is registered by whap's status router.
-# It returns JSON with uptime and message counts — a 200 means the server
-# is alive and accepting requests.
+# Health check: the /health route is registered by whap's status router.
+# a 200 means the server is alive and accepting requests.
 # curl is installed above in the runtime stage; wget is not available in
 # debian:bookworm-slim and was not installed.
 HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
-    CMD curl --fail --silent http://localhost:3010/status || exit 1
+    CMD curl --fail --silent http://localhost:3010/health || exit 1
 
 # Start the mock server. The `server` sub-command starts only the HTTP
 # server (no TUI), which is correct for a containerised environment.

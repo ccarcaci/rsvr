@@ -163,7 +163,7 @@ services:
     # curl is installed in the whap runtime image (Dockerfile_whap runtime stage).
     # --fail causes curl to exit non-zero on HTTP 4xx/5xx responses.
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:3010/status"]
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:3010/health"]
       interval: 10s
       timeout: 5s
       start_period: 15s
