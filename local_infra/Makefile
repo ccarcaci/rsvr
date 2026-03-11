@@ -331,3 +331,50 @@ curl_whap_status: ## Test whap /status endpoint via Traefik (currently returns 4
 
 .PHONY: test_both
 test_both: curl_rsvr_health curl_whap_status ## Test both rsvr /health and whap /status endpoints
+
+.PHONY: curl_whap_simulate_message
+curl_whap_simulate_message: ## Simulate a text message via whap /mock/simulate-message (podman exec)
+	@echo "Simulating text message via whap /mock/simulate-message..."
+	@podman exec whap curl --silent --show-error \
+		--request POST \
+		--header "Content-Type: application/json" \
+		--data '{ \
+			"from": "391234567890", \
+			"to": "15551234567", \
+			"message": { \
+				"id": "wamid.test_$(shell date +%s)", \
+				"timestamp": "$(shell date +%s)", \
+				"text": { "body": "Hello, I would like some information about your services" } \
+			} \
+		}' \
+		http://localhost:3010/mock/simulate-message
+	@echo ""
+
+.PHONY: curl_whap_simulate_booking
+curl_whap_simulate_booking: ## Simulate a booking request via whap /mock/simulate-message (podman exec)
+	@echo "Simulating booking request via whap /mock/simulate-message..."
+	@podman exec whap curl --silent --show-error \
+		--request POST \
+		--header "Content-Type: application/json" \
+		--data '{ \
+			"from": "391234567890", \
+			"to": "15551234567", \
+			"message": { \
+				"id": "wamid.test_$(shell date +%s)", \
+				"timestamp": "$(shell date +%s)", \
+				"text": { "body": "I would like to book a table for 2 people tomorrow at 19:00" } \
+			} \
+		}' \
+		http://localhost:3010/mock/simulate-message
+	@echo ""
+
+.PHONY: test_webhook_flow
+test_webhook_flow: ## End-to-end test: simulate message + tail rsvr logs
+	@echo "=== Step 1: Simulate message ==="
+	@$(MAKE) curl_whap_simulate_message
+	@echo ""
+	@echo "=== Step 2: Waiting 2s for processing ==="
+	@sleep 2
+	@echo ""
+	@echo "=== Step 3: rsvr logs (last 30 lines) ==="
+	@podman logs --tail 30 rsvr

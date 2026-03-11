@@ -76,7 +76,7 @@ EXPOSE 3010
 
 # WEBHOOK_URL — where whap forwards incoming message events.
 # Set this to the rsvr webhook endpoint from the docker-compose network:
-#   e.g. http://rsvr:3000/channels/whatsapp/webhook
+#   e.g. http://rsvr:3000/webhook/whatsapp
 # Supports phone-specific format: "1234567890:http://host/webhook"
 ENV WEBHOOK_URL=""
 

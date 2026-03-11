@@ -249,7 +249,7 @@ curl --verbose \
   --header "Host: rsvr-backend-achoqq-edd390-172-253-228-153.traefik.me" \
   --header "Content-Type: application/json" \
   --data '{"object":"test"}' \
-  http://localhost:3001/channels/whatsapp/webhook
+  http://localhost:3001/webhook/whatsapp
 ```
 
 These are also exposed as Makefile targets in `local_infra/Makefile`:
@@ -270,7 +270,7 @@ directly over the `dokploy-network` bridge network using Docker DNS.
 ```
 whap container
   |
-  | POST http://rsvr:3000/channels/whatsapp/webhook
+  | POST http://rsvr:3000/webhook/whatsapp
   | (Docker DNS resolves "rsvr" → container IP on dokploy-network)
   |
   v
@@ -282,14 +282,14 @@ compose file:
 
 ```yaml
 environment:
-  WEBHOOK_URL: ${WHAP_WEBHOOK_URL:-http://rsvr:3000/channels/whatsapp/webhook}
+  WEBHOOK_URL: ${WHAP_WEBHOOK_URL:-http://rsvr:3000/webhook/whatsapp}
 ```
 
 Routing table for internal calls:
 
-| Caller | Target                                       | Protocol |
-|--------|----------------------------------------------|----------|
-| whap   | `http://rsvr:3000/channels/whatsapp/webhook` | HTTP     |
+| Caller | Target                                  | Protocol |
+|--------|----------------------------------------|----------|
+| whap   | `http://rsvr:3000/webhook/whatsapp`   | HTTP     |
 
 Direct container-to-container calls are faster (no TLS overhead, no extra
 network hop) and work regardless of whether Traefik is healthy.

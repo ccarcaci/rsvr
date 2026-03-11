@@ -10,6 +10,7 @@ export type config_type = {
   openai_api_key: string
   internal_api_key: string
   database_path: string
+  graph_api_base: string
 }
 
 const parse_cli_args = (): Record<string, string> => {
@@ -25,6 +26,7 @@ const parse_cli_args = (): Record<string, string> => {
       openai_api_key: { type: "string" },
       internal_api_key: { type: "string" },
       database_path: { type: "string" },
+      graph_api_base: { type: "string" },
     },
     strict: false,
   })
@@ -44,6 +46,11 @@ const load_configs = (): config_type => {
     return value
   }
 
+  const optional = (key: string, default_value: string): string => {
+    const value = cli_args[key]
+    return value ?? default_value
+  }
+
   const cfg: config_type = {
     port: parseInt(required("port")),
     telegram_bot_token: required("telegram_bot_token"),
@@ -54,6 +61,7 @@ const load_configs = (): config_type => {
     openai_api_key: required("openai_api_key"),
     internal_api_key: required("internal_api_key"),
     database_path: required("database_path"),
+    graph_api_base: optional("graph_api_base", "https://graph.facebook.com/v23.0"),
   }
 
   if (missing.length > 0) {

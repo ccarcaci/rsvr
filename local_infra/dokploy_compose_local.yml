@@ -84,6 +84,7 @@ services:
       --anthropic_api_key        ${ANTHROPIC_API_KEY:-mock_anthropic_api_key}
       --openai_api_key           ${OPENAI_API_KEY:-mock_openai_api_key}
       --internal_api_key         ${INTERNAL_API_KEY:-mock_internal_api_key}
+      --graph_api_base           ${GRAPH_API_BASE:-http://whap:3010/v23.0}
 
     # ── Volumes ──────────────────────────────────────────────────────────────
     volumes:
@@ -138,7 +139,7 @@ services:
       # Uses Docker DNS to reach the rsvr container on the shared network.
       # The path matches the WhatsApp webhook route registered in
       # src/channels/whatsapp/webhook.ts.
-      WEBHOOK_URL: ${WHAP_WEBHOOK_URL:-http://rsvr:3000/channels/whatsapp/webhook}
+      WEBHOOK_URL: ${WHAP_WEBHOOK_URL:-http://rsvr:3000/webhook/whatsapp}
 
     # ── Volumes ──────────────────────────────────────────────────────────────
     volumes:

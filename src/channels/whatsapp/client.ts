@@ -1,19 +1,18 @@
 import { configs } from "../../config/args"
 import { logger } from "../../shared/logger"
 
-const GRAPH_API_BASE = "https://graph.facebook.com/v21.0"
-
 export type whatsapp_client_type = {
   send_text_message: (to: string, text: string) => Promise<void>
   download_media: (media_id: string) => Promise<Uint8Array<ArrayBuffer>>
 }
 
 const create_whatsapp_client = (
+  graph_api_base: string,
   whatsapp_access_token: string,
   whatsapp_phone_number_id: string,
 ): whatsapp_client_type => {
   const send_text_message = async (to: string, text: string): Promise<void> => {
-    const url = `${GRAPH_API_BASE}/${whatsapp_phone_number_id}/messages`
+    const url = `${graph_api_base}/${whatsapp_phone_number_id}/messages`
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -36,7 +35,7 @@ const create_whatsapp_client = (
   }
 
   const download_media = async (media_id: string): Promise<Uint8Array<ArrayBuffer>> => {
-    const meta_url = `${GRAPH_API_BASE}/${media_id}`
+    const meta_url = `${graph_api_base}/${media_id}`
     const meta_response = await fetch(meta_url, {
       headers: { Authorization: `Bearer ${whatsapp_access_token}` },
     })
@@ -63,6 +62,7 @@ const create_whatsapp_client = (
 //  --
 
 export const whatsapp_client = create_whatsapp_client(
+  configs.graph_api_base,
   configs.whatsapp_access_token,
   configs.whatsapp_phone_number_id,
 )
