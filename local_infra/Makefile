@@ -316,7 +316,7 @@ api_status: ## Show recent deployments for the rsvr compose service
 
 .PHONY: curl_rsvr_health
 curl_rsvr_health: ## Test rsvr /health endpoint via Traefik (localhost:3001 with Host header)
-	@curl --verbose \
+	curl --verbose \
 		--header "Host: rsvr-backend-achoqq-edd390-172-253-228-153.traefik.me" \
 		http://localhost:3001/rsvr/health
 
@@ -324,10 +324,10 @@ curl_rsvr_health: ## Test rsvr /health endpoint via Traefik (localhost:3001 with
 # NOTE: whap /status currently returns 404 — Traefik routing to the whap
 # container is not yet resolving correctly. Use this target to reproduce
 # the issue and verify when it is fixed.
-curl_whap_status: ## Test whap /status endpoint via Traefik (currently returns 404 — routing issue)
-	@curl --verbose \
+curl_whap_health: ## Test whap /health endpoint via Traefik
+	curl --verbose \
 		--header "Host: rsvr-backend-achoqq-a3fc6a-172-253-228-153.traefik.me" \
-		http://localhost:3001/whap/status
+		http://localhost:3001/whap/health
 
 .PHONY: test_both
 test_both: curl_rsvr_health curl_whap_status ## Test both rsvr /health and whap /status endpoints

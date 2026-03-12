@@ -44,31 +44,6 @@ install: ## Install dependencies using bun
 setup: check_version install ## Full project setup (check version + install deps)
 	@echo "Setup complete!"
 
-##@ Development
-
-# Mock CLI args used for local dev — all config comes from CLI arguments, not environment variables.
-# Pass real values by replacing the mock_* defaults or by overriding MOCK_ARGS on the command line.
-MOCK_ARGS := \
-	--port 3000 \
-	--database_path ./data/rsvr.db \
-	--telegram_bot_token mock_telegram_bot_token \
-	--whatsapp_verify_token mock_whatsapp_verify_token \
-	--whatsapp_access_token mock_whatsapp_access_token \
-	--whatsapp_phone_number_id mock_whatsapp_phone_number_id \
-	--anthropic_api_key mock_anthropic_api_key \
-	--openai_api_key mock_openai_api_key \
-	--internal_api_key mock_internal_api_key
-
-.PHONY: dev
-dev: ## Start development server with watch mode
-	@echo "Starting development server with watch mode..."
-	@$(BUN) --watch run $(ENTRY_POINT) $(MOCK_ARGS)
-
-.PHONY: start
-start: ## Start the server
-	@echo "Starting server..."
-	@$(BUN) run $(ENTRY_POINT) $(MOCK_ARGS)
-
 ##@ Testing & Quality
 
 .PHONY: ci_test
@@ -120,24 +95,6 @@ updates: ## Check for dependency and Bun version updates
 .PHONY: updates_changelog
 updates_changelog: ## Check updates with changelogs for outdated packages
 	@$(UPDATES_CHECK_SCRIPT) --changelog
-
-##@ Monitoring
-
-# Port must match the --port CLI arg passed at startup (default: 3000)
-PORT ?= 3000
-BASE_URL := http://localhost:$(PORT)
-
-.PHONY: curl_status
-curl_status: ## Call GET /status — basic liveness check
-	curl --verbose --fail $(BASE_URL)/status | $(BUN) -e "process.stdin.setEncoding('utf8'); let d=''; process.stdin.on('data',c=>d+=c); process.stdin.on('end',()=>console.log(JSON.stringify(JSON.parse(d),null,2)))"
-
-.PHONY: curl_health
-curl_health: ## Call GET /health — component health check
-	curl --verbose --fail $(BASE_URL)/health | $(BUN) -e "process.stdin.setEncoding('utf8'); let d=''; process.stdin.on('data',c=>d+=c); process.stdin.on('end',()=>console.log(JSON.stringify(JSON.parse(d),null,2)))"
-
-.PHONY: curl_metrics
-curl_metrics: ## Call GET /metrics — request metrics
-	curl --verbose --fail $(BASE_URL)/metrics
 
 ##@ Cleanup
 
