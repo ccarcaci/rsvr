@@ -86,6 +86,10 @@ REPO_ROOT := $(dir $(INFRA_DIR))..
 # Default target — show help
 .DEFAULT_GOAL := help
 
+# Because curl needs to use multiline heredoc << EOF ... EOF
+# Using .ONESHELL: for Multi-line Heredocs
+.ONESHELL:
+
 .PHONY: help
 help: ## Show this help message
 	@echo "rsvr - Local Infrastructure (Dokploy via plain podman)"
@@ -335,37 +339,43 @@ test_both: curl_rsvr_health curl_whap_status ## Test both rsvr /health and whap 
 .PHONY: curl_whap_simulate_message
 curl_whap_simulate_message: ## Simulate a text message via whap /mock/simulate-message (podman exec)
 	@echo "Simulating text message via whap /mock/simulate-message..."
-	@podman exec whap curl --silent --show-error \
+	curl --verbose \
+		http://localhost:3001/whap/mock/simulate-message \
 		--request POST \
 		--header "Content-Type: application/json" \
-		--data '{ \
-			"from": "391234567890", \
-			"to": "15551234567", \
-			"message": { \
-				"id": "wamid.test_$(shell date +%s)", \
-				"timestamp": "$(shell date +%s)", \
-				"text": { "body": "Hello, I would like some information about your services" } \
-			} \
-		}' \
-		http://localhost:3010/mock/simulate-message
+		--header "Host: rsvr-backend-achoqq-a3fc6a-172-253-228-153.traefik.me" \
+		--data-binary @- << EOF
+		{
+			"from": "391234567890",
+			"to": "15551234567",
+			"message": {
+				"id": "wamid.test_$(shell date +%s)",
+				"timestamp": "$(shell date +%s)",
+				"text": { "body": "Hello, I would like some information about your services" }
+			}
+		}
+		EOF
 	@echo ""
 
 .PHONY: curl_whap_simulate_booking
 curl_whap_simulate_booking: ## Simulate a booking request via whap /mock/simulate-message (podman exec)
 	@echo "Simulating booking request via whap /mock/simulate-message..."
-	@podman exec whap curl --silent --show-error \
+	curl --verbose \
+		http://localhost:3001/whap/mock/simulate-message \
 		--request POST \
 		--header "Content-Type: application/json" \
-		--data '{ \
-			"from": "391234567890", \
-			"to": "15551234567", \
-			"message": { \
-				"id": "wamid.test_$(shell date +%s)", \
-				"timestamp": "$(shell date +%s)", \
-				"text": { "body": "I would like to book a table for 2 people tomorrow at 19:00" } \
-			} \
-		}' \
-		http://localhost:3010/mock/simulate-message
+		--header "Host: rsvr-backend-achoqq-a3fc6a-172-253-228-153.traefik.me" \
+		--data-binary @- << EOF
+		{
+			"from": "391234567890",
+			"to": "15551234567",
+			"message": {
+				"id": "wamid.test_$(shell date +%s)",
+				"timestamp": "$(shell date +%s)",
+				"text": { "body": "I would like to book a table for 2 people tomorrow at 19:00" }
+			}
+		}
+		EOF
 	@echo ""
 
 .PHONY: test_webhook_flow
