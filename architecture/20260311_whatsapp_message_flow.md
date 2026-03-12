@@ -82,22 +82,22 @@ Both services run as containers on the `dokploy-network` bridge network, managed
        |                                                        |
        v                                                        v
  +----------------------------------------------------------------------+
- |                          rsvr (port 3000)                             |
- |                                                                       |
- |  webhook.ts --> service.ts --> agent.ts --> Claude Opus 4.5           |
- |       |              |             |              |                    |
- |       |              |             |         tool_handlers.ts          |
- |       |              |             |              |                    |
- |       |              |             |          queries.ts               |
- |       |              |             |              |                    |
- |       |         transcribe.ts      |          SQLite DB                |
- |       |         (OpenAI STT)       |                                   |
- |       |              |             |                                   |
- |       |              v             v                                   |
- |       |         <--------- reply text ---------->                     |
- |       |                                                               |
+ |                          rsvr (port 3000)                            |
+ |                                                                      |
+ |  webhook.ts --> service.ts --> agent.ts --> Claude Opus 4.5          |
+ |       |              |             |              |                  |
+ |       |              |             |         tool_handlers.ts        |
+ |       |              |             |              |                  |
+ |       |              |             |          queries.ts             |
+ |       |              |             |              |                  |
+ |       |         transcribe.ts      |          SQLite DB              |
+ |       |         (OpenAI STT)       |                                 |
+ |       |              |             |                                 |
+ |       |              v             v                                 |
+ |       |         <--------- reply text ---------->                    |
+ |       |                                                              |
  |  client.ts --> POST /v21.0/{PHONE_ID}/messages                       |
- +----------+------------------------------------------------------------+
+ +----------+-----------------------------------------------------------+
             |
             |  send reply
             v
@@ -291,33 +291,33 @@ run_agent(
 
 ```
                     +----------------------------+
-                    |     run_agent() entry       |
-                    |                             |
-                    |  1. Load session history     |
-                    |  2. Append user message      |
-                    |  3. tool_call_count = 0      |
-                    +-------------+---------------+
+                    |     run_agent() entry      |
+                    |                            |
+                    |  1. Load session history   |
+                    |  2. Append user message    |
+                    |  3. tool_call_count = 0    |
+                    +-------------+--------------+
                                   |
                     +-------------v---------------+
-                    |   tool_call_count >= 10 ?    |---- YES --> "Something went wrong"
+                    |   tool_call_count >= 10 ?   |---- YES --> "Something went wrong"
                     +-------------+---------------+
                                   | NO
                     +-------------v---------------+
-                    |  Call Claude Opus 4.5        |
-                    |  (system prompt + tools      |
-                    |   + full message history)    |
+                    |  Call Claude Opus 4.5       |
+                    |  (system prompt + tools     |
+                    |   + full message history)   |
                     +-------------+---------------+
                                   |
                     +-------------v---------------+
-                    |  API call failed ?           |---- YES --> "Having trouble connecting"
+                    |  API call failed ?          |---- YES --> "Having trouble connecting"
                     +-------------+---------------+
                                   | NO
                     +-------------v---------------+
-                    |  Append assistant response   |
-                    |  to history                  |
+                    |  Append assistant response  |
+                    |  to history                 |
                     +-------------+---------------+
                                   |
-               +------------------+------------------+
+               +------------------+-------------------+
                |                  |                   |
           end_turn           tool_use           other stop_reason
                |                  |                   |
