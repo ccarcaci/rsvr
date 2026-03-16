@@ -1,6 +1,8 @@
 import { parseArgs } from "node:util"
 import { logger } from "../shared/logger"
 
+export type log_level_type = "debug" | "info" | "warn" | "error"
+
 export type config_type = {
   port: number
   telegram_bot_token: string
@@ -14,6 +16,7 @@ export type config_type = {
   database_path: string
   graph_api_base: string
   debug: boolean
+  log_level: log_level_type
 }
 
 type raw_args_type = Record<string, string | boolean | undefined>
@@ -34,6 +37,7 @@ const parse_cli_args = (): raw_args_type => {
       database_path: { type: "string" },
       graph_api_base: { type: "string" },
       debug: { type: "boolean" },
+      log_level: { type: "string" },
     },
     strict: false,
   })
@@ -77,6 +81,9 @@ const load_configs = (): config_type => {
     database_path: required("database_path"),
     graph_api_base: optional("graph_api_base", "https://graph.facebook.com/v23.0"),
     debug: cli_args["debug"] === true,
+    log_level: (["debug", "info", "warn", "error"].includes(optional("log_level", "info"))
+      ? optional("log_level", "info")
+      : "info") as log_level_type,
   }
 
   if (missing.length > 0) {
@@ -97,7 +104,7 @@ export const log_config_startup = (config: config_type): void => {
   const masked = Object.fromEntries(
     Object.entries(config).map(([k, v]) => [k, is_sensitive(k) ? "[REDACTED]" : v]),
   )
-  logger.info("startup config", masked)
+  logger.debug("startup config", masked)
 }
 
 export const configs = load_configs()
