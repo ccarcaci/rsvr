@@ -1,7 +1,7 @@
 import { Hono } from "hono"
 import { telegram_bot } from "./channels/telegram/bot"
 import { whatsapp_routes } from "./channels/whatsapp/webhook"
-import { configs } from "./config/args"
+import { configs, log_config_startup } from "./config/args"
 import { metrics_middleware } from "./metrics/middleware"
 import { monitoring_routes } from "./metrics/routes"
 import { debug_request_logger } from "./middleware/debug_request_logger"
@@ -37,6 +37,7 @@ telegram_bot.start().catch((err) => {
 //  --
 
 logger.info(`rsvr server starting on port ${configs.port}`)
+log_config_startup(configs)
 export default {
   port: configs.port,
   fetch: app.fetch,

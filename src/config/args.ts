@@ -1,4 +1,5 @@
 import { parseArgs } from "node:util"
+import { logger } from "../shared/logger"
 
 export type config_type = {
   port: number
@@ -86,5 +87,17 @@ const load_configs = (): config_type => {
 }
 
 //  --
+
+const SENSITIVE_PATTERNS = ["secret", "token", "key", "password", "api"]
+
+const is_sensitive = (field_name: string): boolean =>
+  SENSITIVE_PATTERNS.some((pattern) => field_name.toLowerCase().includes(pattern))
+
+export const log_config_startup = (config: config_type): void => {
+  const masked = Object.fromEntries(
+    Object.entries(config).map(([k, v]) => [k, is_sensitive(k) ? "[REDACTED]" : v]),
+  )
+  logger.info("startup config", masked)
+}
 
 export const configs = load_configs()
