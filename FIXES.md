@@ -1,9 +1,9 @@
 # Code Review & Fixes Report
 
-**Scope:** Full codebase review
+**Scope:** Full codebase review + WhatsApp HMAC-SHA256 implementation security audit
 **Files reviewed:** 31 TypeScript source files
-**Date:** 2026-03-05
-**Status:** 8 critical issues identified; 9 recommendations prioritized
+**Date:** 2026-03-05 (initial); 2026-03-16 (HMAC security review)
+**Status:** 8 critical issues identified; 13 high/medium security issues from HMAC implementation review; 22 total recommendations
 
 ---
 
@@ -179,6 +179,51 @@
 13. Standardize separator comments (15min)
 
 **Estimated effort:** ~45 minutes
+
+### 🔴 Priority 1b — Security Issues Found During HMAC Implementation Review (Urgent)
+
+**HIGH-PRIORITY:**
+14. No request body size limit on WhatsApp webhook POST
+   - **Location:** `src/channels/whatsapp/webhook.ts:38-44`
+   - **Issue:** Attacker can send arbitrarily large bodies (e.g., 500MB) to exhaust memory before signature verification
+   - **Fix:** Add `Content-Length` header check or configure `maxRequestBodySize` middleware before webhook route; cap at 1-5MB
+   - **Effort:** ~10 minutes
+
+15. Message handler is fire-and-forget with no rate limiting
+   - **Location:** `src/channels/whatsapp/webhook.ts:66, 117-137`
+   - **Issue:** A valid signed payload containing thousands of message objects spawns unlimited concurrent handlers; POST returns 200 before processing completes; errors silently swallowed
+   - **Fix:** Process messages with bounded concurrency (`for...of` with `await` instead of `forEach(async)`) and add per-sender rate limiting
+   - **Effort:** ~15 minutes
+
+**Estimated effort:** ~25 minutes
+
+### 🟡 Priority 2b — Additional Security Issues from HMAC Review (Medium-Term)
+
+16. Invalid hex characters in signature header cause uncaught exception
+   - **Location:** `src/channels/whatsapp/webhook.ts:111-112`
+   - **Issue:** `Buffer.from(received_hex, "hex")` silently truncates non-hex characters; mismatched buffer lengths cause `timingSafeEqual` to throw `RangeError`
+   - **Fix:** Validate `received_hex` matches `/^[0-9a-f]{64}$/i` before conversion; reject invalid signatures early
+   - **Effort:** ~5 minutes
+
+17. Unnecessary hex-to-buffer round-trip in HMAC computation
+   - **Location:** `src/channels/whatsapp/webhook.ts:105-112`
+   - **Issue:** Converting to hex string and back to buffer adds allocation and timing surface; should compare raw bytes directly
+   - **Fix:** Use `hasher.digest()` (returns `Uint8Array`) instead of `hasher.digest("hex")`, compare binary buffers directly
+   - **Effort:** ~5 minutes
+
+18. Verify token comparison not timing-safe
+   - **Location:** `src/channels/whatsapp/webhook.ts:84`
+   - **Issue:** `verify_token` uses `===` instead of `timingSafeEqual`; inconsistent with HMAC verification approach (low practical risk, but breaks precedent)
+   - **Fix:** Apply `timingSafeEqual` to token comparison for consistency
+   - **Effort:** ~5 minutes
+
+19. Risk of accidental secret exposure via config object logging
+   - **Location:** `src/config/args.ts:79` (anywhere configs is logged)
+   - **Issue:** If future code logs `configs` as a whole (e.g., `logger.info("startup", { configs })`), all secrets are exposed
+   - **Fix:** Document that configs object must never be passed to logging/serialization; consider overriding `toJSON()` to redact secrets
+   - **Effort:** ~5 minutes
+
+**Estimated effort:** ~20 minutes
 
 ---
 

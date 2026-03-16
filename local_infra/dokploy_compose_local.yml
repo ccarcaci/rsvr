@@ -74,17 +74,22 @@ services:
     # Override for production via Dokploy's "Environment" panel: set the
     # corresponding environment variable (e.g. TELEGRAM_BOT_TOKEN=real_token)
     # and it will be substituted into the command string by Docker Compose.
+    # --debug enables HTTP request logging middleware (Hono logger).
+    # Enabled here for local development only — remove this flag for production
+    # deployments where request noise would clutter structured logs.
     command: >
       --port                     ${PORT:-3000}
       --database_path            ${DATABASE_PATH:-./data/rsvr.db}
       --telegram_bot_token       ${TELEGRAM_BOT_TOKEN:-mock_telegram_bot_token}
       --whatsapp_verify_token    ${WHATSAPP_VERIFY_TOKEN:-mock_whatsapp_verify_token}
+      --whatsapp_app_secret      ${WHATSAPP_APP_SECRET:-mock_whatsapp_app_secret}
       --whatsapp_access_token    ${WHATSAPP_ACCESS_TOKEN:-mock_whatsapp_access_token}
       --whatsapp_phone_number_id ${WHATSAPP_PHONE_NUMBER_ID:-mock_whatsapp_phone_number_id}
       --anthropic_api_key        ${ANTHROPIC_API_KEY:-mock_anthropic_api_key}
       --openai_api_key           ${OPENAI_API_KEY:-mock_openai_api_key}
       --internal_api_key         ${INTERNAL_API_KEY:-mock_internal_api_key}
       --graph_api_base           ${GRAPH_API_BASE:-http://whap:3010/v23.0}
+      --debug
 
     # ── Volumes ──────────────────────────────────────────────────────────────
     volumes:

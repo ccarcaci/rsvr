@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto"
 import { type Context, Hono } from "hono"
 import { configs } from "../../config/args"
 import { handle_message } from "../../reservations/service"
@@ -35,17 +36,31 @@ const create_whatsapp_routes = (): Hono => {
   })
 
   app.post("/webhook/whatsapp", async (c) => {
-    const body = await c.req.json()
-    const entries = body.entry as whatsapp_webhook_entry_type[] | undefined
+    // Read raw body once — required for signature verification before JSON parsing.
+    const raw_body = await c.req.text()
 
+    if (!verify_whatsapp_signature(c.req.header("X-Hub-Signature-256"), raw_body)) {
+      logger.warn("WhatsApp webhook: signature verification failed")
+      return c.text("Forbidden", 403)
+    }
+
+    let body: { entry?: whatsapp_webhook_entry_type[] }
+    try {
+      body = JSON.parse(raw_body)
+    } catch {
+      logger.warn("WhatsApp webhook: invalid JSON body")
+      return c.text("Bad Request", 400)
+    }
+
+    const entries = body.entry
     if (!entries) return c.json({ status: "ok" })
 
     const messages_values = entries
-      ?.flatMap((e) => e.changes)
-      .map((c) => c.value)
+      .flatMap((e) => e.changes)
+      .map((ch) => ch.value)
       .filter((v) => v.messages !== undefined)
-    const contact = messages_values[0].contacts?.[0]?.profile.name
-    const messages = messages_values.flatMap((mv) => mv.messages) as whatsapp_message_type[] // because undefined messages have been filtere out above
+    const contact = messages_values[0]?.contacts?.[0]?.profile.name
+    const messages = messages_values.flatMap((mv) => mv.messages) as whatsapp_message_type[] // undefined messages have been filtered out above
 
     try {
       whatsapp_messages_handler(messages, contact)
@@ -72,6 +87,31 @@ const whatsapp_verify_challenge = (
 
   logger.info("WhatsApp webhook verified")
   return c.text(challenge ?? "", 200)
+}
+
+// Returns true only when the X-Hub-Signature-256 header matches the
+// HMAC-SHA256 of the raw request body using the app secret as the key.
+// Uses constant-time comparison to prevent timing attacks.
+const verify_whatsapp_signature = (header: string | undefined, raw_body: string): boolean => {
+  if (!header) return false
+
+  // Header format: "sha256=<hex_digest>"
+  const prefix = "sha256="
+  if (!header.startsWith(prefix)) return false
+  const received_hex = header.slice(prefix.length)
+
+  const hasher = new Bun.CryptoHasher("sha256", configs.whatsapp_app_secret)
+  hasher.update(raw_body)
+  const computed_hex = hasher.digest("hex")
+
+  // timingSafeEqual requires equal-length buffers — a length mismatch would
+  // itself reveal information, so we reject before calling it.
+  if (received_hex.length !== computed_hex.length) return false
+
+  const received_buf = Buffer.from(received_hex, "hex")
+  const computed_buf = Buffer.from(computed_hex, "hex")
+
+  return timingSafeEqual(received_buf, computed_buf)
 }
 
 const whatsapp_messages_handler = (messages: whatsapp_message_type[], contact?: string) => {

@@ -4,9 +4,15 @@ import { whatsapp_routes } from "./channels/whatsapp/webhook"
 import { configs } from "./config/args"
 import { metrics_middleware } from "./metrics/middleware"
 import { monitoring_routes } from "./metrics/routes"
+import { debug_request_logger } from "./middleware/debug_request_logger"
 import { logger } from "./shared/logger"
 
 const app = new Hono()
+
+if (configs.debug) {
+  logger.debug("debug mode enabled — mounting request logger")
+  app.use("*", debug_request_logger)
+}
 
 app.use("*", metrics_middleware)
 
