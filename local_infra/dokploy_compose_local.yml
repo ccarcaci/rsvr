@@ -131,7 +131,7 @@ services:
 
     restart: unless-stopped
 
-    entrypoint: [ "bun", "--inspect=9229", "src/index.ts", "server" ]
+    entrypoint: [ "bun", "--inspect=0.0.0.0:9229", "src/index.ts", "server" ]
 
     ports:
       - 9229:9229
