@@ -125,11 +125,16 @@ services:
   # whap forwards incoming message events to rsvr's webhook endpoint via the
   # Docker internal network, so no public DNS or TLS is required for this path.
   whap:
-    image: whap:latest
+    image: whap:debug
 
     container_name: whap
 
     restart: unless-stopped
+
+    entrypoint: [ "bun", "--inspect=9229", "src/index.ts", "server" ]
+
+    ports:
+      - 9229:9229
 
     # ── Dependency ordering ───────────────────────────────────────────────────
     # whap must be able to reach rsvr's webhook immediately on startup.
@@ -146,6 +151,7 @@ services:
       # The path matches the WhatsApp webhook route registered in
       # src/channels/whatsapp/webhook.ts.
       WEBHOOK_URL: ${WHAP_WEBHOOK_URL:-http://rsvr:3000/webhook/whatsapp}
+      WEBHOOK_SECRET: ${WHAP_WEBHOOK_SECRET:-mock_whatsapp_app_secret}
 
     # ── Volumes ──────────────────────────────────────────────────────────────
     volumes:
