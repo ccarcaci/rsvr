@@ -2,15 +2,19 @@
 #
 # Build strategy: two-stage.
 #   builder  — installs dependencies and compiles a self-contained binary via
-#              `bun build --compile`. The binary embeds the Bun runtime and all
-#              TypeScript source, so nothing else is needed at runtime.
-#   runtime  — copies only the binary into a minimal Debian slim image.
-#              No Bun installation, no node_modules, no source code at runtime,
-#              which minimises the attack surface and image size.
+#              `bun build --compile` (for reference, not currently used).
+#   runtime  — copies source files, node_modules, and dependencies into a Bun
+#              runtime image. Enables debugging via `bun --inspect` flag override.
+#              Trade-off: larger image size vs. debugging capability.
 #
-# glibc requirement: Bun compiled binaries link against glibc. Alpine Linux uses
-# musl libc and is therefore not compatible. debian:bookworm-slim is used for the
-# runtime stage because it provides a minimal glibc ≥ 2.31 environment.
+# glibc requirement: Bun requires glibc. oven/bun:1.3-debian is used for the
+# runtime stage because it includes Bun runtime with glibc ≥ 2.31.
+#
+# Remote debugging: override ENTRYPOINT in docker-compose to enable --inspect:
+#   entrypoint: ["bun", "--inspect=0.0.0.0:9228"]
+#   ports:
+#     - 9228:9228
+# Then connect your IDE debugger to localhost:9228.
 #
 # SQLite persistence: the database file lives at /app/data/rsvr.db inside the
 # container. Mount a named volume or host directory at /app/data to persist data
@@ -61,9 +65,17 @@ RUN bun build src/index.ts \
         --outfile dist/rsvr
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────
-# debian:bookworm-slim: minimal Debian 12 image with glibc. No Bun, no Node,
-# no package manager overhead — just enough OS libraries for the compiled binary.
-FROM debian:bookworm-slim AS runtime
+# oven/bun:1.3-debian: Bun runtime image with glibc. Source files and
+# node_modules are included to enable remote debugging via `bun --inspect` flag.
+# The ENTRYPOINT is "bun" and CMD is "src/index.ts", allowing override via
+# docker-compose (e.g., `["bun", "--inspect=0.0.0.0:9228", "src/index.ts"]`).
+#
+# Trade-off vs compiled binary: image is larger (includes Bun + source + deps)
+# but enables debugging capability. For production, consider reverting to
+# the compiled binary approach (FROM debian:bookworm-slim, COPY ./rsvr binary).
+FROM oven/bun:1.3-debian AS runtime
+
+WORKDIR /app
 
 # Security: run as a dedicated non-root user.
 # UID/GID 1001 is used consistently across all rsvr service images.
@@ -73,19 +85,15 @@ FROM debian:bookworm-slim AS runtime
 RUN groupadd --gid 1001 rsvr \
     && useradd --uid 1001 --gid rsvr --no-create-home --shell /usr/sbin/nologin rsvr
 
-WORKDIR /app
+# Copy dependencies from the builder stage with correct ownership.
+# node_modules and bun.lock enable Bun to run the source directly.
+COPY --from=builder --chown=rsvr:rsvr /build/node_modules ./node_modules
+COPY --from=builder --chown=rsvr:rsvr /build/bun.lock ./bun.lock
+COPY --from=builder --chown=rsvr:rsvr /build/tsconfig.json ./tsconfig.json
 
-# Copy the compiled binary from the builder stage with correct ownership.
-# --chown ensures the non-root user can execute the file without a separate RUN.
-COPY --from=builder --chown=rsvr:rsvr /build/dist/rsvr ./rsvr
-
-# Copy the database schema to a fixed container path (/app/schema.sql).
-# The compiled binary cannot use import.meta.dir to locate schema.sql because
-# `bun build --compile` embeds TypeScript but not arbitrary non-TS files; at
-# runtime import.meta.dir resolves to the virtual /$bunfs/root/ filesystem which
-# is not accessible via readFileSync. Copying the file here gives the binary a
-# stable absolute path it can always find regardless of how it was started.
-COPY --from=builder --chown=rsvr:rsvr /build/src/db/schema.sql ./schema.sql
+# Copy source files with correct ownership.
+# Required for `bun src/index.ts` at runtime and for debugging via --inspect.
+COPY --from=builder --chown=rsvr:rsvr /build/src ./src
 
 # Create the data directory for the SQLite database file.
 # The database path defaults to ./data/rsvr.db (relative to /app).
@@ -95,10 +103,10 @@ COPY --from=builder --chown=rsvr:rsvr /build/src/db/schema.sql ./schema.sql
 RUN mkdir --parents data && chown rsvr:rsvr data
 
 # Install curl for the HEALTHCHECK instruction below.
-# debian:bookworm-slim ships neither curl nor wget; apt-get is the only way to
-# add a lightweight HTTP client. --no-install-recommends keeps the layer small
-# by skipping optional suggested packages. The apt lists are removed immediately
-# after installation to avoid stale package index data in the image layer.
+# Bun images include curl by default in many cases, but explicitly ensure it's
+# available. --no-install-recommends keeps the layer small by skipping optional
+# suggested packages. The apt lists are removed immediately after installation
+# to avoid stale package index data in the image layer.
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends curl \
     && rm --recursive --force /var/lib/apt/lists/*
@@ -113,8 +121,11 @@ VOLUME ["/app/data"]
 # The Hono server listens on PORT (default 3000).
 EXPOSE 3000
 
+# Debug inspector port (optional). Exposed when --inspect flag is used.
+EXPOSE 9228
+
 # Health check: /health performs a live SQLite ping and returns HTTP 200 when
-# healthy or 503 when degraded. curl is installed above in the runtime stage.
+# healthy or 503 when degraded. curl is available in the runtime stage.
 # --fail causes curl to exit non-zero on HTTP 4xx/5xx, which marks the
 # container unhealthy. --silent suppresses progress output.
 # --start-period=20s gives the Telegram bot and DB initialisation time to finish
@@ -122,7 +133,9 @@ EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
     CMD curl --fail --silent http://localhost:${PORT:-3000}/health || exit 1
 
-# Start the compiled binary. All nine config values must be passed as CLI
-# arguments (see header comment). In docker-compose, use the `command:` block
-# to supply all --flag values.
-ENTRYPOINT ["./rsvr"]
+# Start via Bun. All nine config values must be passed as CLI arguments
+# (see header comment). In docker-compose, use the `command:` block to supply
+# all --flag values. To enable debugging, override entrypoint in compose:
+#   entrypoint: ["bun", "--inspect=0.0.0.0:9228"]
+ENTRYPOINT ["bun"]
+CMD ["src/index.ts"]

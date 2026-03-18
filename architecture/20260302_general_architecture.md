@@ -8,6 +8,16 @@
 
 ## CHANGELOG
 
+### 2026-03-18 — Dockerfile & Documentation Updates
+
+- Updated Dockerfile in `local_infra/` to enable remote debugging
+  - Runtime stage now based on `oven/bun:1.3-debian` instead of compiled binary
+  - Source files included in image for `--inspect` flag support
+  - ENTRYPOINT changed to `["bun"]` with CMD `["src/index.ts"]`
+- Updated README.md to reflect actual tech stack (Claude Opus agent, Bun test runner)
+- Added Docker/deployment section to README
+- Clarified CLI argument configuration (no .env files)
+
 ### 2026-03-08 — Documentation Update
 
 - Added this CHANGELOG section
@@ -16,7 +26,7 @@
 - Added Monitoring section (implemented but not in original doc)
 - Linked [WhatsApp Cloud API Recap](./20260308_whatsapp_cloud_api_recap.md)
 
-### 2026-03-xx — Agent Core Implementation
+### 2026-03-02 — Agent Core Implementation
 
 **Completed:**
 

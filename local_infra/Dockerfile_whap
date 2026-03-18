@@ -1,92 +1,58 @@
-# Dockerfile.whap — local development mock for WhatsApp Business Cloud API
+# Dockerfile.whap — WhatsApp Mock Server for Local Development
 #
-# Source: https://github.com/fdarian/whap
-# Whap emulates the WhatsApp Cloud API endpoints locally so the rsvr app can
-# send and receive messages without a real Meta Business account.
+# Source: https://github.com/ccarcaci/whap
+# Whap emulates the WhatsApp Cloud API endpoints locally so rsvr can send and
+# receive WhatsApp messages without a real Meta Business account.
 #
-# Build strategy: two-stage.
-#   builder  — clones the repo, installs deps with Bun, compiles a self-
-#              contained binary via `bun build --compile`.
-#   runtime  — copies only the single binary into a minimal Debian slim image.
-#              No Bun, no node_modules, no source code at runtime.
+# This image includes full source code and Bun runtime for development and
+# debugging via the Bun Inspector (port 9229).
 #
-# The compiled binary bundles the Bun runtime, so it executes standalone on
-# any x86-64 or arm64 Linux host that has glibc ≥ 2.31 (Debian 11+).
+# Build:
+#   docker build -f local_infra/Dockerfile_whap --tag whap:debug .
+#
+# Run with debugging:
+#   docker run -it -p 3010:3010 -p 9229:9229 whap:debug \
+#     bun --inspect-brk src/index.ts server
+#
+# Then connect your IDE debugger to localhost:9229 (VSCode, WebStorm, etc.)
+# or use Bun's built-in debugger at chrome://inspect
 
-# ── Stage 1: builder ─────────────────────────────────────────────────────────
-FROM oven/bun:1.2-debian AS builder
-
-WORKDIR /build
-
-# Clone whap at a pinned commit for reproducible builds.
-# TODO: update the SHA when you want to pull in upstream fixes.
-#       Run: git ls-remote https://github.com/fdarian/whap HEAD
-RUN apt-get update \
-    && apt-get install --reinstall --yes ca-certificates \
-    && apt-get install --yes --no-install-recommends git \
-    && rm --recursive --force /var/lib/apt/lists/*
-
-ARG WHAP_REF=main
-RUN git clone --depth 1 --branch "${WHAP_REF}" \
-        https://github.com/fdarian/whap.git .
-
-# Install dependencies declared in package.json / bun.lock.
-# --frozen-lockfile ensures the lock file is never silently updated.
-RUN bun install --frozen-lockfile
-
-# Compile to a self-contained native binary.
-# The binary embeds the Bun runtime and all JS/TS source — no node_modules
-# required at runtime.
-RUN bun build src/index.ts \
-        --compile \
-        --outfile dist/whap
-
-# ── Stage 2: runtime ─────────────────────────────────────────────────────────
-# debian:bookworm-slim provides a minimal glibc environment.
-# The compiled Bun binary requires glibc, so Alpine (musl) is not suitable.
-FROM debian:bookworm-slim AS runtime
-
-# Security: run as a non-root user.
-RUN groupadd --gid 1001 whap \
-    && useradd --uid 1001 --gid whap --no-create-home --shell /usr/sbin/nologin whap
+FROM oven/bun:1.2-debian
 
 WORKDIR /app
 
-# Install curl for the HEALTHCHECK below.
-# wget is not present in debian:bookworm-slim; curl is smaller and consistent
-# with the rsvr runtime image convention.
+# Install git and ca-certificates for cloning from GitHub and HTTPS calls.
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends curl \
+    && apt-get install --reinstall --yes ca-certificates \
+    && apt-get install --yes --no-install-recommends git curl \
     && rm --recursive --force /var/lib/apt/lists/*
 
-# Copy only the compiled binary from the builder stage.
-COPY --from=builder --chown=whap:whap /build/dist/whap ./whap
+# Clone whap at a pinned ref (branch/tag/commit) for reproducible builds.
+# Change this to update: docker build --build-arg WHAP_REF=v1.2.3 ...
+ARG WHAP_REF=main
+RUN git clone --depth 1 --branch "${WHAP_REF}" \
+        https://github.com/ccarcaci/whap.git .
 
-# Whap looks for a ./templates directory relative to its working directory
-# when the TemplateStore initialises. Create it so the server starts cleanly
-# even when no custom templates are mounted.
-RUN mkdir templates && chown whap:whap templates
+# Install dependencies with frozen lockfile (prevents silent drift).
+RUN bun install --frozen-lockfile
 
-USER whap
+# Security: run as non-root user (UID/GID 1001).
+RUN groupadd --gid 1001 whap \
+    && useradd --uid 1001 --gid whap --no-create-home --shell /usr/sbin/nologin whap
 
-# Whap server listens on 3010 by default.
-# Override at runtime with the --port flag or by setting PORT via the
-# whap CLI (see: https://github.com/fdarian/whap#configuration).
-EXPOSE 3010
+# Expose ports: 3010 for server, 9229 for Bun Inspector debugger.
+EXPOSE 3010 9229
 
-# WEBHOOK_URL — where whap forwards incoming message events.
-# Set this to the rsvr webhook endpoint from the docker-compose network:
-#   e.g. http://rsvr:3000/webhook/whatsapp
-# Supports phone-specific format: "1234567890:http://host/webhook"
-ENV WEBHOOK_URL=""
-
-# Health check: the /health route is registered by whap's status router.
-# a 200 means the server is alive and accepting requests.
-# curl is installed above in the runtime stage; wget is not available in
-# debian:bookworm-slim and was not installed.
+# Health check: /health endpoint should return 200 when ready.
 HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
     CMD curl --fail --silent http://localhost:3010/health || exit 1
 
-# Start the mock server. The `server` sub-command starts only the HTTP
-# server (no TUI), which is correct for a containerised environment.
-ENTRYPOINT ["./whap", "server"]
+USER whap
+
+# Default: run the server. Override for debugging:
+#   bun --inspect-brk src/index.ts server
+# Or for other tasks:
+#   bun run test
+#   bunx biome check src/
+ENTRYPOINT ["bun"]
+CMD ["src/index.ts", "server"]

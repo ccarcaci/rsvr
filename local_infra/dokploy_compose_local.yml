@@ -63,6 +63,10 @@ services:
 
     restart: unless-stopped
 
+    entrypoint: ["bun", "--inspect=0.0.0.0:9228", "src/index.ts"]
+
+    ports:
+      - 9228:9228
     # ── CLI arguments ────────────────────────────────────────────────────────
     # args.ts uses parseArgs() and reads ALL nine config values exclusively
     # from CLI arguments — not from process.env. Each required flag must be
@@ -125,7 +129,7 @@ services:
   # whap forwards incoming message events to rsvr's webhook endpoint via the
   # Docker internal network, so no public DNS or TLS is required for this path.
   whap:
-    image: whap:debug
+    image: whap:latest
 
     container_name: whap
 

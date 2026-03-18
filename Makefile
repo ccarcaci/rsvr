@@ -14,7 +14,6 @@ DIST_DIR := dist
 
 # Files
 ENTRY_POINT := $(SRC_DIR)/index.ts
-DB_FILE := $(DATA_DIR)/rsvr.db
 
 # Default target - show help
 .DEFAULT_GOAL := help
