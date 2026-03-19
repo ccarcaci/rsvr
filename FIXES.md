@@ -2,9 +2,9 @@
 
 **Scope:** Full codebase review + WhatsApp HMAC-SHA256 implementation security audit
 **Files reviewed:** 31 TypeScript source files
-**Date:** 2026-03-05 (initial); 2026-03-16 (HMAC security review); 2026-03-19 (issue #1 verified fixed)
+**Date:** 2026-03-05 (initial); 2026-03-16 (HMAC security review); 2026-03-19 (issues #1–4 verified fixed)
 **Status:** 8 critical issues identified; 13 high/medium security issues from HMAC implementation review; 22 total recommendations
-**Fixed:** Issue #1 (WhatsApp HMAC-SHA256 verification) ✅
+**Fixed:** Issue #1 (WhatsApp HMAC-SHA256 verification) ✅; Issue #2 (Session TTL eviction) ✅; Issue #3 (Booking race condition) ✅; Issue #4 (last_insert_rowid safety) ✅
 
 ---
 
@@ -25,36 +25,38 @@
 ### 2. In-Memory Session DoS (Unbounded Memory Growth)
 - **Location:** `src/agent/session.ts:3-15`
 - **Risk Level:** 🔴 CRITICAL — DoS vector; attacker exhausts heap
-- **Current State:** No TTL eviction; conversation history grows indefinitely
-- **Fix:**
-  1. Add TTL-based cleanup: remove sessions with `last_active > 30min old`
-  2. Cap message history per session: `MAX_HISTORY = 40` messages
-  3. Use `setInterval` or cleanup on write
-- **Effort:** ~15 minutes
+- **Status:** ✅ **FIXED** (2026-03-19)
+- **Implementation:**
+  1. ✅ TTL-based cleanup: `SESSION_TTL_MS = 30 * 60 * 1000` (line 3)
+  2. ✅ Max history cap: `MAX_HISTORY = 40` (line 4)
+  3. ✅ `evict_expired()` function removes sessions older than TTL (lines 10–16)
+  4. ✅ Cleanup called in `get_session()` and `update_session()` before operations (lines 21, 41)
+  5. ✅ History capped on session update (lines 43–44)
+- **Verification:** Sessions now self-clean on read/write; memory bounded by max active users × max history length
 
 ### 3. Booking Creation Race Condition (TOCTOU → Overbooking)
 - **Locations:** `src/agent/tool_handlers.ts:83-101`, `src/db/queries.ts:76-100`
 - **Risk Level:** 🔴 CRITICAL — Concurrent requests can overbooking slots
-- **Current State:** Capacity check happens separately from INSERT/UPDATE; not atomic
-- **Fix:**
-  ```ts
-  const reservation = db.transaction(() => {
-    const slot = get_slot_by_id(slot_id)
-    if (!slot || slot.capacity - slot.booked < party_size) throw new Error(...)
-    // INSERT reservation
-    // UPDATE time_slots
-    return reservation
-  })()
-  ```
-- **Effort:** ~10 minutes
+- **Status:** ✅ **FIXED** (2026-03-19)
+- **Implementation:**
+  1. ✅ Entire flow wrapped in transaction (line 109: `db.transaction(() => { ... })`)
+  2. ✅ Slot read inside transaction (lines 111–116)
+  3. ✅ Capacity check atomic (lines 124–127)
+  4. ✅ INSERT reservation (lines 130–134)
+  5. ✅ UPDATE time_slots booked count (line 137)
+  6. ✅ Executed with IMMEDIATE lock (line 150: `run_transaction.immediate()`) to prevent concurrent TOCTOU
+- **Verification:** SQLite IMMEDIATE transaction acquires write lock upfront; capacity check and write are atomic
 
 ### 4. Fragile `last_insert_rowid()` Usage
 - **Location:** `src/db/queries.ts:89-95`
 - **Risk Level:** 🟠 HIGH — Fragile; wrong ID returned if logic changes
-- **Current State:** INSERT reservation → UPDATE time_slots → SELECT last_insert_rowid()
-- **Problem:** If another INSERT occurs between reservation INSERT and UPDATE (e.g., via trigger), wrong ID returned
-- **Fix:** Capture `last_insert_rowid()` immediately after reservation INSERT, before UPDATE
-- **Effort:** ~5 minutes
+- **Status:** ✅ **FIXED** (2026-03-19)
+- **Implementation:**
+  1. ✅ Removed separate `SELECT last_insert_rowid()` call
+  2. ✅ Capture ID from INSERT result immediately: `insert_result.lastInsertRowid` (line 134)
+  3. ✅ Use captured ID after UPDATE (line 142): `db.query(...).get(insert_result.lastInsertRowid as number)`
+  4. ✅ All operations atomic within transaction (lines 109–147)
+- **Verification:** ID captured from result object, not from a separate function call; safe even if logic changes
 
 ### 5. Duplicate `get_slot_by_id` Definition
 - **Locations:** `src/db/queries.ts:130-134` (used), `src/agent/queries.ts:4-8` (unused)

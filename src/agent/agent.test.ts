@@ -3,12 +3,11 @@ import { describe, expect, mock, test } from "bun:test"
 // Clear any previous mocks from other test files before setting up our own
 mock.restore()
 
-// Mock config/args to prevent CLI requirement
-mock.module("../config/args", () => ({
-  configs: {
-    anthropic_api_key: "test_key",
-  },
-}))
+import { mock_config } from "../config/mock"
+
+// Mock config/args because it parses CLI arguments at module load time;
+// in tests we provide a mock config to prevent parse failures
+mock.module("../config/args", () => ({ configs: mock_config }))
 
 import { mock_anthropic_module, mock_tool_handlers_module } from "./mock"
 
