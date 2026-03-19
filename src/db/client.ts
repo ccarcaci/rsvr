@@ -9,6 +9,14 @@ import { logger } from "../shared/logger"
 // The Dockerfile copies schema.sql to /app/schema.sql so the compiled binary can
 // always find it there. In local dev (bun run / bun test) the file sits next to
 // this source file, so the relative path is tried first.
+const try_check_schema_exists = (path: string): boolean => {
+  try {
+    return existsSync(path)
+  } catch {
+    return false
+  }
+}
+
 const get_schema_path = (): string => {
   const candidates = [
     resolve(import.meta.dir, "schema.sql"), // local dev: src/db/schema.sql
@@ -16,9 +24,7 @@ const get_schema_path = (): string => {
   ]
 
   for (const p of candidates) {
-    try {
-      if (existsSync(p)) return p
-    } catch {}
+    if (try_check_schema_exists(p)) return p
   }
 
   throw new Error(`schema.sql not found at any expected location: ${candidates.join(", ")}`)

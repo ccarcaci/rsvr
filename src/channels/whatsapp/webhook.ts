@@ -25,6 +25,28 @@ type whatsapp_message_type = {
 
 type whatsapp_contact_type = { profile: { name: string } }
 
+const try_parse_webhook_body = (
+  raw_body: string,
+): { entry?: whatsapp_webhook_entry_type[] } | null => {
+  try {
+    return JSON.parse(raw_body)
+  } catch {
+    logger.warn("WhatsApp webhook: invalid JSON body")
+    return null
+  }
+}
+
+const try_handle_whatsapp_messages = (
+  messages: whatsapp_message_type[],
+  contact: string | undefined,
+): void => {
+  try {
+    whatsapp_messages_handler(messages, contact)
+  } catch (err) {
+    logger.error("Error processing WhatsApp message", { error: err })
+  }
+}
+
 const create_whatsapp_routes = (): Hono => {
   const app = new Hono()
 
@@ -44,11 +66,8 @@ const create_whatsapp_routes = (): Hono => {
       return c.text("Forbidden", 403)
     }
 
-    let body: { entry?: whatsapp_webhook_entry_type[] }
-    try {
-      body = JSON.parse(raw_body)
-    } catch {
-      logger.warn("WhatsApp webhook: invalid JSON body")
+    const body = try_parse_webhook_body(raw_body)
+    if (!body) {
       return c.text("Bad Request", 400)
     }
 
@@ -62,11 +81,7 @@ const create_whatsapp_routes = (): Hono => {
     const contact = messages_values[0]?.contacts?.[0]?.profile.name
     const messages = messages_values.flatMap((mv) => mv.messages) as whatsapp_message_type[] // undefined messages have been filtered out above
 
-    try {
-      whatsapp_messages_handler(messages, contact)
-    } catch (err) {
-      logger.error("Error processing WhatsApp message", { error: err })
-    }
+    try_handle_whatsapp_messages(messages, contact)
     return c.json({ status: "ok" })
   })
 

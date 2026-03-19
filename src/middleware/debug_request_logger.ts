@@ -25,6 +25,22 @@ const redact_headers = (headers: Headers): Record<string, string> => {
 //  Body handling: we read the raw body bytes once, log them, then replace
 //  c.req.raw with a new Request carrying the same bytes so downstream
 //  handlers (e.g. c.req.json(), c.req.text()) read from a fresh stream.
+const try_read_request_body = async (c: Context): Promise<string | undefined> => {
+  try {
+    const raw_bytes = await c.req.raw.arrayBuffer()
+    if (raw_bytes.byteLength > 0) {
+      const body = new TextDecoder().decode(raw_bytes)
+      //  Replace the consumed stream with an identical fresh Request so
+      //  downstream route handlers can still read the body normally.
+      c.req.raw = new Request(c.req.raw, { body: raw_bytes })
+      return body
+    }
+    return undefined
+  } catch {
+    return "[unreadable]"
+  }
+}
+
 export const debug_request_logger = async (c: Context, next: Next): Promise<void> => {
   const url = new URL(c.req.url)
   const method = c.req.method
@@ -38,17 +54,7 @@ export const debug_request_logger = async (c: Context, next: Next): Promise<void
   const has_body = content_length !== null ? parseInt(content_length, 10) > 0 : false
 
   if (has_body || (method !== "GET" && method !== "HEAD" && method !== "OPTIONS")) {
-    try {
-      const raw_bytes = await c.req.raw.arrayBuffer()
-      if (raw_bytes.byteLength > 0) {
-        body = new TextDecoder().decode(raw_bytes)
-        //  Replace the consumed stream with an identical fresh Request so
-        //  downstream route handlers can still read the body normally.
-        c.req.raw = new Request(c.req.raw, { body: raw_bytes })
-      }
-    } catch {
-      body = "[unreadable]"
-    }
+    body = await try_read_request_body(c)
   }
 
   logger.debug("incoming request", {

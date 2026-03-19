@@ -3,6 +3,19 @@ import { client } from "./client/anthropic"
 import { build_intent_user_prompt, INTENT_SYSTEM_PROMPT } from "./prompts"
 import type { intent_type } from "./types"
 
+const try_parse_intent_json = (json_text: string, original_text: string): intent_type => {
+  try {
+    const parsed = JSON.parse(json_text) as intent_type
+    if (!parsed.action) {
+      return { action: "unknown", raw_text: original_text }
+    }
+    return parsed
+  } catch {
+    logger.warn("Failed to parse intent JSON", { raw: json_text })
+    return { action: "unknown", raw_text: original_text }
+  }
+}
+
 export const parse_intent = async (text: string): Promise<intent_type> => {
   const today = new Date().toISOString().split("T")[0]
 
@@ -18,14 +31,5 @@ export const parse_intent = async (text: string): Promise<intent_type> => {
     return { action: "unknown", raw_text: text }
   }
 
-  try {
-    const parsed = JSON.parse(content.text) as intent_type
-    if (!parsed.action) {
-      return { action: "unknown", raw_text: text }
-    }
-    return parsed
-  } catch {
-    logger.warn("Failed to parse intent JSON", { raw: content.text })
-    return { action: "unknown", raw_text: text }
-  }
+  return try_parse_intent_json(content.text, text)
 }
