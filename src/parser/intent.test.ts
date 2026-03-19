@@ -2,11 +2,12 @@ import { describe, expect, mock, test } from "bun:test"
 import { mock_anthropic_module } from "./client/mock"
 
 mock.module("./client/anthropic", () => ({
-  client: {
+  get_anthropic_client: () => ({
     messages: {
       create: mock_anthropic_module.messages_create,
     },
-  },
+  }),
+  init_anthropic_client: () => {},
 }))
 
 const intent_module = await import("./intent")

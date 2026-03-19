@@ -4,7 +4,7 @@ import type {
   ToolResultBlockParam,
   ToolUseBlock,
 } from "@anthropic-ai/sdk/resources/messages/messages"
-import { client } from "../parser/client/anthropic"
+import { get_anthropic_client } from "../parser/client/anthropic"
 import { logger } from "../shared/logger"
 import { get_system_prompt } from "./prompts"
 import { get_session, update_session } from "./session"
@@ -32,6 +32,7 @@ const MAX_TOOL_CALLS = 10
 
 const call_api = async (history: MessageParam[]): Promise<Message | null> => {
   try {
+    const client = get_anthropic_client()
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 1024,

@@ -1,14 +1,10 @@
 import { afterEach, describe, expect, mock, test } from "bun:test"
 import type { incoming_message_type } from "../channels/types"
-import { mock_config } from "../config/mock"
 import { mock_db_module, mock_transcribe_module } from "./mock"
 
 // Mock only direct dependencies of service, not the agent module (which has its own tests)
-// config/args is mocked because it parses CLI arguments at module load time;
-// in tests we provide a mock config to prevent parse failures
 mock.module("../voice/transcribe", () => mock_transcribe_module)
 mock.module("../db/queries", () => mock_db_module)
-mock.module("../config/args", () => ({ configs: mock_config }))
 
 const service = await import("./service")
 

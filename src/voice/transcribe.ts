@@ -1,5 +1,5 @@
 import { logger } from "../shared/logger"
-import { openai_client } from "./client/openai"
+import { get_openai_client } from "./client/openai"
 
 export const transcribe_audio = async (
   buffer: Uint8Array<ArrayBuffer>,
@@ -7,6 +7,7 @@ export const transcribe_audio = async (
 ): Promise<string> => {
   const file = new File([buffer], `voice.${extension_from_mime(mime_type)}`, { type: mime_type })
 
+  const openai_client = get_openai_client()
   const response = await openai_client.audio.transcriptions.create({
     model: "gpt-4o-mini-transcribe",
     file,

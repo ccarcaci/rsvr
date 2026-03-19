@@ -1,5 +1,5 @@
 import { logger } from "../shared/logger"
-import { client } from "./client/anthropic"
+import { get_anthropic_client } from "./client/anthropic"
 import { build_intent_user_prompt, INTENT_SYSTEM_PROMPT } from "./prompts"
 import type { intent_type } from "./types"
 
@@ -19,6 +19,7 @@ const try_parse_intent_json = (json_text: string, original_text: string): intent
 export const parse_intent = async (text: string): Promise<intent_type> => {
   const today = new Date().toISOString().split("T")[0]
 
+  const client = get_anthropic_client()
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 256,

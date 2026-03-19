@@ -1,4 +1,4 @@
-import { db } from "./client"
+import { get_db } from "./client"
 
 export type user_row_type = {
   id: number
@@ -57,11 +57,11 @@ export class slot_domain_mismatch_error extends Error {
 }
 
 export const find_user_by_phone = (phone: string): user_row_type | null => {
-  return db.query<user_row_type, [string]>("SELECT * FROM users WHERE phone = ?").get(phone)
+  return get_db().query<user_row_type, [string]>("SELECT * FROM users WHERE phone = ?").get(phone)
 }
 
 export const find_user_by_telegram_id = (telegram_id: string): user_row_type | null => {
-  return db
+  return get_db()
     .query<user_row_type, [string]>("SELECT * FROM users WHERE telegram_id = ?")
     .get(telegram_id)
 }
@@ -72,11 +72,9 @@ export const create_user = (
   name?: string,
 ): user_row_type => {
   const field = channel === "whatsapp" ? "phone" : "telegram_id"
-  db.query(`INSERT OR IGNORE INTO users (${field}, channel, name) VALUES (?, ?, ?)`).run(
-    identifier,
-    channel,
-    name ?? null,
-  )
+  get_db()
+    .query(`INSERT OR IGNORE INTO users (${field}, channel, name) VALUES (?, ?, ?)`)
+    .run(identifier, channel, name ?? null)
   const user =
     channel === "whatsapp" ? find_user_by_phone(identifier) : find_user_by_telegram_id(identifier)
   if (!user) {
@@ -91,7 +89,7 @@ export const check_availability = (
   time: string,
   party_size: number,
 ): time_slot_row_type | null => {
-  return db
+  return get_db()
     .query<time_slot_row_type, [string, string, string, number]>(
       "SELECT * FROM time_slots WHERE domain = ? AND date = ? AND time = ? AND (capacity - booked) >= ?",
     )
@@ -106,9 +104,9 @@ export const create_reservation = (
   domain: string,
   notes?: string,
 ): reservation_row_type => {
-  const run_transaction = db.transaction(() => {
+  const run_transaction = get_db().transaction(() => {
     // 1. Read slot inside transaction (under write lock via IMMEDIATE)
-    const slot = db
+    const slot = get_db()
       .query<time_slot_row_type, [number]>("SELECT * FROM time_slots WHERE id = ?")
       .get(time_slot_id)
     if (!slot) {
@@ -127,17 +125,19 @@ export const create_reservation = (
     }
 
     // 4. INSERT reservation
-    const insert_result = db
+    const insert_result = get_db()
       .query(
         "INSERT INTO reservations (user_id, time_slot_id, domain, party_size, notes) VALUES (?, ?, ?, ?, ?)",
       )
       .run(user_id, time_slot_id, domain, party_size, notes ?? null)
 
     // 5. UPDATE time_slots booked count
-    db.query("UPDATE time_slots SET booked = booked + ? WHERE id = ?").run(party_size, time_slot_id)
+    get_db()
+      .query("UPDATE time_slots SET booked = booked + ? WHERE id = ?")
+      .run(party_size, time_slot_id)
 
     // 6. Return the created reservation
-    const result = db
+    const result = get_db()
       .query<reservation_row_type, [number]>("SELECT * FROM reservations WHERE id = ?")
       .get(insert_result.lastInsertRowid as number)
     if (!result) {
@@ -151,7 +151,7 @@ export const create_reservation = (
 }
 
 export const cancel_reservation = (reservation_id: number): boolean => {
-  const reservation = db
+  const reservation = get_db()
     .query<reservation_row_type, [number]>(
       "SELECT * FROM reservations WHERE id = ? AND status = 'confirmed'",
     )
@@ -159,19 +159,20 @@ export const cancel_reservation = (reservation_id: number): boolean => {
 
   if (!reservation) return false
 
-  db.query(
-    "UPDATE reservations SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?",
-  ).run(reservation_id)
-  db.query("UPDATE time_slots SET booked = booked - ? WHERE id = ?").run(
-    reservation.party_size,
-    reservation.time_slot_id,
-  )
+  get_db()
+    .query(
+      "UPDATE reservations SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?",
+    )
+    .run(reservation_id)
+  get_db()
+    .query("UPDATE time_slots SET booked = booked - ? WHERE id = ?")
+    .run(reservation.party_size, reservation.time_slot_id)
 
   return true
 }
 
 export const list_reservations = (user_id: number): reservation_row_type[] => {
-  return db
+  return get_db()
     .query<reservation_row_type, [number]>(
       "SELECT * FROM reservations WHERE user_id = ? AND status = 'confirmed' ORDER BY created_at DESC",
     )
@@ -179,7 +180,7 @@ export const list_reservations = (user_id: number): reservation_row_type[] => {
 }
 
 export const get_slot_by_id = (slot_id: number): time_slot_row_type | null => {
-  return db
+  return get_db()
     .query<time_slot_row_type, [number]>("SELECT * FROM time_slots WHERE id = ?")
     .get(slot_id)
 }

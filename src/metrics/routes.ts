@@ -1,11 +1,12 @@
 import { Hono } from "hono"
-import { db } from "../db/client"
+import { get_db } from "../db/client"
 import { registry } from "./registry"
 
 // ---- helpers ----
 
 const db_ping = (): { ok: boolean; error?: string } => {
   try {
+    const db = get_db()
     db.query("SELECT 1").get()
     return { ok: true }
   } catch (err) {

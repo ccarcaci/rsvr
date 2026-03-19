@@ -3,20 +3,15 @@ import { describe, expect, mock, test } from "bun:test"
 // Clear any previous mocks from other test files before setting up our own
 mock.restore()
 
-import { mock_config } from "../config/mock"
-
-// Mock config/args because it parses CLI arguments at module load time;
-// in tests we provide a mock config to prevent parse failures
-mock.module("../config/args", () => ({ configs: mock_config }))
-
 import { mock_anthropic_module, mock_tool_handlers_module } from "./mock"
 
 mock.module("../parser/client/anthropic", () => ({
-  client: {
+  get_anthropic_client: () => ({
     messages: {
       create: mock_anthropic_module.messages_create,
     },
-  },
+  }),
+  init_anthropic_client: () => {},
 }))
 
 mock.module("./tool_handlers", () => mock_tool_handlers_module)
@@ -40,8 +35,6 @@ const make_tool_use = (tool_id: string, tool_name: string, input: Record<string,
   stop_reason: "tool_use" as const,
   stop_sequence: null,
 })
-
-mock.module("./tool_handlers", () => mock_tool_handlers_module)
 
 const agent = await import("./agent")
 

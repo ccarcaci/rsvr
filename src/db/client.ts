@@ -1,7 +1,6 @@
 import { Database } from "bun:sqlite"
 import { existsSync, mkdirSync, readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
-import { configs } from "../config/args"
 import { logger } from "../shared/logger"
 
 // When compiled to a standalone binary via `bun build --compile`, import.meta.dir
@@ -48,4 +47,15 @@ const init_database = (db_path: string): Database => {
 
 //  --
 
-export const db = init_database(configs.database_path)
+let cached_db: Database | null = null
+
+export const init_db = (db_path: string): void => {
+  cached_db = init_database(db_path)
+}
+
+export const get_db = (): Database => {
+  if (!cached_db) {
+    throw new Error("Database not initialized. Call init_db() first.")
+  }
+  return cached_db
+}
