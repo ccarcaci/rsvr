@@ -4,7 +4,10 @@ import * as db from "../db/queries"
 import { logger } from "../shared/logger"
 import { transcribe_audio } from "../voice/transcribe"
 
-export const handle_message = async (message: incoming_message_type): Promise<string> => {
+export const handle_message = async (
+  message: incoming_message_type,
+  current_time_ms: number,
+): Promise<string> => {
   let text = message.text
 
   if (!text && message.voice_buffer) {
@@ -20,5 +23,5 @@ export const handle_message = async (message: incoming_message_type): Promise<st
 
   const sender_key = `${message.channel}:${message.sender_id}`
 
-  return run_agent(user.id, sender_key, text)
+  return run_agent(user.id, current_time_ms, sender_key, text)
 }

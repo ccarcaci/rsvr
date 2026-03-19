@@ -1,5 +1,26 @@
 import { describe, expect, mock, test } from "bun:test"
+
+// Clear any previous mocks from other test files before setting up our own
+mock.restore()
+
+// Mock config/args to prevent CLI requirement
+mock.module("../config/args", () => ({
+  configs: {
+    anthropic_api_key: "test_key",
+  },
+}))
+
 import { mock_anthropic_module, mock_tool_handlers_module } from "./mock"
+
+mock.module("../parser/client/anthropic", () => ({
+  client: {
+    messages: {
+      create: mock_anthropic_module.messages_create,
+    },
+  },
+}))
+
+mock.module("./tool_handlers", () => mock_tool_handlers_module)
 
 const make_end_turn = (text: string) => ({
   content: [{ type: "text" as const, text }],
@@ -21,14 +42,6 @@ const make_tool_use = (tool_id: string, tool_name: string, input: Record<string,
   stop_sequence: null,
 })
 
-mock.module("../parser/client/anthropic", () => ({
-  client: {
-    messages: {
-      create: mock_anthropic_module.messages_create,
-    },
-  },
-}))
-
 mock.module("./tool_handlers", () => mock_tool_handlers_module)
 
 const agent = await import("./agent")
@@ -41,7 +54,7 @@ describe("run_agent", () => {
     )
 
     //  --  act
-    const result = await agent.run_agent(1, "test:end_turn", "Hello")
+    const result = await agent.run_agent(1, 42, "test:end_turn", "Hello")
 
     //  --  assert
     expect(result).toBe("How can I help you today?")
@@ -78,7 +91,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await agent.run_agent(1, "test:tool_dispatch", "Book a table")
+    const result = await agent.run_agent(1, 42, "test:tool_dispatch", "Book a table")
 
     //  --  assert
     expect(typeof result).toBe("string")
@@ -103,7 +116,7 @@ describe("run_agent", () => {
     )
 
     //  --  act
-    const result = await agent.run_agent(1, "test:loop_limit", "Loop forever")
+    const result = await agent.run_agent(1, 42, "test:loop_limit", "Loop forever")
 
     //  --  assert
     expect(result).toBe("Something went wrong, please try again.")
@@ -116,7 +129,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await agent.run_agent(1, "test:api_error", "Hello")
+    const result = await agent.run_agent(1, 42, "test:api_error", "Hello")
 
     //  --  assert
     expect(result).toBe("I'm having trouble connecting. Please try again in a moment.")
@@ -135,7 +148,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await agent.run_agent(1, "test:unknown_tool", "Do something unsupported")
+    const result = await agent.run_agent(1, 42, "test:unknown_tool", "Do something unsupported")
 
     //  --  assert
     expect(typeof result).toBe("string")
@@ -151,7 +164,7 @@ describe("run_agent", () => {
     }))
 
     //  --  act
-    const result = await agent.run_agent(1, "test:no_text", "Hello")
+    const result = await agent.run_agent(1, 42, "test:no_text", "Hello")
 
     //  --  assert
     expect(result).toBe("Done.")

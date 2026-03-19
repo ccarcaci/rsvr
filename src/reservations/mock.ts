@@ -10,4 +10,16 @@ export const mock_transcribe_module: mock_transcribe_type = {
   transcribe_audio: mock(),
 }
 
+//  --
+
+type mock_agent_type = {
+  run_agent: Mock<mock_fn_type>
+}
+
+export const mock_agent_module: mock_agent_type = {
+  run_agent: mock(),
+}
+
+//  --
+
 export { mock_anthropic_module, mock_db_module } from "../agent/mock"

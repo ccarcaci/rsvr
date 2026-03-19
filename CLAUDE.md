@@ -75,6 +75,41 @@ command line or via Docker Compose variable substitution in the `command:` block
 
 Use raw SQL via `bun:sqlite`. Queries live in `src/db/queries.ts`.
 
+### Function Parameter Order
+
+Parameters must be ordered by type specificity, from most specific to most general:
+
+1. **Primitive booleans** — `debug: boolean`
+2. **Integer numbers** — `user_id: number`, `port: number`
+3. **Floating point numbers** — `timeout_ms: number` (if explicitly floating point)
+4. **Strings** — `domain: string`, `name: string`
+5. **Complex types (project-defined)** — `message: incoming_message_type`, `config: config_type`
+6. **Complex types (standard library)** — `date: Date`, `error: Error`
+7. **Complex types (external libraries)** — `client: Api`, `context: Context`
+8. **Optional parameters** — Following the same order as required parameters
+
+**Example:**
+```ts
+// correct: debug, integers, strings, project types, optional
+export const create_session = (
+  debug: boolean,
+  user_id: number,
+  current_time_ms: number,
+  domain: string,
+  sender_key: string,
+  session: session_entry_type,
+  metadata?: unknown,
+): session_entry_type => { ... }
+
+// incorrect: mixed order
+export const create_session = (
+  session: session_entry_type,  // ✗ complex type before primitives
+  user_id: number,
+  debug: boolean,               // ✗ boolean after number
+  domain: string,
+): session_entry_type => { ... }
+```
+
 ### Minimal dependencies
 
 Only add dependencies when absolutely necessary. Prefer built-in Bun APIs and standard library.

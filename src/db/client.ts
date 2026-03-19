@@ -21,9 +21,7 @@ const get_schema_path = (): string => {
     } catch {}
   }
 
-  throw new Error(
-    `schema.sql not found at any expected location: ${candidates.join(", ")}`,
-  )
+  throw new Error(`schema.sql not found at any expected location: ${candidates.join(", ")}`)
 }
 
 const init_database = (db_path: string): Database => {

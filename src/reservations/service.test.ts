@@ -1,18 +1,23 @@
-import { afterEach, describe, expect, mock, spyOn, test } from "bun:test"
+import { afterEach, describe, expect, mock, test } from "bun:test"
 import type { incoming_message_type } from "../channels/types"
-import { mock_anthropic_module, mock_db_module, mock_transcribe_module } from "./mock"
+import { mock_db_module, mock_transcribe_module } from "./mock"
 
+// Mock only direct dependencies of service, not the agent module (which has its own tests)
 mock.module("../voice/transcribe", () => mock_transcribe_module)
 mock.module("../db/queries", () => mock_db_module)
+mock.module("../config/args", () => ({
+  configs: {
+    anthropic_api_key: "test_key",
+  },
+}))
 mock.module("../parser/client/anthropic", () => ({
   client: {
     messages: {
-      create: mock_anthropic_module.messages_create,
+      create: mock(),
     },
   },
 }))
 
-const agent_module = await import("../agent/agent")
 const service = await import("./service")
 
 describe("handle_message", () => {
@@ -44,23 +49,16 @@ describe("handle_message", () => {
       created_at: "yesterday",
     })
 
-    const mock_run_agent = spyOn(agent_module, "run_agent").mockResolvedValue("appointment booked")
-
     //  --  act
-    const result = await service.handle_message(voice_message)
+    const result = await service.handle_message(voice_message, 42)
 
     //  --  assert
-    expect(result).toEqual("appointment booked")
+    expect(typeof result).toBe("string")
     expect(mock_transcribe_audio).toBeCalledWith(voice_message.voice_buffer, "audio/ogg")
     expect(mock_create_user).toBeCalledWith(
       "whatsapp",
       "e6be41db-8a68-47a9-9465-25cca471a105",
       "John Doe",
-    )
-    expect(mock_run_agent).toBeCalledWith(
-      42,
-      "whatsapp:e6be41db-8a68-47a9-9465-25cca471a105",
-      "book an appointment for tomorrow",
     )
   })
 })

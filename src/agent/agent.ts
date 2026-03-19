@@ -52,6 +52,7 @@ const call_api = async (history: MessageParam[]): Promise<Message | null> => {
 
 const dispatch_tool = (
   user_id: number,
+  current_time_ms: number,
   tool_name: string,
   tool_input: unknown,
 ): tool_result_type => {
@@ -59,7 +60,11 @@ const dispatch_tool = (
     case "check_availability":
       return handle_check_availability(tool_input as check_availability_input_type)
     case "create_booking":
-      return handle_create_booking(user_id, tool_input as create_booking_input_type)
+      return handle_create_booking(
+        user_id,
+        current_time_ms,
+        tool_input as create_booking_input_type,
+      )
     case "list_bookings":
       return handle_list_bookings(user_id, tool_input as list_bookings_input_type)
     case "get_booking":
@@ -75,10 +80,11 @@ const dispatch_tool = (
 
 export const run_agent = async (
   user_id: number,
+  current_time_ms: number,
   sender_key: string,
   text: string,
 ): Promise<string> => {
-  const session = get_session(sender_key)
+  const session = get_session(sender_key, current_time_ms)
 
   const history: MessageParam[] = [...session.history, { role: "user", content: text }]
 
@@ -102,7 +108,7 @@ export const run_agent = async (
         (block: Message["content"][number]) => block.type === "text",
       )
       const reply = text_block && text_block.type === "text" ? text_block.text : ""
-      update_session(sender_key, { ...session, history })
+      update_session(current_time_ms, sender_key, { ...session, history })
       return reply || "Done."
     }
 
@@ -122,7 +128,7 @@ export const run_agent = async (
         (tool_block: ToolUseBlock) => {
           logger.info("Dispatching tool", { tool: tool_block.name, user_id, sender_key })
 
-          const result = dispatch_tool(user_id, tool_block.name, tool_block.input)
+          const result = dispatch_tool(user_id, current_time_ms, tool_block.name, tool_block.input)
 
           if (result.ok) {
             return {

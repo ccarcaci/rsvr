@@ -2,8 +2,9 @@
 
 **Scope:** Full codebase review + WhatsApp HMAC-SHA256 implementation security audit
 **Files reviewed:** 31 TypeScript source files
-**Date:** 2026-03-05 (initial); 2026-03-16 (HMAC security review)
+**Date:** 2026-03-05 (initial); 2026-03-16 (HMAC security review); 2026-03-19 (issue #1 verified fixed)
 **Status:** 8 critical issues identified; 13 high/medium security issues from HMAC implementation review; 22 total recommendations
+**Fixed:** Issue #1 (WhatsApp HMAC-SHA256 verification) ✅
 
 ---
 
@@ -13,12 +14,13 @@
 - **Location:** `src/channels/whatsapp/webhook.ts:41-79`
 - **Risk Level:** 🔴 CRITICAL — Allows forging arbitrary reservation events
 - **Impact:** Attacker can create/cancel any reservation without authentication
-- **Fix:**
-  1. Read raw request body before parsing JSON
-  2. Compute `HMAC-SHA256(app_secret, raw_body)`
-  3. Constant-time compare against `X-Hub-Signature-256` header
-  4. Reject with 403 on mismatch
-- **Effort:** ~20 minutes
+- **Status:** ✅ **FIXED** (2026-03-19)
+- **Implementation:**
+  1. ✅ Raw request body read before parsing JSON (line 40)
+  2. ✅ HMAC-SHA256 computed with app_secret (lines 103–105)
+  3. ✅ Constant-time comparison via timingSafeEqual (line 114)
+  4. ✅ Returns 403 on mismatch (line 44)
+- **Verification:** Signature check occurs before JSON parse; prevents unsigned payload processing
 
 ### 2. In-Memory Session DoS (Unbounded Memory Growth)
 - **Location:** `src/agent/session.ts:3-15`

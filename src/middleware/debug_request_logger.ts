@@ -35,7 +35,7 @@ export const debug_request_logger = async (c: Context, next: Next): Promise<void
 
   let body: string | undefined
   const content_length = c.req.raw.headers.get("content-length")
-  const has_body = content_length !== null ? parseInt(content_length) > 0 : false
+  const has_body = content_length !== null ? parseInt(content_length, 10) > 0 : false
 
   if (has_body || (method !== "GET" && method !== "HEAD" && method !== "OPTIONS")) {
     try {

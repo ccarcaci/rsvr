@@ -1,5 +1,4 @@
 import * as queries from "../db/queries"
-import { get_slot_by_id } from "../db/queries"
 import { logger } from "../shared/logger"
 import type {
   cancel_booking_input_type,
@@ -63,6 +62,7 @@ export const handle_check_availability = (
 
 export const handle_create_booking = (
   user_id: number,
+  current_time_ms: number,
   input: create_booking_input_type,
 ): tool_result_type => {
   const { slot_id, domain, party_size = 1, notes } = input
@@ -79,39 +79,35 @@ export const handle_create_booking = (
   }
 
   try {
-    // Re-verify slot capacity before booking (guard against race conditions)
-    const slot = get_slot_by_id(slot_id)
-    if (!slot) {
-      return { ok: false, error: `Slot ${slot_id} no longer exists.` }
-    }
-    if (slot.domain !== domain) {
-      return {
-        ok: false,
-        error: `Slot ${slot_id} is for "${slot.domain}", not "${domain}".`,
-      }
-    }
-    const remaining = slot.capacity - slot.booked
-    if (remaining < party_size) {
-      return {
-        ok: false,
-        error: `Not enough capacity. Only ${remaining} ${remaining === 1 ? "seat" : "seats"} remain for that slot.`,
-      }
-    }
-
-    const reservation = queries.create_reservation(user_id, slot_id, domain, party_size, notes)
+    const reservation = queries.create_reservation(
+      user_id,
+      slot_id,
+      party_size,
+      current_time_ms,
+      domain,
+      notes,
+    )
+    const slot = queries.get_slot_by_id(slot_id)
     return {
       ok: true,
       data: {
         reservation_id: reservation.id,
         domain: reservation.domain,
-        date: slot.date,
-        time: slot.time,
+        date: slot?.date ?? "",
+        time: slot?.time ?? "",
         party_size: reservation.party_size,
         status: reservation.status,
         notes: reservation.notes ?? null,
       },
     }
   } catch (err) {
+    if (
+      err instanceof queries.capacity_error ||
+      err instanceof queries.slot_not_found_error ||
+      err instanceof queries.slot_domain_mismatch_error
+    ) {
+      return { ok: false, error: err.message }
+    }
     logger.error("create_booking failed", { err: String(err), user_id, slot_id })
     return { ok: false, error: "Failed to create booking. Please try again." }
   }

@@ -163,7 +163,7 @@ describe("tool_handlers", () => {
       // (beforeEach sets up SLOT with capacity 10, booked 2)
 
       //  --  act
-      const result = handlers.handle_create_booking(1, {
+      const result = handlers.handle_create_booking(1, 1000000, {
         slot_id: 42,
         domain: "restaurant",
         party_size: 2,
@@ -180,67 +180,12 @@ describe("tool_handlers", () => {
       }
     })
 
-    test("returns_error_when_slot_does_not_exist", () => {
-      //  --  arrange
-      mock_db_module.get_slot_by_id.mockReturnValue(null)
-
-      //  --  act
-      const result = handlers.handle_create_booking(1, {
-        slot_id: 999,
-        domain: "restaurant",
-        party_size: 1,
-      })
-
-      //  --  assert
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error).toContain("no longer exists")
-      }
-    })
-
-    test("returns_error_when_slot_domain_does_not_match_requested_domain", () => {
-      //  --  arrange
-      mock_db_module.get_slot_by_id.mockReturnValue({ ...SLOT, domain: "salon" })
-
-      //  --  act
-      const result = handlers.handle_create_booking(1, {
-        slot_id: 42,
-        domain: "restaurant",
-        party_size: 1,
-      })
-
-      //  --  assert
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error).toContain("salon")
-      }
-    })
-
-    test("returns_error_when_remaining_capacity_is_insufficient_(race_condition_guard)", () => {
-      //  --  arrange
-      // Slot has 3 total, 2 already booked = 1 remaining; requesting 3
-      mock_db_module.get_slot_by_id.mockReturnValue({ ...SLOT, capacity: 3, booked: 2 })
-
-      //  --  act
-      const result = handlers.handle_create_booking(1, {
-        slot_id: 42,
-        domain: "restaurant",
-        party_size: 3,
-      })
-
-      //  --  assert
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error).toContain("Not enough capacity")
-      }
-    })
-
     test("rejects_invalid_domain", () => {
       //  --  arrange
       // (beforeEach sets up valid SLOT; domain validation fires before slot lookup)
 
       //  --  act
-      const result = handlers.handle_create_booking(1, {
+      const result = handlers.handle_create_booking(1, 1000000, {
         slot_id: 42,
         domain: "library",
         party_size: 1,
@@ -257,14 +202,14 @@ describe("tool_handlers", () => {
       //  --  arrange
       let received_party_size = -1
       mock_db_module.create_reservation.mockImplementation(
-        (_uid: unknown, _sid: unknown, _d: unknown, ps: unknown) => {
+        (_uid: unknown, _sid: unknown, ps: unknown, _ct: unknown, _d: unknown) => {
           received_party_size = ps as number
           return RESERVATION
         },
       )
 
       //  --  act
-      handlers.handle_create_booking(1, { slot_id: 42, domain: "restaurant" })
+      handlers.handle_create_booking(1, 1000000, { slot_id: 42, domain: "restaurant" })
 
       //  --  assert
       expect(received_party_size).toBe(1)

@@ -69,7 +69,7 @@ const load_configs = (): config_type => {
   }
 
   const cfg: config_type = {
-    port: parseInt(required("port")),
+    port: parseInt(required("port"), 10),
     telegram_bot_token: required("telegram_bot_token"),
     whatsapp_verify_token: required("whatsapp_verify_token"),
     whatsapp_app_secret: required("whatsapp_app_secret"),
@@ -80,7 +80,7 @@ const load_configs = (): config_type => {
     internal_api_key: required("internal_api_key"),
     database_path: required("database_path"),
     graph_api_base: optional("graph_api_base", "https://graph.facebook.com/v23.0"),
-    debug: cli_args["debug"] === true,
+    debug: cli_args.debug === true,
     log_level: (["debug", "info", "warn", "error"].includes(optional("log_level", "info"))
       ? optional("log_level", "info")
       : "info") as log_level_type,

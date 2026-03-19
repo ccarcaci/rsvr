@@ -115,6 +115,7 @@ const verify_whatsapp_signature = (header: string | undefined, raw_body: string)
 }
 
 const whatsapp_messages_handler = (messages: whatsapp_message_type[], contact?: string) => {
+  const current_time_ms = Date.now()
   messages?.forEach(async (msg) => {
     const incoming: incoming_message_type = {
       channel: "whatsapp",
@@ -131,7 +132,7 @@ const whatsapp_messages_handler = (messages: whatsapp_message_type[], contact?: 
       incoming.voice_mime_type = voice.mime_type
     }
 
-    const reply = await handle_message(incoming)
+    const reply = await handle_message(incoming, current_time_ms)
     await whatsapp_client.send_text_message(msg.from, reply)
   })
 }

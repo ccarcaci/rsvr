@@ -18,7 +18,7 @@ const create_telegram_bot = (token: string): Bot => {
     }
 
     try {
-      const reply = await handle_message(incoming)
+      const reply = await handle_message(incoming, Date.now())
       await ctx.reply(reply)
     } catch (err) {
       logger.error("Error processing Telegram text message", { error: err })
@@ -39,7 +39,7 @@ const create_telegram_bot = (token: string): Bot => {
         raw_payload: ctx.message,
       }
 
-      const reply = await handle_message(incoming)
+      const reply = await handle_message(incoming, Date.now())
       await ctx.reply(reply)
     } catch (err) {
       logger.error("Error processing Telegram voice message", { error: err })
