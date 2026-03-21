@@ -51,6 +51,31 @@ const call_api = async (history: MessageParam[]): Promise<Message | null> => {
   }
 }
 
+const use_block = (
+  user_id: number,
+  current_time_ms: number,
+  sender_key: string,
+  tool_block: ToolUseBlock,
+) => {
+  logger.info("Dispatching tool", { tool: tool_block.name, user_id, sender_key })
+
+  const result = dispatch_tool(user_id, current_time_ms, tool_block.name, tool_block.input)
+
+  if (result.ok) {
+    return {
+      type: "tool_result" as const,
+      tool_use_id: tool_block.id,
+      content: JSON.stringify(result.data),
+    }
+  }
+  return {
+    type: "tool_result" as const,
+    tool_use_id: tool_block.id,
+    content: result.error,
+    is_error: true,
+  }
+}
+
 const dispatch_tool = (
   user_id: number,
   current_time_ms: number,
@@ -78,6 +103,8 @@ const dispatch_tool = (
       return { ok: false, error: `Unknown tool: ${tool_name}` }
   }
 }
+
+//  --
 
 export const run_agent = async (
   user_id: number,
@@ -113,46 +140,26 @@ export const run_agent = async (
       return reply || "Done."
     }
 
-    if (response.stop_reason === "tool_use") {
-      const tool_use_blocks = response.content.filter(
-        (block: Message["content"][number]): block is ToolUseBlock => block.type === "tool_use",
-      )
-
-      if (tool_use_blocks.length === 0) {
-        logger.error("stop_reason=tool_use but no tool_use blocks found", { user_id })
-        return "Something went wrong, please try again."
-      }
-
-      tool_call_count += tool_use_blocks.length
-
-      const tool_results: ToolResultBlockParam[] = tool_use_blocks.map(
-        (tool_block: ToolUseBlock) => {
-          logger.info("Dispatching tool", { tool: tool_block.name, user_id, sender_key })
-
-          const result = dispatch_tool(user_id, current_time_ms, tool_block.name, tool_block.input)
-
-          if (result.ok) {
-            return {
-              type: "tool_result" as const,
-              tool_use_id: tool_block.id,
-              content: JSON.stringify(result.data),
-            }
-          }
-          return {
-            type: "tool_result" as const,
-            tool_use_id: tool_block.id,
-            content: result.error,
-            is_error: true,
-          }
-        },
-      )
-
-      history.push({ role: "user", content: tool_results })
-      continue
+    if (response.stop_reason !== "tool_use") {
+      // Unexpected stop reason (max_tokens, stop_sequence, refusal, etc.)
+      logger.warn("Unexpected stop_reason", { stop_reason: response.stop_reason, user_id })
+      return "Something went wrong, please try again."
     }
 
-    // Unexpected stop reason (max_tokens, stop_sequence, refusal, etc.)
-    logger.warn("Unexpected stop_reason", { stop_reason: response.stop_reason, user_id })
-    return "Something went wrong, please try again."
+    const tool_use_blocks = response.content.filter(
+      (block: Message["content"][number]): block is ToolUseBlock => block.type === "tool_use",
+    )
+
+    if (tool_use_blocks.length === 0) {
+      logger.error("stop_reason=tool_use but no tool_use blocks found", { user_id })
+      return "Something went wrong, please try again."
+    }
+
+    tool_call_count += tool_use_blocks.length
+
+    const tool_results: ToolResultBlockParam[] = tool_use_blocks.map((tool_block: ToolUseBlock) =>
+      use_block(user_id, current_time_ms, sender_key, tool_block),
+    )
+    history.push({ role: "user", content: tool_results })
   }
 }
