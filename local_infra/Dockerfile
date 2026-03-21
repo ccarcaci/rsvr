@@ -124,14 +124,15 @@ EXPOSE 3000
 # Debug inspector port (optional). Exposed when --inspect flag is used.
 EXPOSE 9228
 
-# Health check: /health performs a live SQLite ping and returns HTTP 200 when
-# healthy or 503 when degraded. curl is available in the runtime stage.
+# Health check: /status performs a live SQLite ping and returns HTTP 200 when
+# healthy or 503 when degraded. /status is public (no auth required), making it
+# suitable for healthchecks from orchestrators. curl is available in the runtime stage.
 # --fail causes curl to exit non-zero on HTTP 4xx/5xx, which marks the
 # container unhealthy. --silent suppresses progress output.
 # --start-period=20s gives the Telegram bot and DB initialisation time to finish
 # before the first check is evaluated against the --retries threshold.
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
-    CMD curl --fail --silent http://localhost:${PORT:-3000}/health || exit 1
+    CMD curl --fail --silent http://localhost:${PORT:-3000}/status || exit 1
 
 # Start via Bun. All nine config values must be passed as CLI arguments
 # (see header comment). In docker-compose, use the `command:` block to supply

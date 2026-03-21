@@ -93,7 +93,7 @@
 ## 🟠 High-Priority Concerns
 
 ### Missing Monitoring Endpoint Authentication
-- **Locations:** `src/metrics/routes.ts:86-162` (/health, /status, /metrics)
+- **Locations:** `src/metrics/routes.ts:86-162` (/monitor, /status, /metrics)
 - **Issue:** No authentication; exposes memory usage, error messages, request paths
 - **Fix:** Gate behind `internal_api_key` middleware (consistent with REST API auth)
 - **Effort:** ~10 minutes
@@ -185,7 +185,7 @@
 **Estimated effort:** ~55 minutes
 
 ### 🟡 Priority 3 — Operations & Monitoring (Backlog)
-9. Gate /health, /status, /metrics behind auth (10min)
+9. Gate /monitor, /status, /metrics behind auth (10min)
 10. Add input validation (notes length, party_size bounds) (10min)
 11. Remove PII from logs (5min)
 12. Fix parameter order violations (5min)
@@ -442,9 +442,9 @@ make check      # Both together
   - Risk: logger.info("Transcribed voice note", { text, sender: message.sender_id }) logs full transcription + phone number/Telegram ID in structured JSON. If logs shipped to aggregator or stored, GDPR/HIPAA-relevant data exposure.
   - Fix: Remove text field entirely. Log only HTTP status code; use hash or last-4-digits of phone number if correlation needed.
 
-  Issue: Unauthenticated /health, /status, /metrics endpoints expose internal operational data
+  Issue: Unauthenticated /monitor, /status, /metrics endpoints expose internal operational data
   - Location: src/metrics/routes.ts:86-162
-  - Risk: /health exposes memory layout (rss_bytes, heapUsed, heapTotal), SQLite error messages, per-path request counters. /metrics exposes every request path as Prometheus label. No authentication; globally reachable. Attacker gains map of
+  - Risk: /monitor exposes memory layout (rss_bytes, heapUsed, heapTotal), SQLite error messages, per-path request counters. /metrics exposes every request path as Prometheus label. No authentication; globally reachable. Attacker gains map of
   request patterns and error rates. SQLite error message can leak schema/file-path info.
   - Fix: Gate all three endpoints behind internal_api_key middleware (consistent with planned REST API auth). Serve /metrics only on separate internal port or behind network control. Strip raw error field from /status response.
 
@@ -638,7 +638,7 @@ make check      # Both together
   - Align with style rule: functions (no side effects) vs methods (side effects, no returns)
 
   4. Secure monitoring endpoints:
-  - Gate /health, /status, /metrics behind internal_api_key middleware
+  - Gate /monitor, /status, /metrics behind internal_api_key middleware
   - Remove sensitive data from responses (memory details, error messages, request paths)
 
   5. Eliminate medium-priority duplication:

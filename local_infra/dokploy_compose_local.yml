@@ -106,13 +106,14 @@ services:
       - dokploy-network
 
     # ── Health check ─────────────────────────────────────────────────────────
-    # /health performs a live SQLite ping. A 200 response means both the HTTP
-    # server and the database are operational.
+    # /status performs a live SQLite ping. A 200 response means both the HTTP
+    # server and the database are operational. /status is public (no auth required),
+    # so healthchecks always succeed regardless of auth configuration.
     # curl is installed in the rsvr image (debian:bookworm-slim does not include
     # curl or wget by default; see Dockerfile runtime stage).
     # --fail causes curl to exit non-zero on HTTP 4xx/5xx responses.
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:${PORT:-3000}/health"]
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:${PORT:-3000}/status"]
       interval: 15s
       timeout: 5s
       start_period: 20s

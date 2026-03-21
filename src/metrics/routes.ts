@@ -1,5 +1,7 @@
 import { Hono } from "hono"
+import { configs } from "../config/args"
 import { get_db } from "../db/client"
+import { create_internal_auth_middleware } from "../middleware/internal_auth"
 import { registry } from "./registry"
 
 // ---- helpers ----
@@ -89,8 +91,9 @@ const render_prometheus = (): string => {
 
 const create_monitoring_routes = (): Hono => {
   const app = new Hono()
+  const internal_auth = create_internal_auth_middleware(configs.internal_api_key)
 
-  // GET /status — minimal liveness + readiness check
+  // GET /status — minimal liveness + readiness check (public)
   app.get("/status", (c) => {
     const db_check = db_ping()
     const healthy = db_check.ok
@@ -110,8 +113,8 @@ const create_monitoring_routes = (): Hono => {
     return c.json(body, healthy ? 200 : 503)
   })
 
-  // GET /health — detailed health with system and app metrics
-  app.get("/health", (c) => {
+  // GET /monitor — detailed health with system and app metrics (internal only)
+  app.get("/monitor", internal_auth, (c) => {
     const db_check = db_ping()
     const snap = registry.snapshot()
     const mem = process.memoryUsage()
@@ -149,10 +152,10 @@ const create_monitoring_routes = (): Hono => {
     return c.json(body, db_check.ok ? 200 : 503)
   })
 
-  // GET /metrics — Prometheus text exposition format 0.0.4
+  // GET /metrics — Prometheus text exposition format 0.0.4 (internal only)
   // Compatible with all Prometheus versions without content negotiation.
   // Ref: https://prometheus.io/docs/instrumenting/exposition_formats/
-  app.get("/metrics", (c) => {
+  app.get("/metrics", internal_auth, (c) => {
     return c.text(render_prometheus(), 200, {
       "Content-Type": "text/plain; version=0.0.4; charset=utf-8",
     })

@@ -280,6 +280,12 @@ DOKPLOY_DEV_AK = QijsEsUKjjDfOgaRqJqMiDwKJBEHuQbknlCzXlGsPRiLgpvSNeLAjPKJiFFneWJ
 # Find it in the Dokploy UI under the Compose service details.
 COMPOSE_ID = 8QN5h7nSk92SSSgWCJGlO
 
+# Internal API key for rsvr — used to access /monitor and /metrics endpoints.
+# Must match the --internal_api_key passed to rsvr on startup.
+# Default here matches the compose file default (INTERNAL_API_KEY in environment).
+# This is a development key; production should use environment secrets.
+RSVR_INTERNAL_AK = mock_internal_api_key
+
 .PHONY: deploy
 deploy: build_images ## Build Docker images locally, then deploy to Dokploy
 	@if [ -z "$(COMPOSE_ID)" ]; then echo "Error: COMPOSE_ID is not set."; exit 1; fi
@@ -318,11 +324,21 @@ api_status: ## Show recent deployments for the rsvr compose service
 #
 # Hostnames come from the Dokploy-injected traefik labels in the compose file.
 
-.PHONY: curl_rsvr_health
-curl_rsvr_health: ## Test rsvr /health endpoint via Traefik (localhost:3001 with Host header)
-	curl --verbose \
-		--header "Host: rsvr-backend-achoqq-edd390-172-253-228-153.traefik.me" \
-		http://localhost:3001/rsvr/health
+.PHONY: curl_rsvr_status
+curl_rsvr_status: ## Test rsvr /status endpoint (exec inside container, localhost)
+	podman exec rsvr curl --verbose http://localhost:3000/status
+
+.PHONY: curl_rsvr_monitor
+curl_rsvr_monitor: ## Test rsvr /monitor endpoint (exec inside container, localhost + auth)
+	podman exec rsvr curl --verbose \
+		--header "x-internal-api-key: $(RSVR_INTERNAL_AK)" \
+		http://localhost:3000/monitor
+
+.PHONY: curl_rsvr_metrics
+curl_rsvr_metrics: ## Test rsvr /metrics endpoint (exec inside container, localhost + auth)
+	podman exec rsvr curl --verbose \
+		--header "x-internal-api-key: $(RSVR_INTERNAL_AK)" \
+		http://localhost:3000/metrics
 
 .PHONY: curl_whap_status
 # NOTE: whap /status currently returns 404 — Traefik routing to the whap
@@ -333,8 +349,11 @@ curl_whap_health: ## Test whap /health endpoint via Traefik
 		--header "Host: rsvr-backend-achoqq-a3fc6a-172-253-228-153.traefik.me" \
 		http://localhost:3001/whap/health
 
+.PHONY: test_rsvr_monitor
+test_rsvr_monitor: curl_rsvr_status curl_rsvr_monitor curl_rsvr_metrics ## Test all rsvr monitoring endpoints (/status, /monitor, /metrics)
+
 .PHONY: test_both
-test_both: curl_rsvr_health curl_whap_status ## Test both rsvr /health and whap /status endpoints
+test_both: curl_rsvr_monitor curl_whap_status ## Test both rsvr /monitor and whap /status endpoints
 
 .PHONY: curl_whap_simulate_message
 curl_whap_simulate_message: ## Simulate a text message via whap /mock/simulate-message (podman exec)

@@ -5,6 +5,7 @@ import { logger } from "../shared/logger"
 const REDACTED_HEADERS = new Set([
   "authorization",
   "x-api-key",
+  "x-internal-api-key",
   "cookie",
   "set-cookie",
   "x-hub-signature",

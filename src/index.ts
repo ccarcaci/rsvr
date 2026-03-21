@@ -34,7 +34,7 @@ logger.info("Whatsapp routes registered")
 //  --
 
 app.route("/", monitoring_routes)
-logger.info("Monitoring routes registered (/status, /health, /metrics)")
+logger.info("Monitoring routes registered (/status, /monitor, /metrics)")
 
 //  --
 
