@@ -150,20 +150,20 @@ export const create_reservation = (
   return run_transaction.immediate()
 }
 
-export const cancel_reservation = (reservation_id: number): boolean => {
+export const cancel_reservation = (user_id: number, reservation_id: number): boolean => {
   const reservation = get_db()
-    .query<reservation_row_type, [number]>(
-      "SELECT * FROM reservations WHERE id = ? AND status = 'confirmed'",
+    .query<reservation_row_type, [number, number]>(
+      "SELECT * FROM reservations WHERE id = ? AND user_id = ? AND status = 'confirmed'",
     )
-    .get(reservation_id)
+    .get(reservation_id, user_id)
 
   if (!reservation) return false
 
   get_db()
     .query(
-      "UPDATE reservations SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?",
+      "UPDATE reservations SET status = 'cancelled', updated_at = datetime('now') WHERE id = ? AND user_id = ?",
     )
-    .run(reservation_id)
+    .run(reservation_id, user_id)
   get_db()
     .query("UPDATE time_slots SET booked = booked - ? WHERE id = ?")
     .run(reservation.party_size, reservation.time_slot_id)

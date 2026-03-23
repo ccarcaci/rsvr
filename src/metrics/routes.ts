@@ -4,7 +4,7 @@ import { get_db } from "../db/client"
 import { create_internal_auth_middleware } from "../middleware/internal_auth"
 import { registry } from "./registry"
 
-// ---- helpers ----
+//  --
 
 const db_ping = (): { ok: boolean; error?: string } => {
   try {
@@ -87,7 +87,7 @@ const render_prometheus = (): string => {
   return lines.join("\n")
 }
 
-// ---- routes ----
+//  --
 
 const create_monitoring_routes = (): Hono => {
   const app = new Hono()

@@ -12,7 +12,7 @@ export const handle_message = async (
 
   if (!text && message.voice_buffer) {
     text = await transcribe_audio(message.voice_buffer, message.voice_mime_type ?? "audio/ogg")
-    logger.info("Transcribed voice note", { text, sender: message.sender_id })
+    logger.info("Transcribed voice note", { sender: message.sender_id })
   }
 
   if (!text) {

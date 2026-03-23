@@ -214,6 +214,89 @@ describe("tool_handlers", () => {
       //  --  assert
       expect(received_party_size).toBe(1)
     })
+
+    test("accepts_notes_at_exactly_500_characters", () => {
+      //  --  arrange
+      const notes_500 = "a".repeat(500)
+
+      //  --  act
+      const result = handlers.handle_create_booking(1, 1000000, {
+        slot_id: 42,
+        domain: "restaurant",
+        party_size: 1,
+        notes: notes_500,
+      })
+
+      //  --  assert
+      expect(result.ok).toBe(true)
+    })
+
+    test("rejects_notes_exceeding_500_characters", () => {
+      //  --  arrange
+      const notes_501 = "a".repeat(501)
+
+      //  --  act
+      const result = handlers.handle_create_booking(1, 1000000, {
+        slot_id: 42,
+        domain: "restaurant",
+        party_size: 1,
+        notes: notes_501,
+      })
+
+      //  --  assert
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.error).toContain("Notes must not exceed 500 characters")
+        expect(result.error).toContain("501")
+      }
+    })
+
+    test("accepts_notes_under_500_characters", () => {
+      //  --  arrange
+      const notes_100 = `${"short notes here".repeat(6)} extra`
+
+      //  --  act
+      const result = handlers.handle_create_booking(1, 1000000, {
+        slot_id: 42,
+        domain: "restaurant",
+        party_size: 1,
+        notes: notes_100,
+      })
+
+      //  --  assert
+      expect(result.ok).toBe(true)
+    })
+
+    test("accepts_empty_notes", () => {
+      //  --  arrange
+      // (no additional setup)
+
+      //  --  act
+      const result = handlers.handle_create_booking(1, 1000000, {
+        slot_id: 42,
+        domain: "restaurant",
+        party_size: 1,
+        notes: "",
+      })
+
+      //  --  assert
+      expect(result.ok).toBe(true)
+    })
+
+    test("accepts_undefined_notes", () => {
+      //  --  arrange
+      // (no additional setup)
+
+      //  --  act
+      const result = handlers.handle_create_booking(1, 1000000, {
+        slot_id: 42,
+        domain: "restaurant",
+        party_size: 1,
+      })
+
+      //  --  assert
+      expect(result.ok).toBe(true)
+    })
   })
 
   describe("handle_list_bookings", () => {

@@ -42,6 +42,8 @@ const try_check_availability = (
   }
 }
 
+//  --
+
 export const handle_check_availability = (
   input: check_availability_input_type,
 ): tool_result_type => {
@@ -68,6 +70,8 @@ export const handle_check_availability = (
 
   return try_check_availability(domain, date, time, party_size)
 }
+
+//  --
 
 const try_create_booking = (
   user_id: number,
@@ -112,6 +116,8 @@ const try_create_booking = (
   }
 }
 
+//  --
+
 export const handle_create_booking = (
   user_id: number,
   current_time_ms: number,
@@ -130,8 +136,19 @@ export const handle_create_booking = (
     return { ok: false, error: "Party size must be at least 1." }
   }
 
+  // Validate notes length to prevent unbounded storage and LLM-generated text exploitation
+  const MAX_NOTES_LENGTH = 500
+  if (notes && notes.length > MAX_NOTES_LENGTH) {
+    return {
+      ok: false,
+      error: `Notes must not exceed ${MAX_NOTES_LENGTH} characters (provided: ${notes.length}).`,
+    }
+  }
+
   return try_create_booking(user_id, slot_id, party_size, current_time_ms, domain, notes)
 }
+
+//  --
 
 export const handle_list_bookings = (
   user_id: number,
@@ -158,6 +175,8 @@ export const handle_list_bookings = (
   }
 }
 
+//  --
+
 export const handle_get_booking = (
   _user_id: number,
   _input: get_booking_input_type,
@@ -165,12 +184,36 @@ export const handle_get_booking = (
   return { ok: false, error: "get_booking is not yet implemented." }
 }
 
+//  --
+
 export const handle_cancel_booking = (
-  _user_id: number,
-  _input: cancel_booking_input_type,
+  user_id: number,
+  input: cancel_booking_input_type,
 ): tool_result_type => {
-  return { ok: false, error: "cancel_booking is not yet implemented." }
+  const { reservation_id } = input
+
+  try {
+    const cancelled = queries.cancel_reservation(user_id, reservation_id)
+    if (!cancelled) {
+      return {
+        ok: false,
+        error: "Reservation not found or already cancelled. Only the reservation owner can cancel.",
+      }
+    }
+    return {
+      ok: true,
+      data: {
+        reservation_id,
+        status: "cancelled",
+      },
+    }
+  } catch (err) {
+    logger.error("cancel_booking failed", { err: String(err), user_id, reservation_id })
+    return { ok: false, error: "Failed to cancel booking. Please try again." }
+  }
 }
+
+//  --
 
 export const handle_reschedule_booking = (
   _user_id: number,

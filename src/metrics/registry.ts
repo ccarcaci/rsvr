@@ -31,7 +31,7 @@ const observe_latency = (histogram: latency_histogram_type, value_ms: number): v
   }
 }
 
-// ---- counters ----
+//  --
 
 type request_counters_type = {
   total: number
@@ -49,14 +49,14 @@ const make_request_counters = (): request_counters_type => ({
   errors: 0,
 })
 
-// ---- registry state ----
+//  --
 
 const started_at = Date.now()
 
 const http_requests = make_request_counters()
 const http_latency = make_histogram()
 
-// ---- public API ----
+//  --
 
 export const registry = {
   record_request: (method: string, path: string, status: number, duration_ms: number): void => {

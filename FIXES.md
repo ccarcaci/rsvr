@@ -109,21 +109,28 @@
 - **Verification:** Network boundary enforced first (localhost check), then API key with timing-safe comparison
 
 ### Missing Input Validation for Edge Cases
-- **Issue:** `notes` field has no length limit (passed from LLM directly to database)
-- **Fix:** Cap notes to 500 characters in `handle_create_booking()`; add SQLite CHECK constraint
-- **Effort:** ~5 minutes
+- **Status:** ✅ FIXED
+- **What was done:**
+  1. ✅ Added input validation in `src/agent/tool_handlers.ts:134-140` to cap notes at 500 characters
+  2. ✅ Added SQLite CHECK constraint in `src/db/schema.sql` to enforce at database level: `notes TEXT CHECK (length(notes) <= 500)`
+  3. ✅ Error message returned to user if validation fails
+- **Defense-in-depth:** Both application-level and database-level validation ensures unbounded notes cannot be stored
 
 ### Missing `cancel_reservation` Ownership Check
-- **Location:** `src/db/queries.ts` (not yet reviewed when unimplemented)
-- **Issue:** `cancel_reservation` takes only `reservation_id`; missing `user_id` ownership check
-- **Fix:** Add `AND user_id = ?` clause before implementing `handle_cancel_booking`
-- **Effort:** ~5 minutes
+- **Status:** ✅ FIXED
+- **What was done:**
+  1. ✅ Updated `cancel_reservation()` in `src/db/queries.ts` to accept `user_id` parameter
+  2. ✅ Added `AND user_id = ?` ownership check in SELECT query to verify ownership before cancellation
+  3. ✅ Added `AND user_id = ?` in UPDATE query for defense-in-depth (prevents accidental updates if SELECT bypassed)
+  4. ✅ Implemented `handle_cancel_booking()` in `src/agent/tool_handlers.ts` with full error handling
+- **Security model:** Only reservation owner can cancel their own reservations; non-owners or non-existent reservations return generic error
 
 ### Full Transcription Text Logged with PII
-- **Location:** `src/reservations/service.ts:12`
-- **Issue:** Logs phone number + transcription text at INFO level
-- **Fix:** Remove `text` field from log; use hash or last-4-digits of phone if correlation needed
-- **Effort:** ~5 minutes
+- **Status:** ✅ FIXED
+- **What was done:**
+  1. ✅ Removed `text` field from logger.info in `src/reservations/service.ts:15`
+  2. ✅ Log now only contains `{ sender: message.sender_id }` for correlation without exposing transcription content
+- **Impact:** Voice transcriptions are no longer exposed in logs; only non-sensitive correlation data is logged
 
 ---
 
@@ -149,17 +156,21 @@
 - **Fix:** Reorder parameters + update call sites (2 files, ~5 minutes)
 
 ### Missing Separator Comments
-- Missing `//  --` separators in:
-  - `src/agent/agent.ts` (between helpers and exported run_agent)
-  - `src/agent/session.ts` (between get_session and update_session)
-  - `src/agent/tool_handlers.ts` (between each handler)
-  - `src/shared/logger.ts` (between private log and exported logger object)
-  - `src/voice/transcribe.ts` (between exported transcribe_audio and private helpers)
-- **Fix:** Add missing separators (standardization; ~10 minutes)
+- **Status:** ✅ FIXED
+- **What was done:**
+  1. ✅ `src/agent/agent.ts` — Already had separator before `run_agent`
+  2. ✅ `src/agent/session.ts` — Already had separators in correct places
+  3. ✅ `src/agent/tool_handlers.ts` — Added separators between all 6 handlers (lines 46, 74, 118, 150, 182, 210)
+  4. ✅ `src/shared/logger.ts` — Already had separators in correct places
+  5. ✅ `src/voice/transcribe.ts` — Added separator before `extension_from_mime()` helper (line 20)
+- **Result:** All files now consistently use `//  --` separators to mark logical sections
 
 ### Incorrect Separator Style
-- `src/metrics/registry.ts` and `src/metrics/routes.ts` use `// ----` instead of `//  --`
-- **Fix:** Replace with correct style (~5 minutes)
+- **Status:** ✅ FIXED
+- **What was done:**
+  1. ✅ `src/metrics/registry.ts` — Replaced 3 instances of `// ---- ... ----` with `//  --`
+  2. ✅ `src/metrics/routes.ts` — Replaced 2 instances of `// ---- ... ----` with `//  --`
+- **Result:** All separator comments now use consistent `//  --` style per project guidelines
 
 ---
 

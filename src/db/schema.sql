@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS reservations (
   domain TEXT NOT NULL CHECK (domain IN ('restaurant', 'doctor', 'salon')),
   party_size INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL DEFAULT 'confirmed' CHECK (status IN ('confirmed', 'cancelled')),
-  notes TEXT,
+  notes TEXT CHECK (length(notes) <= 500),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
