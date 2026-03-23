@@ -26,14 +26,46 @@ const compare_api_keys = (provided: string | undefined, expected: string): boole
   }
 }
 
+const try_get_conn_info_address = (c: Context): string | null => {
+  // Try getConnInfo first (requires Bun server context, not available in tests)
+  // Dynamically import to avoid hard dependency on Bun runtime.
+  // This is the recommended approach from Hono for Bun adapter.
+  try {
+    const { getConnInfo } = require("hono/bun")
+    const conn_info = getConnInfo(c)
+    if (conn_info?.remote?.address) {
+      return conn_info.remote.address
+    }
+  } catch {
+    // getConnInfo not available or failed; return null to try fallback
+  }
+  return null
+}
+
+const get_socket_address = (c: Context): string | null => {
+  // Fallback: access the raw socket for testing and Bun environments
+  // where getConnInfo may not be available.
+  // remoteAddress is a property from the native Node.js/Bun socket interface
+  // and cannot be renamed to snake_case.
+  // biome-ignore lint/style/useNamingConvention: External API property from Node.js/Bun
+  const raw_request = c.req.raw as { socket?: { remoteAddress?: string } }
+  const socket = raw_request?.socket
+  return socket?.remoteAddress || null
+}
+
+const get_remote_address = (c: Context): string => {
+  // Try getConnInfo first, then socket, then return unknown
+  return try_get_conn_info_address(c) || get_socket_address(c) || "unknown"
+}
+
 export const create_internal_auth_middleware = (internal_api_key: string): MiddlewareHandler => {
   return async (c: Context, next) => {
     // Check localhost-only. Use ONLY the direct connection address, never trust
     // X-Forwarded-For header for security-sensitive endpoints. X-Forwarded-For can
     // be spoofed by attackers to bypass network restrictions.
-    // In Bun, the socket.remoteAddress is on the raw request object.
-    const socket = (c.req.raw as any)?.socket
-    const remote_addr = socket?.remoteAddress || "unknown"
+    // Uses get_remote_address which tries getConnInfo (Hono Bun helper) and
+    // falls back to raw socket access for compatibility with tests.
+    const remote_addr = get_remote_address(c)
 
     const is_localhost =
       remote_addr === "127.0.0.1" ||

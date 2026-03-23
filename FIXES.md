@@ -93,10 +93,20 @@
 ## 🟠 High-Priority Concerns
 
 ### Missing Monitoring Endpoint Authentication
-- **Locations:** `src/metrics/routes.ts:86-162` (/monitor, /status, /metrics)
-- **Issue:** No authentication; exposes memory usage, error messages, request paths
-- **Fix:** Gate behind `internal_api_key` middleware (consistent with REST API auth)
-- **Effort:** ~10 minutes
+- **Status:** ✅ FIXED
+- **What was done:**
+  1. ✅ Created `src/middleware/internal_auth.ts` with localhost + API key authentication
+  2. ✅ Applied middleware to protected endpoints: `/monitor` and `/metrics`
+  3. ✅ Left `/status` public for healthchecks (basic liveness only)
+  4. ✅ Implemented timing-safe API key comparison to prevent timing attacks
+  5. ✅ Added 14 security tests covering localhost checks, API key validation, header spoofing attacks
+  6. ✅ Integrated Hono's `getConnInfo` helper with socket fallback for tests
+  7. ✅ Extracted try-catch blocks per project style guidelines
+- **Security model:**
+  - `/status` → Public (no auth) — Basic database ping
+  - `/monitor` → Protected (localhost + API key) — Detailed metrics
+  - `/metrics` → Protected (localhost + API key) — Prometheus format
+- **Verification:** Network boundary enforced first (localhost check), then API key with timing-safe comparison
 
 ### Missing Input Validation for Edge Cases
 - **Issue:** `notes` field has no length limit (passed from LLM directly to database)

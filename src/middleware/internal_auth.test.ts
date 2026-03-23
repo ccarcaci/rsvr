@@ -4,7 +4,7 @@ import { create_internal_auth_middleware } from "./internal_auth"
 
 describe("internal_auth middleware", () => {
   const VALID_API_KEY = "test_secret_key_12345"
-  let middleware: (c: Context, next: () => Promise<void>) => Promise<void | Response>
+  let middleware: (c: Context, next: () => Promise<void>) => Promise<undefined | Response>
   let mock_next: ReturnType<typeof mock>
 
   beforeEach(() => {
@@ -131,7 +131,7 @@ describe("internal_auth middleware", () => {
       const context = create_mock_context("192.168.1.100", VALID_API_KEY)
       let response_status: number | undefined
 
-      context.text = (message: string, status: number) => {
+      context.text = (_message: string, status: number) => {
         response_status = status
         return new Response()
       }
@@ -149,7 +149,7 @@ describe("internal_auth middleware", () => {
       const context = create_mock_context("8.8.8.8", VALID_API_KEY)
       let response_status: number | undefined
 
-      context.text = (message: string, status: number) => {
+      context.text = (_message: string, status: number) => {
         response_status = status
         return new Response()
       }
@@ -167,7 +167,7 @@ describe("internal_auth middleware", () => {
       const context = create_mock_context("10.0.0.1", undefined)
       let response_status: number | undefined
 
-      context.text = (message: string, status: number) => {
+      context.text = (_message: string, status: number) => {
         response_status = status
         return new Response()
       }
@@ -187,7 +187,7 @@ describe("internal_auth middleware", () => {
       const context = create_mock_context("unknown", VALID_API_KEY)
       let response_status: number | undefined
 
-      context.text = (message: string, status: number) => {
+      context.text = (_message: string, status: number) => {
         response_status = status
         return new Response()
       }
@@ -205,7 +205,7 @@ describe("internal_auth middleware", () => {
       const context = create_mock_context("127.0.0.1", "")
       let response_status: number | undefined
 
-      context.text = (message: string, status: number) => {
+      context.text = (_message: string, status: number) => {
         response_status = status
         return new Response()
       }
@@ -223,7 +223,7 @@ describe("internal_auth middleware", () => {
       const context = create_mock_context("127.0.0.1", "TEST_SECRET_KEY_12345")
       let response_status: number | undefined
 
-      context.text = (message: string, status: number) => {
+      context.text = (_message: string, status: number) => {
         response_status = status
         return new Response()
       }
