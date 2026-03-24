@@ -142,7 +142,7 @@ const whatsapp_messages_handler = (messages: whatsapp_message_type[], contact?: 
     if (msg.type === "text" && msg.text) {
       incoming.text = msg.text.body
     } else if (msg.type === "audio" && msg.audio) {
-      const voice = await download_voice_note(whatsapp_client, msg.audio.id)
+      const voice = await download_voice_note(msg.audio.id, whatsapp_client)
       incoming.voice_buffer = voice.buffer
       incoming.voice_mime_type = voice.mime_type
     }

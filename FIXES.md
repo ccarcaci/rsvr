@@ -137,23 +137,27 @@
 ## 📋 Medium-Priority Improvements
 
 ### Code Duplication
-1. **Domain validation guard** — Repeated in `handle_check_availability()` and `handle_create_booking()`
-   - Fix: Extract `const INVALID_DOMAIN_ERROR = (domain: string) => "Invalid domain..."`
-   - Effort: ~3 minutes
-
-2. **Party-size validation** — Repeated in two handlers
-   - Fix: Extract `const INVALID_PARTY_SIZE_ERROR = "Party size must be..."`
-   - Effort: ~2 minutes
+- **Status:** ✅ FIXED
+- **What was done:**
+  1. ✅ `src/agent/tool_handlers.ts` — Extracted `INVALID_DOMAIN_ERROR` helper function (line 47)
+  2. ✅ `src/agent/tool_handlers.ts` — Extracted `INVALID_PARTY_SIZE` constant (line 52)
+  3. ✅ Both helpers now used in `handle_check_availability()` and `handle_create_booking()` to eliminate duplication
+- **Result:** Domain and party-size validation logic consolidated into reusable helpers
 
 ### Dead Code
-- **`src/parser/intent.ts`** — Legacy intent parser; unused (replaced by Claude Opus agent)
-- **`src/agent/queries.ts`** — ✅ REMOVED (duplicate `get_slot_by_id` — fixed in critical #5)
-- Decision: Mark for removal after confirming no production imports
+- **Status:** ✅ FIXED
+- **What was done:**
+  1. ✅ `src/parser/intent.ts` — Deleted (legacy intent parser replaced by Claude Opus agent)
+  2. ✅ `src/parser/intent.test.ts` — Deleted (associated test file)
+  3. ✅ `src/agent/queries.ts` — Already removed (duplicate `get_slot_by_id`)
+- **Result:** No dead code remains; legacy parser fully replaced
 
 ### Parameter Order Violations (Style)
-- **`src/channels/whatsapp/media.ts`** — Argument order: client before media_id (should be reversed)
-- **`src/channels/telegram/media.ts`** — Argument order: api before file_id (should be reversed)
-- **Fix:** Reorder parameters + update call sites (2 files, ~5 minutes)
+- **Status:** ✅ FIXED
+- **What was done:**
+  1. ✅ `src/channels/whatsapp/media.ts` — Parameters reordered: `(media_id: string, client: whatsapp_client_type)` (string before complex type)
+  2. ✅ `src/channels/telegram/media.ts` — Parameters reordered: `(file_id: string, api: Api)` (string before complex type)
+- **Result:** All function signatures now follow project parameter order convention (primitives before complex types)
 
 ### Missing Separator Comments
 - **Status:** ✅ FIXED

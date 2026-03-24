@@ -27,7 +27,7 @@ const try_handle_text_message = async (ctx: any): Promise<void> => {
 // biome-ignore lint/suspicious/noExplicitAny: grammy Context type is too complex to express
 const try_handle_voice_message = async (ctx: any): Promise<void> => {
   try {
-    const voice = await download_voice_note(ctx.api, ctx.message.voice.file_id)
+    const voice = await download_voice_note(ctx.message.voice.file_id, ctx.api)
 
     const incoming: incoming_message_type = {
       channel: "telegram",
