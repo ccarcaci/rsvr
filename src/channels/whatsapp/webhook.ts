@@ -25,6 +25,14 @@ type whatsapp_message_type = {
 
 type whatsapp_contact_type = { profile: { name: string } }
 
+const MAX_WEBHOOK_BODY_SIZE = 5 * 1024 * 1024 // 5MB
+const MAX_MESSAGES_PER_SENDER_PER_MINUTE = 60 // Rate limit: max 60 messages per sender per minute
+const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
+const MAX_RATE_LIMIT_CACHE_SIZE = 10000 // LRU eviction when exceeds this
+
+type sender_rate_limit_entry = { count: number; window_start_ms: number }
+const sender_rate_limits = new Map<string, sender_rate_limit_entry>()
+
 const try_parse_webhook_body = (
   raw_body: string,
 ): { entry?: whatsapp_webhook_entry_type[] } | null => {
@@ -36,14 +44,14 @@ const try_parse_webhook_body = (
   }
 }
 
-const try_handle_whatsapp_messages = (
+const try_handle_whatsapp_messages = async (
   messages: whatsapp_message_type[],
   contact: string | undefined,
-): void => {
+): Promise<void> => {
   try {
-    whatsapp_messages_handler(messages, contact)
+    await whatsapp_messages_handler(messages, contact)
   } catch (err) {
-    logger.error("Error processing WhatsApp message", { error: err })
+    logger.error("Error processing WhatsApp messages batch", { error: err })
   }
 }
 
@@ -58,8 +66,32 @@ const create_whatsapp_routes = (): Hono => {
   })
 
   app.post("/webhook/whatsapp", async (c) => {
+    // Check Content-Length header before reading body to prevent memory exhaustion
+    const content_length_str = c.req.header("Content-Length")
+    if (!content_length_str) {
+      logger.warn("WhatsApp webhook: missing Content-Length header")
+      return c.text("Bad Request", 400)
+    }
+
+    const content_length = parseInt(content_length_str, 10)
+    if (Number.isNaN(content_length) || content_length > MAX_WEBHOOK_BODY_SIZE) {
+      logger.warn(
+        `WhatsApp webhook: request body too large (${content_length} bytes, limit ${MAX_WEBHOOK_BODY_SIZE})`,
+      )
+      return c.text("Payload Too Large", 413)
+    }
+
     // Read raw body once — required for signature verification before JSON parsing.
     const raw_body = await c.req.text()
+
+    // Defense-in-depth: verify actual body size matches Content-Length header
+    // (protects against attacker tampering with header)
+    if (raw_body.length !== content_length) {
+      logger.warn(
+        `WhatsApp webhook: Content-Length mismatch (header: ${content_length}, actual: ${raw_body.length})`,
+      )
+      return c.text("Bad Request", 400)
+    }
 
     if (!verify_whatsapp_signature(c.req.header("X-Hub-Signature-256"), raw_body)) {
       logger.warn("WhatsApp webhook: signature verification failed")
@@ -81,7 +113,7 @@ const create_whatsapp_routes = (): Hono => {
     const contact = messages_values[0]?.contacts?.[0]?.profile.name
     const messages = messages_values.flatMap((mv) => mv.messages) as whatsapp_message_type[] // undefined messages have been filtered out above
 
-    try_handle_whatsapp_messages(messages, contact)
+    await try_handle_whatsapp_messages(messages, contact)
     return c.json({ status: "ok" })
   })
 
@@ -96,7 +128,14 @@ const whatsapp_verify_challenge = (
   token?: string,
   challenge?: string,
 ) => {
-  if (mode !== "subscribe" || token !== configs.whatsapp_verify_token || challenge === undefined) {
+  if (mode !== "subscribe" || challenge === undefined) {
+    return c.text("Forbidden", 403)
+  }
+
+  // Verify token using timing-safe comparison to prevent timing attacks
+  const token_match =
+    token && timingSafeEqual(Buffer.from(token), Buffer.from(configs.whatsapp_verify_token))
+  if (!token_match) {
     return c.text("Forbidden", 403)
   }
 
@@ -115,23 +154,76 @@ const verify_whatsapp_signature = (header: string | undefined, raw_body: string)
   if (!header.startsWith(prefix)) return false
   const received_hex = header.slice(prefix.length)
 
+  // Validate hex format: must be exactly 64 valid hex characters (SHA256 is 256 bits = 64 hex chars)
+  const hex_pattern = /^[0-9a-f]{64}$/i
+  if (!hex_pattern.test(received_hex)) return false
+
   const hasher = new Bun.CryptoHasher("sha256", configs.whatsapp_app_secret)
   hasher.update(raw_body)
-  const computed_hex = hasher.digest("hex")
 
-  // timingSafeEqual requires equal-length buffers — a length mismatch would
-  // itself reveal information, so we reject before calling it.
-  if (received_hex.length !== computed_hex.length) return false
-
+  // Compare binary directly (avoid hex string allocation and round-trip conversion)
+  // received_hex is validated to be exactly 64 valid hex characters
   const received_buf = Buffer.from(received_hex, "hex")
-  const computed_buf = Buffer.from(computed_hex, "hex")
+  const computed_digest = hasher.digest() // digest() returns Uint8Array of raw bytes
+  const computed_buf = Buffer.from(
+    computed_digest.buffer,
+    computed_digest.byteOffset,
+    computed_digest.byteLength,
+  )
 
   return timingSafeEqual(received_buf, computed_buf)
 }
 
-const whatsapp_messages_handler = (messages: whatsapp_message_type[], contact?: string) => {
-  const current_time_ms = Date.now()
-  messages?.forEach(async (msg) => {
+//  --
+
+const evict_oldest_rate_limit_entry = (): void => {
+  let oldest_sender_id: string | null = null
+  let oldest_time = Infinity
+
+  for (const [sender_id, entry] of sender_rate_limits) {
+    if (entry.window_start_ms < oldest_time) {
+      oldest_time = entry.window_start_ms
+      oldest_sender_id = sender_id
+    }
+  }
+
+  if (oldest_sender_id) {
+    sender_rate_limits.delete(oldest_sender_id)
+  }
+}
+
+const check_rate_limit = (sender_id: string, current_time_ms: number): boolean => {
+  const existing = sender_rate_limits.get(sender_id)
+
+  // No entry or window expired — start new window
+  if (!existing || current_time_ms - existing.window_start_ms >= RATE_LIMIT_WINDOW_MS) {
+    // Evict oldest entry if cache at max size (LRU eviction)
+    if (sender_rate_limits.size >= MAX_RATE_LIMIT_CACHE_SIZE && !existing) {
+      evict_oldest_rate_limit_entry()
+    }
+
+    sender_rate_limits.set(sender_id, { count: 1, window_start_ms: current_time_ms })
+    return true
+  }
+
+  // Within window — check if under limit
+  if (existing.count < MAX_MESSAGES_PER_SENDER_PER_MINUTE) {
+    existing.count += 1
+    return true
+  }
+
+  // Limit exceeded
+  return false
+}
+
+//  --
+
+const try_process_single_message = async (
+  msg: whatsapp_message_type,
+  contact: string | undefined,
+  current_time_ms: number,
+): Promise<void> => {
+  try {
     const incoming: incoming_message_type = {
       channel: "whatsapp",
       sender_id: msg.from,
@@ -149,7 +241,29 @@ const whatsapp_messages_handler = (messages: whatsapp_message_type[], contact?: 
 
     const reply = await handle_message(incoming, current_time_ms)
     await whatsapp_client.send_text_message(msg.from, reply)
-  })
+  } catch (err) {
+    logger.error(`Error processing WhatsApp message from ${msg.from}`, { error: err })
+  }
+}
+
+//  --
+
+const whatsapp_messages_handler = async (
+  messages: whatsapp_message_type[],
+  contact?: string,
+): Promise<void> => {
+  const current_time_ms = Date.now()
+
+  // Process messages sequentially with bounded concurrency
+  for (const msg of messages ?? []) {
+    // Check rate limit before processing
+    if (!check_rate_limit(msg.from, current_time_ms)) {
+      logger.warn(`WhatsApp: rate limit exceeded for sender ${msg.from}`)
+      continue
+    }
+
+    await try_process_single_message(msg, contact, current_time_ms)
+  }
 }
 
 //  --
