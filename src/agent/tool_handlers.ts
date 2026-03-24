@@ -44,16 +44,20 @@ const try_check_availability = (
 
 //  --
 
+const INVALID_DOMAIN_ERROR = (domain: string): tool_result_type => ({
+  ok: false,
+  error: `Invalid domain "${domain}". Must be one of: restaurant, doctor, salon.`,
+})
+
+const INVALID_PARTY_SIZE: tool_result_type = { ok: false, error: "Party size must be at least 1." }
+
 export const handle_check_availability = (
   input: check_availability_input_type,
 ): tool_result_type => {
   const { domain, date, time, party_size = 1 } = input
 
   if (!VALID_DOMAINS.includes(domain)) {
-    return {
-      ok: false,
-      error: `Invalid domain "${domain}". Must be one of: restaurant, doctor, salon.`,
-    }
+    return INVALID_DOMAIN_ERROR(domain)
   }
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -65,7 +69,7 @@ export const handle_check_availability = (
   }
 
   if (party_size < 1) {
-    return { ok: false, error: "Party size must be at least 1." }
+    return INVALID_PARTY_SIZE
   }
 
   return try_check_availability(domain, date, time, party_size)
@@ -126,14 +130,11 @@ export const handle_create_booking = (
   const { slot_id, domain, party_size = 1, notes } = input
 
   if (!VALID_DOMAINS.includes(domain)) {
-    return {
-      ok: false,
-      error: `Invalid domain "${domain}". Must be one of: restaurant, doctor, salon.`,
-    }
+    return INVALID_DOMAIN_ERROR(domain)
   }
 
   if (party_size < 1) {
-    return { ok: false, error: "Party size must be at least 1." }
+    return INVALID_PARTY_SIZE
   }
 
   // Validate notes length to prevent unbounded storage and LLM-generated text exploitation
