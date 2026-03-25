@@ -10,7 +10,6 @@ const service = await import("./service")
 
 describe("handle_message", () => {
   afterEach(() => {
-    mock.restore()
     mock.clearAllMocks()
   })
 

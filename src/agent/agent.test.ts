@@ -1,7 +1,4 @@
-import { describe, expect, mock, test } from "bun:test"
-
-// Clear any previous mocks from other test files before setting up our own
-mock.restore()
+import { afterAll, describe, expect, mock, test } from "bun:test"
 
 import { mock_anthropic_module, mock_tool_handlers_module } from "./mock"
 
@@ -13,8 +10,6 @@ mock.module("../parser/client/anthropic", () => ({
   }),
   init_anthropic_client: () => {},
 }))
-
-mock.module("./tool_handlers", () => mock_tool_handlers_module)
 
 const make_end_turn = (text: string) => ({
   content: [{ type: "text" as const, text }],
@@ -39,6 +34,10 @@ const make_tool_use = (tool_id: string, tool_name: string, input: Record<string,
 const agent = await import("./agent")
 
 describe("run_agent", () => {
+  afterAll(() => {
+    mock.clearAllMocks()
+  })
+
   test("returns_assistant_text_on_end_turn", async () => {
     //  --  arrange
     mock_anthropic_module.messages_create.mockImplementation(async () =>
