@@ -32,7 +32,7 @@ Exceptions:
 - **Constants**: CONSTANT_CASE allowed (`INTENT_SYSTEM_PROMPT`)
 - **External API properties**: camelCase allowed when matching third-party APIs (e.g. WhatsApp API `messaging_product`, Hono `c.req.query`)
 
-Types and interfaces also use snake_case: `incoming_message`, `user_row`, `reserve_intent`.
+Types and interfaces also use snake_case with `_type` suffix: `incoming_message_type`, `user_row_type`, `session_entry_type`.
 
 Enforced via Biome `useNamingConvention` rule.
 
@@ -67,9 +67,7 @@ bun run src/index.ts \
   ...
 ```
 
-For local development `make start` and `make dev` supply mock values via
-`MOCK_ARGS` in the Makefile. For production, pass real values directly on the
-command line or via Docker Compose variable substitution in the `command:` block.
+For production, pass real values directly on the command line or via Docker Compose variable substitution in the `command:` block.
 
 ### No ORM
 
@@ -126,9 +124,12 @@ src/
     whatsapp/           # Webhook + Cloud API client
     telegram/           # grammY bot
   voice/transcribe.ts   # OpenAI STT
-  parser/               # Intent extraction (legacy, being replaced)
-    intent.test.ts      # Parser tests
-  agent/                # Claude Opus tool_use loop (NEW)
+  parser/               # Intent extraction (legacy, not in use)
+    prompts.ts          # Intent extraction prompts
+    types.ts            # Intent types
+    client/
+      anthropic.ts      # Shared Anthropic SDK client
+  agent/                # Claude Opus tool_use loop
     agent.ts            # Agent entry point
     agent.test.ts       # Agent tests
     tools.ts            # 6 tool definitions
@@ -136,19 +137,21 @@ src/
     session.ts          # Session store (in-memory, TTL)
     types.ts            # Type definitions
     prompts.ts          # System prompt
-  api/                  # CRUD REST API (NEW)
-    bookings.ts         # Booking endpoints
-    middleware/
-      auth.ts           # API key middleware
-  calendar/             # Multi-calendar sync (NEW, Phase 2/3)
-    sync.ts             # Calendar sync hooks
-    adapters/
-      google.ts         # Google Calendar adapter (Phase 3)
-      m365.ts           # Microsoft 365 adapter (Phase 3)
+    mock.ts             # Test mocks
+  metrics/              # Monitoring (added during implementation)
+    registry.ts         # In-memory counters + histogram
+    middleware.ts       # Request metrics middleware
+    routes.ts           # /status, /health, /metrics endpoints
   reservations/         # Business logic
-    service.ts          # Reservation service
-  shared/logger.ts      # Logger
+    service.ts          # Message handling + agent invocation
+    types.ts            # Reservation types
+    mock.ts             # Service test mocks
+  shared/logger.ts      # Structured JSON logger
 ```
+
+**Planned but not yet created:**
+- `src/api/` — CRUD REST API (status: not implemented)
+- `src/calendar/` — Calendar sync stubs (status: not implemented)
 
 **Test co-location**: Tests live in the same directory as their implementations (e.g., `src/agent/agent.test.ts` alongside `src/agent/agent.ts`). Makefile runs `bun test $(SRC_DIR)/` to discover all `*.test.ts` files.
 
@@ -157,24 +160,28 @@ src/
 All commands are in the Makefile. Run `make help` to see all targets.
 
 ```bash
-make setup          # Full setup: check Bun version + install deps
-make install        # Install dependencies
-make check_version  # Verify Bun version matches .bun-version
-make start          # Start server
-make dev            # Start with watch mode
-make test           # Run Bun tests (bun test src/)
-make lint           # Biome lint check (src/)
-make format         # Biome auto-format (src/)
-make check          # Run lint + test together
-make clean          # Remove node_modules, *.db, data/, dist/
-make clean-all      # Clean everything including lockfile
+make setup              # Full setup: check Bun version + install deps
+make install            # Install dependencies
+make check_version      # Verify Bun version matches .bun-version
+make ci_test            # Run Bun tests (bun test src/)
+make test_debug         # Run tests with debugger (--inspect-brk)
+make lint               # Biome lint check (src/)
+make format             # Biome auto-format (src/)
+make check              # Run lint + test together
+make ci_check           # CI mode: check formatting + imports + lint (read-only)
+make ci_sec             # Security audit (bun audit --prod)
+make ci_fast            # Full CI: check_version + ci_check + ci_test + ci_sec
+make updates            # Check for dependency and Bun version updates
+make updates_changelog  # Updates with changelogs for outdated packages
+make clean              # Remove node_modules, *.db, data/, dist/
+make clean_all          # Clean everything including bun.lockb
 ```
 
-**Testing**: Uses Bun's native test runner. Tests are co-located with source files in `src/` (e.g., `src/agent/agent.test.ts`). To add mocks, register them in `bunfig.toml` under the `preload` array so they are available before test files import.
+**Testing**: Uses Bun's native test runner. Tests are co-located with source files in `src/` (e.g., `src/agent/agent.test.ts`). Mocks are registered using `mock.module()` calls inside the `describe` block, with dynamic `await import()` in `beforeAll` blocks.
 
 ## Bun Version
 
-Locked in `.bun-version`. Check with `make check-version`.
+Locked in `.bun-version`. Check with `make check_version`.
 Update: `bun upgrade --version <new_version>` then update `.bun-version`.
 
 ## Architecture: Multi-Calendar Integration Phased Approach
@@ -185,7 +192,7 @@ The system uses a phased rollout for external calendar support to minimize MVP c
 - **Phase 2**: Cal.com Cloud REST API as a multi-calendar proxy. Clients connect their Google Calendar, Outlook, or Apple Calendar to Cal.com; rsvr speaks to one REST API.
 - **Phase 3**: Native adapters for Google Calendar, Microsoft 365, and CalDAV (Apple, Nextcloud, Radicale) for clients who refuse Cal.com.
 
-See `@architecture/20260203_general_architecture.md` for full architectural design, including the 6 Claude Opus agent tools, CRUD REST API, session management, and security model.
+See `architecture/20260302_general_architecture.md` for full architectural design, including the 6 Claude Opus agent tools, CRUD REST API, session management, and security model.
 
 ## Infrastructure
 

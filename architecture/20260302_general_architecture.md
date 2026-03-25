@@ -37,21 +37,24 @@
 - Session store (`src/agent/session.ts`) — basic `Map<sender_key, session_entry>` with `get_session` / `update_session`
 - System prompt (`src/agent/prompts.ts`) — runtime date injection, domain list, 7 core rules
 - Agent types (`src/agent/types.ts`) — all input shapes and `tool_result_type`
-- Agent-specific queries (`src/agent/queries.ts`) — `get_slot_by_id`, `get_reservation_by_id` (user-scoped)
 - `service.ts` refactored to use `run_agent()` instead of Haiku-based intent parsing
-- `config/env.ts` includes `internal_api_key` as a required field
+- `config/args.ts` includes `internal_api_key` as a required field
 - Agent tests (`src/agent/agent.test.ts`) and tool handler tests (`src/agent/tool_handlers.test.ts`)
 - Mock infrastructure (`src/agent/mock.ts`)
 
 **Partially implemented:**
 
 - Tool handler `list_bookings` — works but returns `created_at` instead of appointment `date`/`time` (Bug #1 still open)
-- Session store — no TTL enforcement, no history cap (20-turn limit not implemented)
-- `create_booking` capacity re-check — queries slot before insert but not inside a single SQLite transaction (Bug #5 partially addressed)
+
+**Fully implemented:**
+
+- Session store — TTL enforcement (30 min inactivity), history cap (40 messages)
+- `create_booking` capacity re-check — wrapped in SQLite IMMEDIATE transaction
 
 **Not yet implemented:**
 
-- Tool handlers: `get_booking`, `cancel_booking`, `reschedule_booking` — return stub error strings
+- Tool handlers: `get_booking`, `reschedule_booking` — return stub error strings
+- Tool handler: `cancel_booking` — fully implemented with user_id scoping
 - CRUD REST API (`src/api/`) — directory does not exist
 - Calendar sync stubs (`src/calendar/`) — directory does not exist
 - Database indexes on `reservations` table
@@ -61,7 +64,7 @@
 
 - `list_bookings` tool has no filter parameters (`domain`, `from_date`, `to_date`) — the implementation accepts an empty object
 - Tool input uses `reservation_id` (not `booking_id`) for `get_booking`, `cancel_booking`, `reschedule_booking`
-- Monitoring system (`src/metrics/`) added: in-memory counters, latency histograms, Prometheus text exposition at `/metrics`, health checks at `/status` and `/health`
+- Monitoring system (`src/metrics/`) added: in-memory counters, latency histograms, Prometheus text exposition at `/metrics`, health checks at `/status` and `/health` (documented in Monitoring section below)
 - Legacy parser (`src/parser/`) still exists in the codebase alongside the agent; not removed
 - Anthropic SDK client is shared from `src/parser/client/anthropic.ts` (not agent-local)
 - Model is `claude-opus-4-5` (specific model ID, not the generic "Claude Opus" referenced in original doc)
@@ -123,7 +126,7 @@ flowchart TD
     DISPATCH -->|"tool_result"| CLAUDE
     CLAUDE -->|"stop_reason: end_turn"| REPLY[Natural language reply]
 
-    REPLY -->|WhatsApp| SEND_WA["send_text_message<br/>Graph API v21.0"]
+    REPLY -->|WhatsApp| SEND_WA["send_text_message<br/>Graph API v23.0"]
     REPLY -->|Telegram| SEND_TG["ctx.reply<br/>grammY"]
 ```
 
@@ -210,6 +213,7 @@ Without these indexes, every per-user query performs a full table scan on `reser
 ```ts
 export const run_agent = async (
   user_id: number,
+  current_time_ms: number,
   sender_key: string,
   text: string,
 ): Promise<string>
@@ -275,16 +279,18 @@ Six tools exported as `AGENT_TOOLS: Tool[]` (Anthropic SDK format):
 |----------------------|-----------------------------------------------------|-----------------|--------------------------------------------------|
 | `check_availability` | `domain`, `date`, `time`, `party_size?`             | Implemented     | Check slot, return `slot_id` or error            |
 | `create_booking`     | `slot_id`, `domain`, `party_size?`, `notes?`        | Implemented     | Create reservation after confirmed availability  |
-| `list_bookings`      | _(none)_                                            | Partial         | List caller's active reservations                |
+| `list_bookings`      | _(none)_                                            | Partial         | List caller's active reservations (missing date/time)   |
 | `get_booking`        | `reservation_id`                                    | Stub            | Get a single booking's full details              |
-| `cancel_booking`     | `reservation_id`                                    | Stub            | Cancel a reservation (user-scoped)               |
+| `cancel_booking`     | `reservation_id`                                    | Implemented     | Cancel a reservation (user-scoped)               |
 | `reschedule_booking` | `reservation_id`, `new_date`, `new_time`            | Stub            | Move to a new slot (atomic transaction)          |
 
 **Deviation from plan:** The original design specified `list_bookings` with optional `domain`, `from_date`, `to_date` filters and used `booking_id` for get/cancel/reschedule. The implementation uses no filters for `list_bookings` and uses `reservation_id` for the other tools.
 
 Notes on specific tools:
 
-- `create_booking`: The handler re-verifies slot capacity before creating the reservation by calling `get_slot_by_id` and checking `remaining < party_size`. However, this re-check is NOT inside a single SQLite transaction — a race condition is still theoretically possible between the check and the insert. See Bug #5.
+- `create_booking`: The handler re-verifies slot capacity before creating the reservation. The entire operation (check + insert + update slot) is wrapped in a SQLite IMMEDIATE transaction. See Bug #5 for resolution details.
+
+- `cancel_booking`: Now fully implemented with user_id scoping. Calls `queries.cancel_reservation(user_id, reservation_id)` with proper error handling.
 
 - `get_booking`: Not yet implemented. When implemented, must include `AND user_id = ?` in the query to prevent reading other users' bookings. The agent may hallucinate a `reservation_id`; ownership must always be verified in SQL.
 
@@ -295,7 +301,7 @@ Notes on specific tools:
 Each handler:
 - Accepts the tool input block from the Opus response.
 - Scopes every DB read and write to the caller's `user_id`.
-- Calls `db/queries.ts` or `agent/queries.ts` directly (no HTTP).
+- Calls `db/queries.ts` directly (no HTTP).
 - Returns a `tool_result_type` (discriminated union: `{ ok: true, data }` or `{ ok: false, error }`).
 
 **Implementation status:**
@@ -303,24 +309,19 @@ Each handler:
 | Handler                      | Status      | Notes                                                         |
 |------------------------------|-------------|---------------------------------------------------------------|
 | `handle_check_availability`  | Complete    | Validates domain, date format, time format, party_size >= 1   |
-| `handle_create_booking`      | Complete    | Re-checks capacity before insert (not transactional)          |
+| `handle_create_booking`      | Complete    | Re-checks capacity before insert within IMMEDIATE transaction |
 | `handle_list_bookings`       | Partial     | Returns reservations but missing `date`/`time` (Bug #1)       |
 | `handle_get_booking`         | Stub        | Returns `"get_booking is not yet implemented."`               |
-| `handle_cancel_booking`      | Stub        | Returns `"cancel_booking is not yet implemented."`            |
+| `handle_cancel_booking`      | Complete    | Fully implemented with user_id scoping                        |
 | `handle_reschedule_booking`  | Stub        | Returns `"reschedule_booking is not yet implemented."`        |
 
-Security invariant: the handler must verify ownership. The agent may hallucinate a `reservation_id` belonging to a different user. Every `cancel_booking`, `get_booking`, and `reschedule_booking` call must include `AND user_id = ?` in the query. The `get_reservation_by_id` query in `src/agent/queries.ts` already enforces this.
+Security invariant: the handler must verify ownership. The agent may hallucinate a `reservation_id` belonging to a different user. Every `get_booking` and `reschedule_booking` call must include `AND user_id = ?` in the query. The `cancel_booking` handler already enforces this via `cancel_reservation(user_id, reservation_id)`.
 
-### Query files
+### Query file
 
-There are two query files:
-
-| File                     | Purpose                                                         |
-|--------------------------|-----------------------------------------------------------------|
-| `src/db/queries.ts`      | Core data access: user CRUD, `check_availability`, `create_reservation`, `cancel_reservation`, `list_reservations`, `get_slot_by_id` |
-| `src/agent/queries.ts`   | Agent-specific queries: `get_slot_by_id` (duplicate), `get_reservation_by_id` (user-scoped) |
-
-Note: `get_slot_by_id` is duplicated across both files. The agent tool handlers import from both modules.
+Database queries are centralized in `src/db/queries.ts`:
+- Core data access: user CRUD, `check_availability`, `create_reservation`, `cancel_reservation`, `list_reservations`, `get_slot_by_id`
+- All agent tool handlers import from `../db/queries`
 
 ### Session store — `src/agent/session.ts`
 
@@ -328,11 +329,11 @@ In-memory `Map<sender_key, session_entry_type>` where `session_entry_type` holds
 - `history: MessageParam[]` — accumulated Anthropic message history
 - `last_active: number` — epoch ms
 
-**Implemented:** basic `get_session` (returns existing or creates fresh) and `update_session` (overwrites with new `last_active`).
-
-**Not implemented:**
-- History cap: 20 turns. Oldest turns should be dropped when exceeded. Currently history grows unbounded.
-- TTL: 30 minutes of inactivity should reset the session. Currently sessions live forever.
+**Implemented:**
+- `get_session` (returns existing or creates fresh)
+- `update_session` (overwrites with new `last_active`)
+- TTL enforcement: 30 minutes of inactivity resets the session via `evict_expired()` called on every access
+- History cap: 40 messages enforced in `update_session()`
 
 No SQLite persistence. Acceptable for a single-instance Dokploy deployment.
 
@@ -525,16 +526,17 @@ Phase 3 is a significant effort: OAuth callback handlers, token storage, refresh
 src/
   index.ts                        # Hono app, route registration, Telegram bot start
   config/
-    env.ts                        # Env var validation (all 8 required vars)
+    args.ts                       # CLI argument parsing (all 10 required args)
   db/
     schema.sql                    # SQLite schema (3 tables, no indexes)
     client.ts                     # bun:sqlite connection (WAL mode, foreign keys ON)
     queries.ts                    # Core SQL: user CRUD, availability, reservation CRUD
+    queries.test.ts               # Query tests
   channels/
     types.ts                      # incoming_message_type, outgoing_message_type, channel_type
     whatsapp/
       webhook.ts                  # Hono routes: GET verification, POST handler
-      client.ts                   # Graph API v21.0 client: send messages, download media
+      client.ts                   # Graph API v23.0 client: send messages, download media
       media.ts                    # Voice note download helper
     telegram/
       bot.ts                      # grammY bot: text + voice handlers
@@ -547,16 +549,14 @@ src/
     agent.ts                      # run_agent() — Opus tool_use loop
     agent.test.ts                 # Agent tests
     tools.ts                      # AGENT_TOOLS: Tool[] (6 tools, Anthropic SDK format)
-    tool_handlers.ts              # In-process tool implementations (3 complete, 3 stubs)
+    tool_handlers.ts              # In-process tool implementations (4 complete, 2 stubs)
     tool_handlers.test.ts         # Tool handler tests
-    session.ts                    # In-memory session store (Map, no TTL/cap)
-    queries.ts                    # Agent-specific SQL queries
+    session.ts                    # In-memory session store (Map, TTL, history cap)
+    session.test.ts               # Session store tests
     prompts.ts                    # System prompt builder
     types.ts                      # session_entry_type, tool input types, tool_result_type
     mock.ts                       # Test mocks
   parser/                         # LEGACY — no longer called from service.ts
-    intent.ts                     # Haiku-based intent extraction (claude-haiku-4-5-20251001)
-    intent.test.ts                # Parser tests
     prompts.ts                    # Intent extraction prompts
     types.ts                      # intent_type
     client/
@@ -567,10 +567,14 @@ src/
     service.test.ts               # Service tests
     types.ts                      # Reservation types
     mock.ts                       # Service test mocks
-  metrics/                        # NOT IN ORIGINAL PLAN — added during implementation
+  metrics/                        # Monitoring (added during implementation, see Monitoring section)
     registry.ts                   # In-memory counters + latency histogram
     middleware.ts                 # Hono middleware: records request metrics
     routes.ts                     # /status, /health, /metrics endpoints
+  middleware/
+    internal_auth.ts              # Internal API key middleware
+    internal_auth.test.ts         # Auth middleware tests
+    debug_request_logger.ts       # Debug logging for requests
   shared/
     logger.ts                     # Structured JSON logger (info/warn/error/debug)
 ```
@@ -609,13 +613,11 @@ Fix: add a JOIN on `time_slots` and return `time_slots.date` and `time_slots.tim
 
 `service.ts` no longer formats reservation lists directly. It delegates to `run_agent()`, which calls `handle_list_bookings`. However, `handle_list_bookings` still only returns `created_at` (see Bug #1), so the underlying data issue persists — it has moved from the service layer to the tool handler layer.
 
-### Bug #3 — `cancel_reservation`: no `user_id` scoping
+### Bug #3 — `cancel_reservation`: `user_id` scoping
 
-**Status: OPEN (not currently exploitable)**
+**Status: RESOLVED**
 
-`db/queries.ts`: `cancel_reservation(reservation_id)` fetches the reservation by ID only, without `user_id` scoping. However, the `cancel_booking` tool handler is a stub and does not call this function, so the bug is not currently reachable via the agent. It remains a risk if the CRUD REST API is built using this query without fixing it first.
-
-Fix: add `AND user_id = ?` to the query and pass `user_id` as a parameter.
+`db/queries.ts:153` now includes `user_id` scoping: `cancel_reservation(user_id: number, reservation_id: number)` performs both SELECT and UPDATE with `AND user_id = ?` in the WHERE clause. The `cancel_booking` tool handler is fully implemented and calls this function correctly.
 
 ### Bug #4 — No `reschedule_reservation` query
 
@@ -655,24 +657,24 @@ Fix: wrap the capacity re-check, INSERT, and UPDATE in a single `BEGIN`/`COMMIT`
 
 ## Environment Variables
 
-| Variable                          | Phase | Purpose                         | In `config/env.ts` |
-|-----------------------------------|-------|---------------------------------|--------------------|
-| `ANTHROPIC_API_KEY`               | 1     | Claude Opus agent               | Yes                |
-| `OPENAI_API_KEY`                  | 1     | Voice transcription             | Yes                |
-| `TELEGRAM_BOT_TOKEN`              | 1     | grammY                          | Yes                |
-| `WHATSAPP_VERIFY_TOKEN`           | 1     | Webhook verification            | Yes                |
-| `WHATSAPP_ACCESS_TOKEN`           | 1     | Cloud API                       | Yes                |
-| `WHATSAPP_PHONE_NUMBER_ID`        | 1     | Cloud API sender                | Yes                |
-| `INTERNAL_API_KEY`                | 1     | CRUD REST API auth              | Yes                |
-| `DATABASE_PATH`                   | 1     | SQLite file path (default: `./data/rsvr.db`) | Yes (optional) |
-| `PORT`                            | 1     | Server port (default: 3000)     | Yes (optional)     |
-| `LOG_LEVEL`                       | 1     | Logger level (default: `info`)  | No (read directly) |
-| `CALCOM_API_KEY`                  | 2     | Cal.com REST v2                 | No                 |
-| `CALCOM_RESTAURANT_EVENT_TYPE_ID` | 2     | Cal.com event type              | No                 |
-| `CALCOM_DOCTOR_EVENT_TYPE_ID`     | 2     | Cal.com event type              | No                 |
-| `CALCOM_SALON_EVENT_TYPE_ID`      | 2     | Cal.com event type              | No                 |
+| Variable                          | Phase | Purpose                                                       | Required |
+|-----------------------------------|-------|---------------------------------------------------------------|----------|
+| `PORT`                            | 1     | Server port (default: 3000)                                   | No       |
+| `TELEGRAM_BOT_TOKEN`              | 1     | grammY bot token                                              | Yes      |
+| `WHATSAPP_VERIFY_TOKEN`           | 1     | Webhook verification token                                    | Yes      |
+| `WHATSAPP_APP_SECRET`             | 1     | Webhook signature validation (HMAC-SHA256)                    | Yes      |
+| `WHATSAPP_ACCESS_TOKEN`           | 1     | Cloud API access token                                        | Yes      |
+| `WHATSAPP_PHONE_NUMBER_ID`        | 1     | Cloud API sender phone number ID                              | Yes      |
+| `ANTHROPIC_API_KEY`               | 1     | Claude Opus agent                                             | Yes      |
+| `OPENAI_API_KEY`                  | 1     | Voice transcription (gpt-4o-mini-transcribe)                  | Yes      |
+| `INTERNAL_API_KEY`                | 1     | CRUD REST API static key (x-api-key header)                   | Yes      |
+| `DATABASE_PATH`                   | 1     | SQLite file path (default: `./data/rsvr.db`)                  | No       |
+| `CALCOM_API_KEY`                  | 2     | Cal.com REST v2 (Phase 2)                                     | No       |
+| `CALCOM_RESTAURANT_EVENT_TYPE_ID` | 2     | Cal.com event type ID for restaurant domain (Phase 2)         | No       |
+| `CALCOM_DOCTOR_EVENT_TYPE_ID`     | 2     | Cal.com event type ID for doctor domain (Phase 2)             | No       |
+| `CALCOM_SALON_EVENT_TYPE_ID`      | 2     | Cal.com event type ID for salon domain (Phase 2)              | No       |
 
-All variables are passed via CLI at startup, not via `.env` files. Config supports both CLI flags (e.g., `--telegram_bot_token`) and environment variables (e.g., `TELEGRAM_BOT_TOKEN`), with CLI flags taking precedence.
+All variables are passed via CLI arguments at startup, not via `.env` files. Example: `bun run src/index.ts --port 3000 --telegram_bot_token xxx --anthropic_api_key xxx ...`. There is no environment variable fallback support.
 
 ---
 
