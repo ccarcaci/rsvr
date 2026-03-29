@@ -1,29 +1,16 @@
 import { timingSafeEqual } from "node:crypto"
-import { type Context, Hono } from "hono"
+import { type Context, Hono, type MiddlewareHandler } from "hono"
 import { configs } from "../../config/args"
 import { handle_message } from "../../reservations/service"
 import { logger } from "../../shared/logger"
 import type { incoming_message_type } from "../types"
 import { whatsapp_client } from "./client"
 import { download_voice_note } from "./media"
-
-type whatsapp_webhook_entry_type = {
-  changes: {
-    value: {
-      messages?: whatsapp_message_type[]
-      contacts?: whatsapp_contact_type[]
-    }
-  }[]
-}
-
-type whatsapp_message_type = {
-  from: string
-  type: string
-  text?: { body: string }
-  audio?: { id: string; mime_type: string }
-}
-
-type whatsapp_contact_type = { profile: { name: string } }
+import {
+  parse_whatsapp_webhook_body,
+  type whatsapp_message_schema_type,
+  type whatsapp_webhook_body_schema_type,
+} from "./schemas"
 
 const MAX_WEBHOOK_BODY_SIZE = 5 * 1024 * 1024 // 5MB
 const MAX_MESSAGES_PER_SENDER_PER_MINUTE = 60 // Rate limit: max 60 messages per sender per minute
@@ -33,39 +20,23 @@ const MAX_RATE_LIMIT_CACHE_SIZE = 10000 // LRU eviction when exceeds this
 type sender_rate_limit_entry = { count: number; window_start_ms: number }
 const sender_rate_limits = new Map<string, sender_rate_limit_entry>()
 
-const try_parse_webhook_body = (
-  raw_body: string,
-): { entry?: whatsapp_webhook_entry_type[] } | null => {
+type whatsapp_webhook_variables_type = { whatsapp_parsed_body: whatsapp_webhook_body_schema_type }
+
+const parse_and_validate_whatsapp_body = (raw_body: string): whatsapp_webhook_body_schema_type => {
+  let parsed: unknown
   try {
-    return JSON.parse(raw_body)
+    parsed = JSON.parse(raw_body)
   } catch {
     logger.warn("WhatsApp webhook: invalid JSON body")
-    return null
+    throw new Error("Invalid JSON")
   }
+
+  return parse_whatsapp_webhook_body(parsed)
 }
 
-const try_handle_whatsapp_messages = async (
-  messages: whatsapp_message_type[],
-  contact: string | undefined,
-): Promise<void> => {
-  try {
-    await whatsapp_messages_handler(messages, contact)
-  } catch (err) {
-    logger.error("Error processing WhatsApp messages batch", { error: err })
-  }
-}
-
-const create_whatsapp_routes = (): Hono => {
-  const app = new Hono()
-
-  app.get("/webhook/whatsapp", (c) => {
-    const mode = c.req.query("hub.mode")
-    const token = c.req.query("hub.verify_token")
-    const challenge = c.req.query("hub.challenge")
-    return whatsapp_verify_challenge(c, mode, token, challenge)
-  })
-
-  app.post("/webhook/whatsapp", async (c) => {
+const create_whatsapp_body_validation_middleware =
+  // biome-ignore lint/style/useNamingConvention: Variables is defined in Hono
+  (): MiddlewareHandler<{ Variables: whatsapp_webhook_variables_type }> => async (c, next) => {
     // Check Content-Length header before reading body to prevent memory exhaustion
     const content_length_str = c.req.header("Content-Length")
     if (!content_length_str) {
@@ -98,24 +69,61 @@ const create_whatsapp_routes = (): Hono => {
       return c.text("Forbidden", 403)
     }
 
-    const body = try_parse_webhook_body(raw_body)
-    if (!body) {
+    // Parse and validate webhook body
+    try {
+      const body = parse_and_validate_whatsapp_body(raw_body)
+      c.set("whatsapp_parsed_body", body)
+      await next()
+    } catch (err) {
+      logger.warn("WhatsApp webhook: body validation failed", { error: err })
       return c.text("Bad Request", 400)
     }
+  }
 
-    const entries = body.entry
-    if (!entries) return c.json({ status: "ok" })
+const try_handle_whatsapp_messages = async (
+  messages: whatsapp_message_schema_type[],
+  contact: string | undefined,
+): Promise<void> => {
+  try {
+    await whatsapp_messages_handler(messages, contact)
+  } catch (err) {
+    logger.error("Error processing WhatsApp messages batch", { error: err })
+  }
+}
 
-    const messages_values = entries
-      .flatMap((e) => e.changes)
-      .map((ch) => ch.value)
-      .filter((v) => v.messages !== undefined)
-    const contact = messages_values[0]?.contacts?.[0]?.profile.name
-    const messages = messages_values.flatMap((mv) => mv.messages) as whatsapp_message_type[] // undefined messages have been filtered out above
+const create_whatsapp_routes = (): Hono => {
+  const app = new Hono()
 
-    await try_handle_whatsapp_messages(messages, contact)
-    return c.json({ status: "ok" })
+  app.use("/webhook/whatsapp", create_whatsapp_body_validation_middleware())
+
+  app.get("/webhook/whatsapp", (c) => {
+    const mode = c.req.query("hub.mode")
+    const token = c.req.query("hub.verify_token")
+    const challenge = c.req.query("hub.challenge")
+    return whatsapp_verify_challenge(c, mode, token, challenge)
   })
+
+  app.post(
+    "/webhook/whatsapp",
+    // biome-ignore lint/style/useNamingConvention: Variables is defined in Hono
+    async (c: Context<{ Variables: whatsapp_webhook_variables_type }>) => {
+      const body = c.get("whatsapp_parsed_body")
+
+      const entries = body.entry
+      if (!entries) return c.json({ status: "ok" })
+
+      const all_values = entries.flatMap((e) => e.changes).map((ch) => ch.value)
+      const messages_values = all_values.filter(
+        (v): v is typeof v & { messages: whatsapp_message_schema_type[] } =>
+          v.messages !== undefined,
+      )
+      const contact = all_values[0]?.contacts?.[0]?.profile.name
+      const messages = messages_values.flatMap((mv) => mv.messages)
+
+      await try_handle_whatsapp_messages(messages, contact)
+      return c.json({ status: "ok" })
+    },
+  )
 
   return app
 }
@@ -219,7 +227,7 @@ const check_rate_limit = (sender_id: string, current_time_ms: number): boolean =
 //  --
 
 const try_process_single_message = async (
-  msg: whatsapp_message_type,
+  msg: whatsapp_message_schema_type,
   contact: string | undefined,
   current_time_ms: number,
 ): Promise<void> => {
@@ -249,7 +257,7 @@ const try_process_single_message = async (
 //  --
 
 const whatsapp_messages_handler = async (
-  messages: whatsapp_message_type[],
+  messages: whatsapp_message_schema_type[],
   contact?: string,
 ): Promise<void> => {
   const current_time_ms = Date.now()
