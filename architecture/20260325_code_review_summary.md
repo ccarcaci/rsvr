@@ -7,6 +7,10 @@
 
 ---
 
+> **ARCHIVED (2026-03-29):** This document has been superseded by [`20260325_production_readiness.md`](./20260325_production_readiness.md), which consolidates all code review findings into a unified production audit with prioritized gaps, execution order, and resolution tracking. Refer to the production readiness document for the authoritative status of all issues.
+
+---
+
 ## Overview
 
 The rsvr reservation system exhibits **above-average security posture** with correct HMAC-SHA256 verification, parameterized SQL, and rate limiting already in place. However, several **critical correctness and security gaps** remain that require immediate attention, primarily around transaction safety, input validation, and PII exposure in logs.
