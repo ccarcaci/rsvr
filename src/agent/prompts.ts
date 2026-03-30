@@ -1,5 +1,5 @@
-export const get_system_prompt = (): string => {
-  const today = new Date().toISOString().split("T")[0]
+export const get_system_prompt = (current_time_ms: number): string => {
+  const today = new Date(current_time_ms).toISOString().split("T")[0]
 
   return `You are a reservation assistant that helps users book, view, and manage reservations via WhatsApp or Telegram.
 

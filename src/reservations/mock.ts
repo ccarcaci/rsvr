@@ -12,14 +12,32 @@ export const mock_transcribe_module: mock_transcribe_type = {
 
 //  --
 
-type mock_agent_type = {
-  run_agent: Mock<mock_fn_type>
+type mock_anthropic_type = {
+  messages_create: Mock<mock_fn_type>
 }
-
-export const mock_agent_module: mock_agent_type = {
-  run_agent: mock(),
+export const mock_anthropic_module: mock_anthropic_type = {
+  messages_create: mock(),
 }
 
 //  --
 
-export { mock_anthropic_module, mock_db_module } from "../agent/mock"
+type mock_db_type = {
+  find_user_by_phone: Mock<mock_fn_type>
+  find_user_by_telegram_id: Mock<mock_fn_type>
+  create_user: Mock<mock_fn_type>
+  check_availability: Mock<mock_fn_type>
+  create_reservation: Mock<mock_fn_type>
+  cancel_reservation: Mock<mock_fn_type>
+  list_reservations: Mock<mock_fn_type>
+  get_slot_by_id: Mock<mock_fn_type>
+}
+export const mock_db_module: mock_db_type = {
+  find_user_by_phone: mock(),
+  find_user_by_telegram_id: mock(),
+  create_user: mock(),
+  check_availability: mock(),
+  create_reservation: mock(),
+  cancel_reservation: mock(),
+  list_reservations: mock(),
+  get_slot_by_id: mock(),
+}

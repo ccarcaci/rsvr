@@ -1,15 +1,9 @@
-import { afterAll, describe, expect, mock, test } from "bun:test"
-
+import { afterEach, describe, expect, mock, test } from "bun:test"
 import { mock_anthropic_module, mock_tool_handlers_module } from "./mock"
 
-mock.module("../parser/client/anthropic", () => ({
-  get_anthropic_client: () => ({
-    messages: {
-      create: mock_anthropic_module.messages_create,
-    },
-  }),
-  init_anthropic_client: () => {},
-}))
+mock.module("../parser/client/anthropic", () => mock_anthropic_module)
+
+const agent = await import("./agent")
 
 const make_end_turn = (text: string) => ({
   content: [{ type: "text" as const, text }],
@@ -31,10 +25,8 @@ const make_tool_use = (tool_id: string, tool_name: string, input: Record<string,
   stop_sequence: null,
 })
 
-const agent = await import("./agent")
-
 describe("run_agent", () => {
-  afterAll(() => {
+  afterEach(() => {
     mock.clearAllMocks()
   })
 

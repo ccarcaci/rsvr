@@ -4,9 +4,8 @@ import type {
   ToolResultBlockParam,
   ToolUseBlock,
 } from "@anthropic-ai/sdk/resources/messages/messages"
-import { get_anthropic_client } from "../parser/client/anthropic"
+import { messages_create } from "../parser/client/anthropic"
 import { logger } from "../shared/logger"
-import { get_system_prompt } from "./prompts"
 import { get_session, update_session } from "./session"
 import {
   handle_cancel_booking,
@@ -16,7 +15,6 @@ import {
   handle_list_bookings,
   handle_reschedule_booking,
 } from "./tool_handlers"
-import { AGENT_TOOLS } from "./tools"
 import type {
   cancel_booking_input_type,
   check_availability_input_type,
@@ -27,19 +25,14 @@ import type {
   tool_result_type,
 } from "./types"
 
-const MODEL = "claude-opus-4-5"
 const MAX_TOOL_CALLS = 10
 
-const call_api = async (history: MessageParam[]): Promise<Message | null> => {
+const call_api = async (
+  current_time_ms: number,
+  history: MessageParam[],
+): Promise<Message | null> => {
   try {
-    const client = get_anthropic_client()
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 1024,
-      system: get_system_prompt(),
-      tools: AGENT_TOOLS,
-      messages: history,
-    })
+    const response = await messages_create(current_time_ms, history)
     // Type-guard: response should be Message (not Stream) since we don't set stream: true
     if ("content" in response && "stop_reason" in response) {
       return response as Message
@@ -124,7 +117,7 @@ export const run_agent = async (
       return "Something went wrong, please try again."
     }
 
-    const response = await call_api(history)
+    const response: Message | null = await call_api(current_time_ms, history)
     if (!response) {
       return "I'm having trouble connecting. Please try again in a moment."
     }
