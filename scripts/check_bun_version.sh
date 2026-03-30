@@ -19,7 +19,7 @@ if [ "$CURRENT_VERSION" != "$REQUIRED_VERSION" ]; then
   echo "  Required: $REQUIRED_VERSION"
   echo "  Current:  $CURRENT_VERSION"
   echo ""
-  echo "To update: bun upgrade --version $REQUIRED_VERSION"
+  echo "To update to the latest version: bun upgrade"
   echo "To update .bun-version: echo $CURRENT_VERSION > .bun-version"
   exit 1
 fi

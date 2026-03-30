@@ -65,6 +65,19 @@ ADVERTISE_ADDR ?= 127.0.0.1
 INFRA_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 # -----------------------------------------------------------------------
+# Docker Image Versions
+# -----------------------------------------------------------------------
+
+# Dokploy orchestration platform
+DOKPLOY_IMAGE ?= docker.io/dokploy/dokploy:v0.28.8
+
+# Supporting services
+POSTGRES_IMAGE ?= docker.io/library/postgres:16
+REDIS_IMAGE ?= docker.io/library/redis:7
+TRAEFIK_IMAGE ?= docker.io/library/traefik:v3.6.1
+ALPINE_IMAGE ?= docker.io/library/alpine:3.21
+
+# -----------------------------------------------------------------------
 # Dokploy API variables
 # -----------------------------------------------------------------------
 
@@ -125,7 +138,7 @@ start: ## Start the Dokploy stack (Podman must be running)
 		podman run --rm \
 			--volume dokploy-traefik-config:/etc/traefik \
 			--volume "$(INFRA_DIR)traefik.yml:/tmp/traefik.yml:ro" \
-			docker.io/library/alpine:3.21 \
+			$(ALPINE_IMAGE) \
 			sh -c "cp /tmp/traefik.yml /etc/traefik/traefik.yml"; \
 	}; \
 	# dokploy-traefik-dynamic  →  /etc/dokploy/traefik/dynamic inside traefik \
@@ -164,7 +177,7 @@ start: ## Start the Dokploy stack (Podman must be running)
 			--env POSTGRES_DB=dokploy \
 			--env POSTGRES_PASSWORD=amukds4wi9001583845717ad2 \
 			--volume dokploy-postgres:/var/lib/postgresql/data \
-			docker.io/library/postgres:16; \
+			$(POSTGRES_IMAGE); \
 	fi; \
 	if podman container exists dokploy-redis 2>/dev/null; then \
 		podman start dokploy-redis; \
@@ -174,7 +187,7 @@ start: ## Start the Dokploy stack (Podman must be running)
 			--name dokploy-redis \
 			--network dokploy-network \
 			--volume dokploy-redis:/data:Z \
-			docker.io/library/redis:7; \
+			$(REDIS_IMAGE); \
 	fi; \
 	if podman container exists dokploy 2>/dev/null; then \
 		podman start dokploy; \
@@ -190,7 +203,7 @@ start: ## Start the Dokploy stack (Podman must be running)
 			--volume /run/podman/podman.sock:/var/run/docker.sock \
 			--volume dokploy-config:/etc/dokploy \
 			--volume dokploy-home:/root/.docker \
-			docker.io/dokploy/dokploy:v0.28.6; \
+			$(DOKPLOY_IMAGE); \
 	fi; \
 	if podman container exists dokploy-traefik 2>/dev/null; then \
 		podman start dokploy-traefik; \
@@ -208,7 +221,7 @@ start: ## Start the Dokploy stack (Podman must be running)
 			--volume dokploy-traefik-config:/etc/traefik \
 			--volume dokploy-traefik-dynamic:/etc/dokploy/traefik/dynamic \
 			--volume /run/podman/podman.sock:/var/run/docker.sock \
-			docker.io/library/traefik:v3.6.1; \
+			$(TRAEFIK_IMAGE); \
 	fi
 	@echo "Dokploy starting at http://localhost:3000"
 
