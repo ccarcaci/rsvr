@@ -1,6 +1,6 @@
 import type { Context, Next } from "hono"
-import { logger } from "../shared/logger"
 import { configs } from "../config/args"
+import { logger } from "../shared/logger"
 
 export const request_logger = async (c: Context, next: Next): Promise<void> => {
   const path = new URL(c.req.url).pathname
