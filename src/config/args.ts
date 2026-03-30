@@ -17,6 +17,7 @@ export type config_type = {
   graph_api_base: string
   debug: boolean
   log_level: log_level_type
+  log_status_endpoint: boolean
 }
 
 type raw_args_type = Record<string, string | boolean | undefined>
@@ -38,6 +39,7 @@ const parse_cli_args = (): raw_args_type => {
       graph_api_base: { type: "string" },
       debug: { type: "boolean" },
       log_level: { type: "string" },
+      log_status_endpoint: { type: "boolean" },
     },
     strict: false,
   })
@@ -84,6 +86,7 @@ const load_configs = (): config_type => {
     log_level: (["debug", "info", "warn", "error"].includes(optional("log_level", "info"))
       ? optional("log_level", "info")
       : "info") as log_level_type,
+    log_status_endpoint: cli_args.log_status_endpoint === true,
   }
 
   if (missing.length > 0) {

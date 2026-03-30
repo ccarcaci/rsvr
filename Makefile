@@ -12,9 +12,6 @@ SRC_DIR := src
 DATA_DIR := data
 DIST_DIR := dist
 
-# Files
-ENTRY_POINT := $(SRC_DIR)/index.ts
-
 # Default target - show help
 .DEFAULT_GOAL := help
 
