@@ -37,7 +37,7 @@ describe("handle_message", () => {
     })
 
     //  --  act
-    const result = await service.handle_message(voice_message, 42)
+    const result = await service.handle_message(42, voice_message)
 
     //  --  assert
     expect(typeof result).toBe("string")

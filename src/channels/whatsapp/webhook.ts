@@ -247,7 +247,7 @@ const try_process_single_message = async (
       incoming.voice_mime_type = voice.mime_type
     }
 
-    const reply = await handle_message(incoming, current_time_ms)
+    const reply = await handle_message(current_time_ms, incoming)
     await whatsapp_client.send_text_message(msg.from, reply)
   } catch (err) {
     logger.error(`Error processing WhatsApp message from ${msg.from}`, { error: err })

@@ -23,7 +23,7 @@ const handle_text_message = async (
     raw_payload: validated.message,
   }
 
-  const reply = await handle_message(incoming, Date.now())
+  const reply = await handle_message(Date.now(), incoming)
   await ctx.reply(reply)
 }
 
@@ -42,7 +42,7 @@ const handle_voice_message = async (
     raw_payload: validated.message,
   }
 
-  const reply = await handle_message(incoming, Date.now())
+  const reply = await handle_message(Date.now(), incoming)
   await ctx.reply(reply)
 }
 

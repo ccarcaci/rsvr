@@ -5,8 +5,8 @@ import { logger } from "../shared/logger"
 import { transcribe_audio } from "../voice/transcribe"
 
 export const handle_message = async (
-  message: incoming_message_type,
   current_time_ms: number,
+  message: incoming_message_type,
 ): Promise<string> => {
   let text = message.text
 
