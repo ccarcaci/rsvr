@@ -1,4 +1,5 @@
 import type { Context, Next } from "hono"
+import { configs } from "../config/args"
 import { logger } from "../shared/logger"
 
 //  Headers whose values must never appear in logs.
@@ -44,9 +45,15 @@ const try_read_request_body = async (c: Context): Promise<string | undefined> =>
 
 export const debug_request_logger = async (c: Context, next: Next): Promise<void> => {
   const url = new URL(c.req.url)
-  const method = c.req.method
   const path = url.pathname
+
+  if (path === "/status" && !configs.log_status_endpoint) {
+    await next()
+    return
+  }
+
   const query = url.search
+  const method = c.req.method
 
   const headers = redact_headers(c.req.raw.headers)
 

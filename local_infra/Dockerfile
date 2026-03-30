@@ -1,12 +1,5 @@
 # Dockerfile — rsvr reservation service
 #
-# Build strategy: two-stage.
-#   builder  — installs dependencies and compiles a self-contained binary via
-#              `bun build --compile` (for reference, not currently used).
-#   runtime  — copies source files, node_modules, and dependencies into a Bun
-#              runtime image. Enables debugging via `bun --inspect` flag override.
-#              Trade-off: larger image size vs. debugging capability.
-#
 # glibc requirement: Bun requires glibc. oven/bun:1.3-debian is used for the
 # runtime stage because it includes Bun runtime with glibc ≥ 2.31.
 #
@@ -34,46 +27,16 @@
 #     --telegram_bot_token mock_telegram_bot_token \
 #     --anthropic_api_key mock_anthropic_api_key ...
 
-# ── Stage 1: builder ──────────────────────────────────────────────────────────
-# Pin to the same Bun major version locked in .bun-version (1.3.x).
-# Using the -debian variant ensures glibc is available for native modules during
-# the build phase. The full Bun image is acceptable here because this stage is
-# not shipped — only the binary output crosses into the runtime stage.
-FROM oven/bun:1.3-debian AS builder
-
-WORKDIR /build
-
-# Copy the lockfile first so dependency installation is cached independently of
-# source changes. Docker/Podman layer caching invalidates from the first changed
-# layer downward, so ordering matters: lockfile → package.json → source.
-COPY bun.lock package.json ./
-
-# --frozen-lockfile: fail the build if bun.lock is out of sync with package.json.
-# This prevents silent lock file mutations in CI and makes builds reproducible.
-RUN bun install --frozen-lockfile
-
-# Copy source files needed for compilation.
-COPY src/ ./src/
-COPY tsconfig.json ./
-
-# Compile to a self-contained native binary.
-# --compile bundles the Bun runtime, all TypeScript source, and node_modules into
-# a single executable. The result runs on any x86-64 or arm64 Linux host with
-# glibc ≥ 2.31 without a Bun installation.
-RUN bun build src/index.ts \
-        --compile \
-        --outfile dist/rsvr
-
-# ── Stage 2: runtime ──────────────────────────────────────────────────────────
-# oven/bun:1.3-debian: Bun runtime image with glibc. Source files and
-# node_modules are included to enable remote debugging via `bun --inspect` flag.
-# The ENTRYPOINT is "bun" and CMD is "src/index.ts", allowing override via
-# docker-compose (e.g., `["bun", "--inspect=0.0.0.0:9228", "src/index.ts"]`).
-#
-# Trade-off vs compiled binary: image is larger (includes Bun + source + deps)
-# but enables debugging capability. For production, consider reverting to
-# the compiled binary approach (FROM debian:bookworm-slim, COPY ./rsvr binary).
 FROM oven/bun:1.3-debian AS runtime
+
+# Install curl for the HEALTHCHECK instruction below.
+# Bun images include curl by default in many cases, but explicitly ensure it's
+# available. --no-install-recommends keeps the layer small by skipping optional
+# suggested packages. The apt lists are removed immediately after installation
+# to avoid stale package index data in the image layer.
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends curl \
+    && rm --recursive --force /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -85,16 +48,6 @@ WORKDIR /app
 RUN groupadd --gid 1001 rsvr \
     && useradd --uid 1001 --gid rsvr --no-create-home --shell /usr/sbin/nologin rsvr
 
-# Copy dependencies from the builder stage with correct ownership.
-# node_modules and bun.lock enable Bun to run the source directly.
-COPY --from=builder --chown=rsvr:rsvr /build/node_modules ./node_modules
-COPY --from=builder --chown=rsvr:rsvr /build/bun.lock ./bun.lock
-COPY --from=builder --chown=rsvr:rsvr /build/tsconfig.json ./tsconfig.json
-
-# Copy source files with correct ownership.
-# Required for `bun src/index.ts` at runtime and for debugging via --inspect.
-COPY --from=builder --chown=rsvr:rsvr /build/src ./src
-
 # Create the data directory for the SQLite database file.
 # The database path defaults to ./data/rsvr.db (relative to /app).
 # This directory should be backed by a named volume or bind mount in production
@@ -102,14 +55,18 @@ COPY --from=builder --chown=rsvr:rsvr /build/src ./src
 # Ownership is set to rsvr so the non-root process can create/write the db file.
 RUN mkdir --parents data && chown rsvr:rsvr data
 
-# Install curl for the HEALTHCHECK instruction below.
-# Bun images include curl by default in many cases, but explicitly ensure it's
-# available. --no-install-recommends keeps the layer small by skipping optional
-# suggested packages. The apt lists are removed immediately after installation
-# to avoid stale package index data in the image layer.
-RUN apt-get update \
-    && apt-get install --yes --no-install-recommends curl \
-    && rm --recursive --force /var/lib/apt/lists/*
+# Copy the lockfile first so dependency installation is cached independently of
+# source changes. Docker/Podman layer caching invalidates from the first changed
+# layer downward, so ordering matters: lockfile → package.json → source.
+COPY bun.lock package.json ./
+
+# --frozen-lockfile: fail the build if bun.lock is out of sync with package.json.
+# This prevents silent lock file mutations in CI and makes builds reproducible.
+RUN bun install --frozen-lockfile
+
+# Copy source files needed for compilation.
+COPY tsconfig.json ./
+COPY src/ ./src/
 
 USER rsvr
 
