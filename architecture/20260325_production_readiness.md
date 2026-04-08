@@ -388,7 +388,7 @@ The following security and reliability measures are correctly implemented and re
 - Internal endpoint dual authentication (localhost restriction + timing-safe API key)
 - Sensitive config values redacted in startup logs
 - All secrets passed via CLI arguments (no `.env` files, no environment variables)
-- Database CHECK constraints on `domain`, `status`, `channel`, and `notes` length
+- Database CHECK constraints on `status`, `channel`, and `notes` length
 - Non-root container user (UID 1001) with `nologin` shell
 - Container health checks on `/status` endpoint
 - Structured JSON logging with configurable log levels

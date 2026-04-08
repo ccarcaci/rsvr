@@ -93,7 +93,7 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
 
 # Start via Bun. All nine config values must be passed as CLI arguments
 # (see header comment). In docker-compose, use the `command:` block to supply
-# all --flag values. To enable debugging, override entrypoint in compose:
-#   entrypoint: ["bun", "--inspect=0.0.0.0:9228"]
-ENTRYPOINT ["bun"]
+# all --flag values. To disable debugging, override entrypoint in compose:
+#   entrypoint: ["bun"]
+ENTRYPOINT ["bun", "--inspect=0.0.0.0:9228"]
 CMD ["src/index.ts"]

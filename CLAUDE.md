@@ -2,7 +2,7 @@
 
 ## Overview
 
-Reservation system via WhatsApp and Telegram messaging. Handles text messages and voice notes. Domains: restaurant, doctor, salon.
+Reservation system via WhatsApp and Telegram messaging. Handles text messages and voice notes.
 
 ## Tech Stack
 

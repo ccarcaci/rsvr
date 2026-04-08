@@ -11,7 +11,6 @@ export type user_row_type = {
 
 export type time_slot_row_type = {
   id: number
-  domain: string
   date: string
   time: string
   capacity: number
@@ -23,7 +22,6 @@ export type reservation_row_type = {
   id: number
   user_id: number
   time_slot_id: number
-  domain: string
   party_size: number
   status: string
   notes: string | null
@@ -46,13 +44,6 @@ export class slot_not_found_error extends Error {
   constructor(slot_id: number) {
     super(`Slot ${slot_id} no longer exists.`)
     this.name = "slot_not_found_error"
-  }
-}
-
-export class slot_domain_mismatch_error extends Error {
-  constructor(slot_id: number, slot_domain: string, requested_domain: string) {
-    super(`Slot ${slot_id} is for "${slot_domain}", not "${requested_domain}".`)
-    this.name = "slot_domain_mismatch_error"
   }
 }
 
@@ -84,16 +75,15 @@ export const create_user = (
 }
 
 export const check_availability = (
-  domain: string,
   date: string,
   time: string,
   party_size: number,
 ): time_slot_row_type | null => {
   return get_db()
-    .query<time_slot_row_type, [string, string, string, number]>(
-      "SELECT * FROM time_slots WHERE domain = ? AND date = ? AND time = ? AND (capacity - booked) >= ?",
+    .query<time_slot_row_type, [string, string, number]>(
+      "SELECT * FROM time_slots WHERE date = ? AND time = ? AND (capacity - booked) >= ?",
     )
-    .get(domain, date, time, party_size)
+    .get(date, time, party_size)
 }
 
 export const create_reservation = (
@@ -101,7 +91,6 @@ export const create_reservation = (
   time_slot_id: number,
   party_size: number,
   _current_time_ms: number,
-  domain: string,
   notes?: string,
 ): reservation_row_type => {
   const run_transaction = get_db().transaction(() => {
@@ -113,30 +102,25 @@ export const create_reservation = (
       throw new slot_not_found_error(time_slot_id)
     }
 
-    // 2. Validate domain match
-    if (slot.domain !== domain) {
-      throw new slot_domain_mismatch_error(time_slot_id, slot.domain, domain)
-    }
-
-    // 3. Check capacity atomically
+    // 2. Check capacity atomically
     const remaining = slot.capacity - slot.booked
     if (remaining < party_size) {
       throw new capacity_error(remaining)
     }
 
-    // 4. INSERT reservation
+    // 3. INSERT reservation
     const insert_result = get_db()
       .query(
-        "INSERT INTO reservations (user_id, time_slot_id, domain, party_size, notes) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO reservations (user_id, time_slot_id, party_size, notes) VALUES (?, ?, ?, ?)",
       )
-      .run(user_id, time_slot_id, domain, party_size, notes ?? null)
+      .run(user_id, time_slot_id, party_size, notes ?? null)
 
-    // 5. UPDATE time_slots booked count
+    // 4. UPDATE time_slots booked count
     get_db()
       .query("UPDATE time_slots SET booked = booked + ? WHERE id = ?")
       .run(party_size, time_slot_id)
 
-    // 6. Return the created reservation
+    // 5. Return the created reservation
     const result = get_db()
       .query<reservation_row_type, [number]>("SELECT * FROM reservations WHERE id = ?")
       .get(insert_result.lastInsertRowid as number)

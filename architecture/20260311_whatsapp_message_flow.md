@@ -236,7 +236,7 @@ run_agent(
 ### Step D: Agent session history (sent to Claude)
 
 ```typescript
-// System prompt includes today's date and domain list
+// System prompt includes today's date
 // Messages array:
 [
   { role: "user", content: "Book a table for 2 tomorrow at 7pm" }
@@ -251,7 +251,7 @@ run_agent(
 //   { type: "text", text: "Let me check availability..." },
 //   {
 //     type: "tool_use", id: "toolu_01...", name: "check_availability",
-//     input: { domain: "restaurant", date: "2026-03-12", time: "19:00", party_size: 2 }
+//     input: { date: "2026-03-12", time: "19:00", party_size: 2 }
 //   }
 // ]
 ```
@@ -263,7 +263,7 @@ run_agent(
 {
   type: "tool_result",
   tool_use_id: "toolu_01...",
-  content: '{"slot_id":7,"domain":"restaurant","date":"2026-03-12","time":"19:00","available_capacity":4}'
+  content: '{"slot_id":7,"date":"2026-03-12","time":"19:00","available_capacity":4}'
 }
 ```
 
@@ -369,9 +369,7 @@ User --> whap --> POST /webhook/whatsapp --> rsvr
                                    |   -> tool_use:       |
                                    |     check_           |
                                    |     availability     |
-                                   |   { domain:          |
-                                   |     "restaurant",    |
-                                   |     date:            |
+                                   |   { date:            |
                                    |     "2026-03-12",    |
                                    |     time: "19:00",   |
                                    |     party_size: 2 }  |
@@ -380,8 +378,7 @@ User --> whap --> POST /webhook/whatsapp --> rsvr
                                    tool_handlers.ts
                                    -> queries.check_availability()
                                    -> SQLite: SELECT from time_slots
-                                     WHERE domain='restaurant'
-                                     AND date='2026-03-12'
+                                     WHERE date='2026-03-12'
                                      AND time='19:00'
                                      AND (capacity - booked) >= 2
                                    -> Returns slot_id=7
@@ -391,8 +388,6 @@ User --> whap --> POST /webhook/whatsapp --> rsvr
                                    |   -> tool_use:       |
                                    |     create_booking   |
                                    |   { slot_id: 7,      |
-                                   |     domain:          |
-                                   |     "restaurant",    |
                                    |     party_size: 2 }  |
                                    +----------+-----------+
                                               |
@@ -575,7 +570,6 @@ The webhook always returns HTTP 200 to prevent Meta/whap from retrying. This is 
 
 | Scenario                        | Behavior                                                         |
 |---------------------------------|------------------------------------------------------------------|
-| Invalid domain                  | Returns error string (not exception)                             |
 | Invalid date/time format        | Returns error string with format guidance                        |
 | No availability for slot        | Returns descriptive error string                                 |
 | SQL query throws                | Caught, logged, returns generic error string                     |

@@ -51,7 +51,6 @@ describe("run_agent", () => {
       ok: true,
       data: {
         slot_id: 1,
-        domain: "restaurant",
         date: "2099-12-31",
         time: "19:00",
         available_capacity: 8,
@@ -63,7 +62,6 @@ describe("run_agent", () => {
       if (call_count === 1) {
         // First call: model wants to check availability
         return make_tool_use("tool_1", "check_availability", {
-          domain: "restaurant",
           date: "2099-12-31",
           time: "19:00",
           party_size: 2,
@@ -92,7 +90,6 @@ describe("run_agent", () => {
 
     mock_anthropic_module.messages_create.mockImplementation(async () =>
       make_tool_use("tool_x", "check_availability", {
-        domain: "restaurant",
         date: "2099-01-01",
         time: "12:00",
       }),

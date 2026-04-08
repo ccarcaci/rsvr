@@ -10,27 +10,23 @@ import type {
   tool_result_type,
 } from "./types"
 
-const VALID_DOMAINS = ["restaurant", "doctor", "salon"]
-
 const try_check_availability = (
-  domain: string,
   date: string,
   time: string,
   party_size: number,
 ): tool_result_type => {
   try {
-    const slot = queries.check_availability(domain, date, time, party_size)
+    const slot = queries.check_availability(date, time, party_size)
     if (!slot) {
       return {
         ok: false,
-        error: `No availability for ${domain} on ${date} at ${time} for ${party_size} ${party_size === 1 ? "person" : "people"}.`,
+        error: `No availability on ${date} at ${time} for ${party_size} ${party_size === 1 ? "person" : "people"}.`,
       }
     }
     return {
       ok: true,
       data: {
         slot_id: slot.id,
-        domain: slot.domain,
         date: slot.date,
         time: slot.time,
         available_capacity: slot.capacity - slot.booked,
@@ -44,21 +40,12 @@ const try_check_availability = (
 
 //  --
 
-const INVALID_DOMAIN_ERROR = (domain: string): tool_result_type => ({
-  ok: false,
-  error: `Invalid domain "${domain}". Must be one of: restaurant, doctor, salon.`,
-})
-
 const INVALID_PARTY_SIZE: tool_result_type = { ok: false, error: "Party size must be at least 1." }
 
 export const handle_check_availability = (
   input: check_availability_input_type,
 ): tool_result_type => {
-  const { domain, date, time, party_size = 1 } = input
-
-  if (!VALID_DOMAINS.includes(domain)) {
-    return INVALID_DOMAIN_ERROR(domain)
-  }
+  const { date, time, party_size = 1 } = input
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return { ok: false, error: `Invalid date format "${date}". Use YYYY-MM-DD.` }
@@ -72,7 +59,7 @@ export const handle_check_availability = (
     return INVALID_PARTY_SIZE
   }
 
-  return try_check_availability(domain, date, time, party_size)
+  return try_check_availability(date, time, party_size)
 }
 
 //  --
@@ -82,7 +69,6 @@ const try_create_booking = (
   slot_id: number,
   party_size: number,
   current_time_ms: number,
-  domain: string,
   notes: string | undefined,
 ): tool_result_type => {
   try {
@@ -91,7 +77,6 @@ const try_create_booking = (
       slot_id,
       party_size,
       current_time_ms,
-      domain,
       notes,
     )
     const slot = queries.get_slot_by_id(slot_id)
@@ -99,7 +84,6 @@ const try_create_booking = (
       ok: true,
       data: {
         reservation_id: reservation.id,
-        domain: reservation.domain,
         date: slot?.date ?? "",
         time: slot?.time ?? "",
         party_size: reservation.party_size,
@@ -108,11 +92,7 @@ const try_create_booking = (
       },
     }
   } catch (err) {
-    if (
-      err instanceof queries.capacity_error ||
-      err instanceof queries.slot_not_found_error ||
-      err instanceof queries.slot_domain_mismatch_error
-    ) {
+    if (err instanceof queries.capacity_error || err instanceof queries.slot_not_found_error) {
       return { ok: false, error: err.message }
     }
     logger.error("create_booking failed", { err: String(err), user_id, slot_id })
@@ -127,11 +107,7 @@ export const handle_create_booking = (
   current_time_ms: number,
   input: create_booking_input_type,
 ): tool_result_type => {
-  const { slot_id, domain, party_size = 1, notes } = input
-
-  if (!VALID_DOMAINS.includes(domain)) {
-    return INVALID_DOMAIN_ERROR(domain)
-  }
+  const { slot_id, party_size = 1, notes } = input
 
   if (party_size < 1) {
     return INVALID_PARTY_SIZE
@@ -146,7 +122,7 @@ export const handle_create_booking = (
     }
   }
 
-  return try_create_booking(user_id, slot_id, party_size, current_time_ms, domain, notes)
+  return try_create_booking(user_id, slot_id, party_size, current_time_ms, notes)
 }
 
 //  --
@@ -162,7 +138,6 @@ export const handle_list_bookings = (
       data: {
         reservations: rows.map((r) => ({
           reservation_id: r.id,
-          domain: r.domain,
           party_size: r.party_size,
           status: r.status,
           notes: r.notes ?? null,

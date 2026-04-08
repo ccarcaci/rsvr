@@ -4,16 +4,11 @@ export const AGENT_TOOLS: Tool[] = [
   {
     name: "check_availability",
     description:
-      "Check whether a time slot is available for a given domain, date, time, and party size. " +
+      "Check whether a time slot is available for a given date, time, and party size. " +
       "Always call this before create_booking. Returns the slot details if available, or an error if not.",
     input_schema: {
       type: "object",
       properties: {
-        domain: {
-          type: "string",
-          enum: ["restaurant", "doctor", "salon"],
-          description: "The type of venue to book.",
-        },
         date: {
           type: "string",
           description: "The date for the reservation in YYYY-MM-DD format.",
@@ -27,7 +22,7 @@ export const AGENT_TOOLS: Tool[] = [
           description: "Number of people. Defaults to 1 if not provided.",
         },
       },
-      required: ["domain", "date", "time"],
+      required: ["date", "time"],
     },
   },
   {
@@ -42,11 +37,6 @@ export const AGENT_TOOLS: Tool[] = [
           type: "number",
           description: "The time_slot id returned by check_availability.",
         },
-        domain: {
-          type: "string",
-          enum: ["restaurant", "doctor", "salon"],
-          description: "The type of venue, must match what was checked.",
-        },
         party_size: {
           type: "number",
           description: "Number of people. Defaults to 1.",
@@ -56,7 +46,7 @@ export const AGENT_TOOLS: Tool[] = [
           description: "Optional notes or special requests for the booking.",
         },
       },
-      required: ["slot_id", "domain"],
+      required: ["slot_id"],
     },
   },
   {

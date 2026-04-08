@@ -10,7 +10,6 @@ export type session_entry_type = {
 // Tool input shapes — validated at runtime when dispatching
 
 export type check_availability_input_type = {
-  domain: string
   date: string
   time: string
   party_size?: number
@@ -18,7 +17,6 @@ export type check_availability_input_type = {
 
 export type create_booking_input_type = {
   slot_id: number
-  domain: string
   party_size?: number
   notes?: string
 }

@@ -4,7 +4,6 @@ import { mock_db_module } from "./mock"
 
 const SLOT = {
   id: 42,
-  domain: "restaurant",
   date: "2099-12-31",
   time: "19:00",
   capacity: 10,
@@ -16,7 +15,6 @@ const RESERVATION = {
   id: 99,
   user_id: 1,
   time_slot_id: 42,
-  domain: "restaurant",
   party_size: 2,
   status: "confirmed",
   notes: null,
@@ -47,7 +45,6 @@ describe("tool_handlers", () => {
       //  --  act
       const result = handlers.handle_create_booking(1, 1000000, {
         slot_id: 42,
-        domain: "restaurant",
         party_size: 2,
       })
 
@@ -56,27 +53,8 @@ describe("tool_handlers", () => {
       if (result.ok) {
         const data = result.data as Record<string, unknown>
         expect(data.reservation_id).toBe(99)
-        expect(data.domain).toBe("restaurant")
         expect(data.party_size).toBe(2)
         expect(data.status).toBe("confirmed")
-      }
-    })
-
-    test("rejects_invalid_domain", () => {
-      //  --  arrange
-      // (beforeEach sets up valid SLOT; domain validation fires before slot lookup)
-
-      //  --  act
-      const result = handlers.handle_create_booking(1, 1000000, {
-        slot_id: 42,
-        domain: "library",
-        party_size: 1,
-      })
-
-      //  --  assert
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.error).toContain("Invalid domain")
       }
     })
 
@@ -84,14 +62,14 @@ describe("tool_handlers", () => {
       //  --  arrange
       let received_party_size = -1
       mock_db_module.create_reservation.mockImplementation(
-        (_uid: unknown, _sid: unknown, ps: unknown, _ct: unknown, _d: unknown) => {
+        (_uid: unknown, _sid: unknown, ps: unknown, _ct: unknown) => {
           received_party_size = ps as number
           return RESERVATION
         },
       )
 
       //  --  act
-      handlers.handle_create_booking(1, 1000000, { slot_id: 42, domain: "restaurant" })
+      handlers.handle_create_booking(1, 1000000, { slot_id: 42 })
 
       //  --  assert
       expect(received_party_size).toBe(1)
@@ -104,7 +82,6 @@ describe("tool_handlers", () => {
       //  --  act
       const result = handlers.handle_create_booking(1, 1000000, {
         slot_id: 42,
-        domain: "restaurant",
         party_size: 1,
         notes: notes_500,
       })
@@ -120,7 +97,6 @@ describe("tool_handlers", () => {
       //  --  act
       const result = handlers.handle_create_booking(1, 1000000, {
         slot_id: 42,
-        domain: "restaurant",
         party_size: 1,
         notes: notes_501,
       })
@@ -140,7 +116,6 @@ describe("tool_handlers", () => {
       //  --  act
       const result = handlers.handle_create_booking(1, 1000000, {
         slot_id: 42,
-        domain: "restaurant",
         party_size: 1,
         notes: notes_100,
       })
@@ -156,7 +131,6 @@ describe("tool_handlers", () => {
       //  --  act
       const result = handlers.handle_create_booking(1, 1000000, {
         slot_id: 42,
-        domain: "restaurant",
         party_size: 1,
         notes: "",
       })
@@ -172,7 +146,6 @@ describe("tool_handlers", () => {
       //  --  act
       const result = handlers.handle_create_booking(1, 1000000, {
         slot_id: 42,
-        domain: "restaurant",
         party_size: 1,
       })
 

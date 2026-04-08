@@ -2,12 +2,6 @@
 
 Reservation system via WhatsApp and Telegram messaging. Supports text messages and voice notes.
 
-## Supported Domains
-
-- Restaurant table reservations
-- Doctor appointments
-- Salon bookings
-
 ## Stack
 
 - **Runtime**: Bun (version locked in `.bun-version`)
@@ -124,7 +118,7 @@ Has voice? ──yes──▶ Voice Transcriber (OpenAI) ──▶ text
   ▼                                                   ▼
 Claude Opus 4.5 Tool-Use Agent Loop
   │ multi-turn agent with tools
-  ├─▶ check_availability (domain, date, time, party_size)
+  ├─▶ check_availability (date, time, party_size)
   ├─▶ create_booking (slot_id, party_size, notes)
   ├─▶ list_bookings (user's reservations)
   ├─▶ get_booking (reservation details)

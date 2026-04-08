@@ -32,10 +32,10 @@
 
 - Agent loop (`src/agent/agent.ts`) with `claude-opus-4-5` model
 - All 6 tool definitions in `src/agent/tools.ts` (Anthropic SDK `Tool[]` format)
-- Tool handlers: `check_availability` — fully implemented with domain/date/time/party_size validation
+- Tool handlers: `check_availability` — fully implemented with date/time/party_size validation
 - Tool handlers: `create_booking` — fully implemented with pre-insert capacity re-check (partial fix for Bug #5; re-check is not inside a transaction)
 - Session store (`src/agent/session.ts`) — basic `Map<sender_key, session_entry>` with `get_session` / `update_session`
-- System prompt (`src/agent/prompts.ts`) — runtime date injection, domain list, 7 core rules
+- System prompt (`src/agent/prompts.ts`) — runtime date injection, 7 core rules
 - Agent types (`src/agent/types.ts`) — all input shapes and `tool_result_type`
 - `service.ts` refactored to use `run_agent()` instead of Haiku-based intent parsing
 - `config/args.ts` includes `internal_api_key` as a required field
@@ -62,7 +62,7 @@
 
 **Deviations from original plan:**
 
-- `list_bookings` tool has no filter parameters (`domain`, `from_date`, `to_date`) — the implementation accepts an empty object
+- `list_bookings` tool has no filter parameters (`from_date`, `to_date`) — the implementation accepts an empty object
 - Tool input uses `reservation_id` (not `booking_id`) for `get_booking`, `cancel_booking`, `reschedule_booking`
 - Monitoring system (`src/metrics/`) added: in-memory counters, latency histograms, Prometheus text exposition at `/metrics`, health checks at `/status` and `/health` (documented in Monitoring section below)
 - Legacy parser (`src/parser/`) still exists in the codebase alongside the agent; not removed
@@ -78,7 +78,7 @@
 
 ## Overview
 
-rsvr is a reservation system that receives text and voice messages from WhatsApp and Telegram, processes them with a Claude Opus agent loop, and manages bookings stored in SQLite. Supported business domains: restaurant, doctor, salon.
+rsvr is a reservation system that receives text and voice messages from WhatsApp and Telegram, processes them with a Claude Opus agent loop, and manages bookings stored in SQLite.
 
 ---
 
@@ -155,7 +155,6 @@ erDiagram
 
     time_slots {
         INTEGER id PK "AUTOINCREMENT"
-        TEXT domain "NOT NULL, CHECK: restaurant | doctor | salon"
         TEXT date "NOT NULL"
         TEXT time "NOT NULL"
         INTEGER capacity "NOT NULL, DEFAULT 1"
@@ -167,7 +166,6 @@ erDiagram
         INTEGER id PK "AUTOINCREMENT"
         INTEGER user_id FK "NOT NULL"
         INTEGER time_slot_id FK "NOT NULL"
-        TEXT domain "NOT NULL, CHECK: restaurant | doctor | salon"
         INTEGER party_size "NOT NULL, DEFAULT 1"
         TEXT status "NOT NULL, DEFAULT confirmed, CHECK: confirmed | cancelled"
         TEXT notes "nullable"
@@ -181,7 +179,7 @@ erDiagram
 
 **Constraints:**
 
-- `time_slots` has a UNIQUE constraint on `(domain, date, time)`
+- `time_slots` has a UNIQUE constraint on `(date, time)`
 - `reservations.user_id` references `users(id)` (foreign key)
 - `reservations.time_slot_id` references `time_slots(id)` (foreign key)
 
@@ -277,14 +275,14 @@ Six tools exported as `AGENT_TOOLS: Tool[]` (Anthropic SDK format):
 
 | Tool                 | Parameters                                          | Status          | Purpose                                         |
 |----------------------|-----------------------------------------------------|-----------------|--------------------------------------------------|
-| `check_availability` | `domain`, `date`, `time`, `party_size?`             | Implemented     | Check slot, return `slot_id` or error            |
-| `create_booking`     | `slot_id`, `domain`, `party_size?`, `notes?`        | Implemented     | Create reservation after confirmed availability  |
+| `check_availability` | `date`, `time`, `party_size?`                       | Implemented     | Check slot, return `slot_id` or error            |
+| `create_booking`     | `slot_id`, `party_size?`, `notes?`                  | Implemented     | Create reservation after confirmed availability  |
 | `list_bookings`      | _(none)_                                            | Partial         | List caller's active reservations (missing date/time)   |
 | `get_booking`        | `reservation_id`                                    | Stub            | Get a single booking's full details              |
 | `cancel_booking`     | `reservation_id`                                    | Implemented     | Cancel a reservation (user-scoped)               |
 | `reschedule_booking` | `reservation_id`, `new_date`, `new_time`            | Stub            | Move to a new slot (atomic transaction)          |
 
-**Deviation from plan:** The original design specified `list_bookings` with optional `domain`, `from_date`, `to_date` filters and used `booking_id` for get/cancel/reschedule. The implementation uses no filters for `list_bookings` and uses `reservation_id` for the other tools.
+**Deviation from plan:** The original design specified `list_bookings` with optional `from_date`, `to_date` filters and used `booking_id` for get/cancel/reschedule. The implementation uses no filters for `list_bookings` and uses `reservation_id` for the other tools.
 
 Notes on specific tools:
 
@@ -308,7 +306,7 @@ Each handler:
 
 | Handler                      | Status      | Notes                                                         |
 |------------------------------|-------------|---------------------------------------------------------------|
-| `handle_check_availability`  | Complete    | Validates domain, date format, time format, party_size >= 1   |
+| `handle_check_availability`  | Complete    | Validates date format, time format, party_size >= 1           |
 | `handle_create_booking`      | Complete    | Re-checks capacity before insert within IMMEDIATE transaction |
 | `handle_list_bookings`       | Partial     | Returns reservations but missing `date`/`time` (Bug #1)       |
 | `handle_get_booking`         | Stub        | Returns `"get_booking is not yet implemented."`               |
@@ -343,7 +341,6 @@ Note: if two messages from the same sender arrive concurrently (e.g., rapid doub
 
 The system prompt includes:
 - Today's date (injected at runtime via `new Date().toISOString().split("T")[0]`).
-- Supported domains: `restaurant`, `doctor`, `salon`.
 - Instruction to ask for missing information rather than guess.
 - Instruction to always call `check_availability` before `create_booking`.
 - Instruction to convert relative dates ("tomorrow", "next Friday") to absolute dates.
@@ -410,7 +407,7 @@ A separate Hono sub-app at `src/api/bookings.ts` will expose a REST interface fo
 
 | Method   | Path            | Description                                                         |
 |----------|-----------------|---------------------------------------------------------------------|
-| `GET`    | `/bookings`     | List bookings (filters: `domain`, `from_date`, `to_date`, `status`) |
+| `GET`    | `/bookings`     | List bookings (filters: `from_date`, `to_date`, `status`)            |
 | `GET`    | `/bookings/:id` | Single booking                                                      |
 | `POST`   | `/bookings`     | Create booking                                                      |
 | `PUT`    | `/bookings/:id` | Update / reschedule                                                 |
@@ -670,9 +667,7 @@ Fix: wrap the capacity re-check, INSERT, and UPDATE in a single `BEGIN`/`COMMIT`
 | `INTERNAL_API_KEY`                | 1     | CRUD REST API static key (x-api-key header)                   | Yes      |
 | `DATABASE_PATH`                   | 1     | SQLite file path (default: `./data/rsvr.db`)                  | No       |
 | `CALCOM_API_KEY`                  | 2     | Cal.com REST v2 (Phase 2)                                     | No       |
-| `CALCOM_RESTAURANT_EVENT_TYPE_ID` | 2     | Cal.com event type ID for restaurant domain (Phase 2)         | No       |
-| `CALCOM_DOCTOR_EVENT_TYPE_ID`     | 2     | Cal.com event type ID for doctor domain (Phase 2)             | No       |
-| `CALCOM_SALON_EVENT_TYPE_ID`      | 2     | Cal.com event type ID for salon domain (Phase 2)              | No       |
+| `CALCOM_EVENT_TYPE_ID`            | 2     | Cal.com event type ID (Phase 2)                               | No       |
 
 All variables are passed via CLI arguments at startup, not via `.env` files. Example: `bun run src/index.ts --port 3000 --telegram_bot_token xxx --anthropic_api_key xxx ...`. There is no environment variable fallback support.
 

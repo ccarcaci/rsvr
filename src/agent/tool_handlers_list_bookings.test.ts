@@ -6,7 +6,6 @@ const RESERVATION = {
   id: 99,
   user_id: 1,
   time_slot_id: 42,
-  domain: "restaurant",
   party_size: 2,
   status: "confirmed",
   notes: null,
@@ -53,7 +52,6 @@ describe("tool_handlers", () => {
         const data = result.data as { reservations: Record<string, unknown>[] }
         expect(data.reservations).toHaveLength(1)
         expect(data.reservations[0].reservation_id).toBe(99)
-        expect(data.reservations[0].domain).toBe("restaurant")
       }
     })
   })

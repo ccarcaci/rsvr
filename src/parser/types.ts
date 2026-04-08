@@ -1,8 +1,5 @@
-export type domain_type = "restaurant" | "doctor" | "salon"
-
 export type reserve_intent_type = {
   action: "reserve"
-  domain?: domain_type
   date?: string
   time?: string
   party_size?: number

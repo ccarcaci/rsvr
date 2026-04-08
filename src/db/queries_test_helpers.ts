@@ -21,13 +21,6 @@ export class slot_not_found_error extends Error {
   }
 }
 
-export class slot_domain_mismatch_error extends Error {
-  constructor(slot_id: number, slot_domain: string, requested_domain: string) {
-    super(`Slot ${slot_id} is for "${slot_domain}", not "${requested_domain}".`)
-    this.name = "slot_domain_mismatch_error"
-  }
-}
-
 // Database setup
 export const setup_db = (): Database => {
   const test_db = new Database(":memory:")
@@ -51,15 +44,14 @@ export const seed_user = (test_db: Database): number => {
 
 export const seed_slot = (
   test_db: Database,
-  domain: string,
   date: string,
   time: string,
   capacity: number,
   booked = 0,
 ): number => {
   test_db
-    .query("INSERT INTO time_slots (domain, date, time, capacity, booked) VALUES (?, ?, ?, ?, ?)")
-    .run(domain, date, time, capacity, booked)
+    .query("INSERT INTO time_slots (date, time, capacity, booked) VALUES (?, ?, ?, ?)")
+    .run(date, time, capacity, booked)
   const row = test_db.query<{ id: number }, []>("SELECT last_insert_rowid() as id").get()
   return row?.id ?? 0
 }
@@ -68,7 +60,6 @@ export const seed_slot = (
 export const make_create_reservation = (test_db: Database) => {
   type time_slot_row_type = {
     id: number
-    domain: string
     date: string
     time: string
     capacity: number
@@ -80,7 +71,6 @@ export const make_create_reservation = (test_db: Database) => {
     id: number
     user_id: number
     time_slot_id: number
-    domain: string
     party_size: number
     status: string
     notes: string | null
@@ -91,7 +81,6 @@ export const make_create_reservation = (test_db: Database) => {
   return (
     user_id: number,
     time_slot_id: number,
-    domain: string,
     party_size: number,
     _current_time_ms: number,
     notes?: string,
@@ -103,18 +92,15 @@ export const make_create_reservation = (test_db: Database) => {
       if (!slot) {
         throw new slot_not_found_error(time_slot_id)
       }
-      if (slot.domain !== domain) {
-        throw new slot_domain_mismatch_error(time_slot_id, slot.domain, domain)
-      }
       const remaining = slot.capacity - slot.booked
       if (remaining < party_size) {
         throw new capacity_error(remaining)
       }
       const insert_result = test_db
         .query(
-          "INSERT INTO reservations (user_id, time_slot_id, domain, party_size, notes) VALUES (?, ?, ?, ?, ?)",
+          "INSERT INTO reservations (user_id, time_slot_id, party_size, notes) VALUES (?, ?, ?, ?)",
         )
-        .run(user_id, time_slot_id, domain, party_size, notes ?? null)
+        .run(user_id, time_slot_id, party_size, notes ?? null)
       test_db
         .query("UPDATE time_slots SET booked = booked + ? WHERE id = ?")
         .run(party_size, time_slot_id)

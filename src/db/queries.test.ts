@@ -6,7 +6,6 @@ import {
   seed_slot,
   seed_user,
   setup_db,
-  slot_domain_mismatch_error,
   slot_not_found_error,
 } from "./queries_test_helpers"
 
@@ -35,15 +34,14 @@ describe("create_reservation (transactional)", () => {
 
   test("creates a reservation and increments booked count", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, "restaurant", "2026-04-01", "19:00", 10)
+    const slot_id = seed_slot(test_db, "2026-04-01", "19:00", 10)
 
     //  --  act
-    const reservation = create_reservation(user_id, slot_id, "restaurant", 2, CURRENT_TIME_MS)
+    const reservation = create_reservation(user_id, slot_id, 2, CURRENT_TIME_MS)
 
     //  --  assert
     expect(reservation.user_id).toBe(user_id)
     expect(reservation.time_slot_id).toBe(slot_id)
-    expect(reservation.domain).toBe("restaurant")
     expect(reservation.party_size).toBe(2)
     expect(reservation.status).toBe("confirmed")
 
@@ -58,37 +56,25 @@ describe("create_reservation (transactional)", () => {
     const nonexistent_slot_id = 9999
 
     //  --  act & assert
-    expect(() =>
-      create_reservation(user_id, nonexistent_slot_id, "restaurant", 1, CURRENT_TIME_MS),
-    ).toThrow(slot_not_found_error)
-  })
-
-  test("throws slot_domain_mismatch_error when domain does not match", () => {
-    //  --  arrange
-    const slot_id = seed_slot(test_db, "doctor", "2026-04-01", "10:00", 5)
-
-    //  --  act & assert
-    expect(() => create_reservation(user_id, slot_id, "restaurant", 1, CURRENT_TIME_MS)).toThrow(
-      slot_domain_mismatch_error,
+    expect(() => create_reservation(user_id, nonexistent_slot_id, 1, CURRENT_TIME_MS)).toThrow(
+      slot_not_found_error,
     )
   })
 
   test("throws capacity_error when party_size exceeds remaining capacity", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, "restaurant", "2026-04-01", "20:00", 4, 3)
+    const slot_id = seed_slot(test_db, "2026-04-01", "20:00", 4, 3)
 
     //  --  act & assert
-    expect(() => create_reservation(user_id, slot_id, "restaurant", 2, CURRENT_TIME_MS)).toThrow(
-      capacity_error,
-    )
+    expect(() => create_reservation(user_id, slot_id, 2, CURRENT_TIME_MS)).toThrow(capacity_error)
   })
 
   test("allows booking when party_size exactly fills remaining capacity", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, "salon", "2026-04-01", "14:00", 3, 1)
+    const slot_id = seed_slot(test_db, "2026-04-01", "14:00", 3, 1)
 
     //  --  act
-    const reservation = create_reservation(user_id, slot_id, "salon", 2, CURRENT_TIME_MS)
+    const reservation = create_reservation(user_id, slot_id, 2, CURRENT_TIME_MS)
 
     //  --  assert
     expect(reservation.party_size).toBe(2)
@@ -100,26 +86,22 @@ describe("create_reservation (transactional)", () => {
 
   test("rejects booking that overflows by exactly one seat", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, "restaurant", "2026-04-01", "21:00", 5, 5)
+    const slot_id = seed_slot(test_db, "2026-04-01", "21:00", 5, 5)
 
     //  --  act & assert
-    expect(() => create_reservation(user_id, slot_id, "restaurant", 1, CURRENT_TIME_MS)).toThrow(
-      capacity_error,
-    )
+    expect(() => create_reservation(user_id, slot_id, 1, CURRENT_TIME_MS)).toThrow(capacity_error)
   })
 
   test("sequential bookings respect capacity and prevent overbooking", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, "restaurant", "2026-04-02", "19:00", 4)
+    const slot_id = seed_slot(test_db, "2026-04-02", "19:00", 4)
 
     //  --  act — first booking takes 3 seats
-    const r1 = create_reservation(user_id, slot_id, "restaurant", 3, CURRENT_TIME_MS)
+    const r1 = create_reservation(user_id, slot_id, 3, CURRENT_TIME_MS)
     expect(r1.party_size).toBe(3)
 
     //  --  act — second booking tries 2 seats (only 1 remaining)
-    expect(() => create_reservation(user_id, slot_id, "restaurant", 2, CURRENT_TIME_MS)).toThrow(
-      capacity_error,
-    )
+    expect(() => create_reservation(user_id, slot_id, 2, CURRENT_TIME_MS)).toThrow(capacity_error)
 
     //  --  assert — booked count should be 3, not 5
     const slot = test_db
@@ -130,12 +112,10 @@ describe("create_reservation (transactional)", () => {
 
   test("rolls back reservation if capacity check fails mid-transaction", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, "restaurant", "2026-04-03", "19:00", 2, 2)
+    const slot_id = seed_slot(test_db, "2026-04-03", "19:00", 2, 2)
 
     //  --  act
-    expect(() => create_reservation(user_id, slot_id, "restaurant", 1, CURRENT_TIME_MS)).toThrow(
-      capacity_error,
-    )
+    expect(() => create_reservation(user_id, slot_id, 1, CURRENT_TIME_MS)).toThrow(capacity_error)
 
     //  --  assert — no reservation should have been created
     const reservations = test_db
@@ -152,17 +132,10 @@ describe("create_reservation (transactional)", () => {
 
   test("creates reservation with notes", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, "doctor", "2026-04-05", "09:00", 1)
+    const slot_id = seed_slot(test_db, "2026-04-05", "09:00", 1)
 
     //  --  act
-    const reservation = create_reservation(
-      user_id,
-      slot_id,
-      "doctor",
-      1,
-      CURRENT_TIME_MS,
-      "Annual checkup",
-    )
+    const reservation = create_reservation(user_id, slot_id, 1, CURRENT_TIME_MS, "Annual checkup")
 
     //  --  assert
     expect(reservation.notes).toBe("Annual checkup")
