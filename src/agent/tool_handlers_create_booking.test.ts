@@ -49,8 +49,8 @@ describe("tool_handlers", () => {
       })
 
       //  --  assert
-      expect(result.ok).toBe(true)
-      if (result.ok) {
+      expect(result.status).toBe("success")
+      if (result.status === "success") {
         const data = result.data as Record<string, unknown>
         expect(data.reservation_id).toBe(99)
         expect(data.party_size).toBe(2)
@@ -87,7 +87,7 @@ describe("tool_handlers", () => {
       })
 
       //  --  assert
-      expect(result.ok).toBe(true)
+      expect(result.status).toBe("success")
     })
 
     test("rejects_notes_exceeding_500_characters", () => {
@@ -102,8 +102,8 @@ describe("tool_handlers", () => {
       })
 
       //  --  assert
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
+      expect(result.status).toBe("error")
+      if (result.status === "error") {
         expect(result.error).toContain("Notes must not exceed 500 characters")
         expect(result.error).toContain("501")
       }
@@ -121,7 +121,7 @@ describe("tool_handlers", () => {
       })
 
       //  --  assert
-      expect(result.ok).toBe(true)
+      expect(result.status).toBe("success")
     })
 
     test("accepts_empty_notes", () => {
@@ -136,7 +136,7 @@ describe("tool_handlers", () => {
       })
 
       //  --  assert
-      expect(result.ok).toBe(true)
+      expect(result.status).toBe("success")
     })
 
     test("accepts_undefined_notes", () => {
@@ -150,7 +150,7 @@ describe("tool_handlers", () => {
       })
 
       //  --  assert
-      expect(result.ok).toBe(true)
+      expect(result.status).toBe("success")
     })
   })
 })

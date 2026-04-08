@@ -40,10 +40,10 @@ export type reschedule_booking_input_type = {
 // Tool handler result — either a success payload or an error string
 export type tool_result_type =
   | {
-      ok: true
+      status: "success"
       data: unknown
     }
   | {
-      ok: false
+      status: "error"
       error: string
     }

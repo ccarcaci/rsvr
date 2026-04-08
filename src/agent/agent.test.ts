@@ -48,7 +48,7 @@ describe("run_agent", () => {
     let call_count = 0
 
     mock_tool_handlers_module.handle_check_availability.mockReturnValue({
-      ok: true,
+      status: "success",
       data: {
         slot_id: 1,
         date: "2099-12-31",
@@ -84,7 +84,7 @@ describe("run_agent", () => {
     //  --  arrange
     // Always returns tool_use to drive the loop into the limit
     mock_tool_handlers_module.handle_check_availability.mockReturnValue({
-      ok: false,
+      status: "error",
       error: "No availability.",
     })
 

@@ -38,8 +38,8 @@ describe("tool_handlers", () => {
       })
 
       //  --  assert
-      expect(result.ok).toBe(true)
-      if (result.ok) {
+      expect(result.status).toBe("success")
+      if (result.status === "success") {
         const data = result.data as Record<string, unknown>
         expect(data.slot_id).toBe(42)
         expect(data.date).toBe("2099-12-31")
@@ -60,8 +60,8 @@ describe("tool_handlers", () => {
       })
 
       //  --  assert
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
+      expect(result.status).toBe("error")
+      if (result.status === "error") {
         expect(result.error).toContain("No availability")
       }
     })
@@ -77,8 +77,8 @@ describe("tool_handlers", () => {
       })
 
       //  --  assert
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
+      expect(result.status).toBe("error")
+      if (result.status === "error") {
         expect(result.error).toContain("Invalid date format")
       }
     })
@@ -94,8 +94,8 @@ describe("tool_handlers", () => {
       })
 
       //  --  assert
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
+      expect(result.status).toBe("error")
+      if (result.status === "error") {
         expect(result.error).toContain("Invalid time format")
       }
     })

@@ -32,8 +32,8 @@ describe("tool_handlers", () => {
       const result = handlers.handle_list_bookings(1, {})
 
       //  --  assert
-      expect(result.ok).toBe(true)
-      if (result.ok) {
+      expect(result.status).toBe("success")
+      if (result.status === "success") {
         const data = result.data as { reservations: unknown[] }
         expect(data.reservations).toHaveLength(0)
       }
@@ -47,8 +47,8 @@ describe("tool_handlers", () => {
       const result = handlers.handle_list_bookings(1, {})
 
       //  --  assert
-      expect(result.ok).toBe(true)
-      if (result.ok) {
+      expect(result.status).toBe("success")
+      if (result.status === "success") {
         const data = result.data as { reservations: Record<string, unknown>[] }
         expect(data.reservations).toHaveLength(1)
         expect(data.reservations[0].reservation_id).toBe(99)

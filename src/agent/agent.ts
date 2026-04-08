@@ -93,7 +93,7 @@ const dispatch_tool = (
     case "reschedule_booking":
       return handle_reschedule_booking(user_id, tool_input as reschedule_booking_input_type)
     default:
-      return { ok: false, error: `Unknown tool: ${tool_name}` }
+      return { status: "error", error: `Unknown tool: ${tool_name}` }
   }
 }
 
