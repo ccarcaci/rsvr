@@ -1,9 +1,5 @@
-import { afterEach, describe, expect, mock, test } from "bun:test"
+import { afterEach, beforeAll, describe, expect, mock, test } from "bun:test"
 import { mock_anthropic_module, mock_tool_handlers_module } from "./mock"
-
-mock.module("../parser/client/anthropic", () => mock_anthropic_module)
-
-const agent = await import("./agent")
 
 const make_end_turn = (text: string) => ({
   content: [{ type: "text" as const, text }],
@@ -26,6 +22,14 @@ const make_tool_use = (tool_id: string, tool_name: string, input: Record<string,
 })
 
 describe("run_agent", () => {
+  let agent: typeof import("./agent")
+
+  beforeAll(async () => {
+    mock.module("./tool_handlers", () => mock_tool_handlers_module)
+    mock.module("../parser/client/anthropic", () => mock_anthropic_module)
+    agent = await import("./agent")
+  })
+
   afterEach(() => {
     mock.clearAllMocks()
   })
@@ -37,10 +41,16 @@ describe("run_agent", () => {
     )
 
     //  --  act
-    const result = await agent.run_agent(1, 42, "test:end_turn", "Hello")
+    const result = await agent.run_agent(
+      "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+      42,
+      "test:end_turn",
+      "Hello",
+    )
 
     //  --  assert
     expect(result).toBe("How can I help you today?")
+    expect(mock_anthropic_module.messages_create).toHaveBeenCalled()
   })
 
   test("dispatches_tool_use_and_returns_final_text_after_tool_round-trip", async () => {
@@ -50,7 +60,7 @@ describe("run_agent", () => {
     mock_tool_handlers_module.handle_check_availability.mockReturnValue({
       status: "success",
       data: {
-        slot_id: 1,
+        slot_id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
         date: "2099-12-31",
         time: "19:00",
         available_capacity: 8,
@@ -72,12 +82,26 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await agent.run_agent(1, 42, "test:tool_dispatch", "Book a table")
+    const result = await agent.run_agent(
+      "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+      42,
+      "test:tool_dispatch",
+      "Book a table",
+    )
 
     //  --  assert
     expect(typeof result).toBe("string")
     expect(result.length).toBeGreaterThan(0)
     expect(call_count).toBe(2)
+    expect(mock_tool_handlers_module.handle_check_availability).toBeCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        date: "2099-12-31",
+        time: "19:00",
+        party_size: 2,
+      }),
+    )
+    expect(mock_anthropic_module.messages_create).toHaveBeenCalled()
   })
 
   test("returns_error_message_when_tool_call_limit_is_exceeded", async () => {
@@ -96,10 +120,17 @@ describe("run_agent", () => {
     )
 
     //  --  act
-    const result = await agent.run_agent(1, 42, "test:loop_limit", "Loop forever")
+    const result = await agent.run_agent(
+      "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+      42,
+      "test:loop_limit",
+      "Loop forever",
+    )
 
     //  --  assert
     expect(result).toBe("Something went wrong, please try again.")
+    expect(mock_anthropic_module.messages_create).toHaveBeenCalled()
+    expect(mock_tool_handlers_module.handle_check_availability).toHaveBeenCalled()
   })
 
   test("returns_connection_error_message_when_api_throws", async () => {
@@ -109,10 +140,16 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await agent.run_agent(1, 42, "test:api_error", "Hello")
+    const result = await agent.run_agent(
+      "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+      42,
+      "test:api_error",
+      "Hello",
+    )
 
     //  --  assert
     expect(result).toBe("I'm having trouble connecting. Please try again in a moment.")
+    expect(mock_anthropic_module.messages_create).toHaveBeenCalled()
   })
 
   test("handles_unknown_tool_name_by_passing_error_result_back_to_model", async () => {
@@ -128,11 +165,17 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await agent.run_agent(1, 42, "test:unknown_tool", "Do something unsupported")
+    const result = await agent.run_agent(
+      "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+      42,
+      "test:unknown_tool",
+      "Do something unsupported",
+    )
 
     //  --  assert
     expect(typeof result).toBe("string")
     expect(call_count).toBe(2)
+    expect(mock_anthropic_module.messages_create).toHaveBeenCalled()
   })
 
   test("returns_fallback_when_end_turn_response_has_no_text_block", async () => {
@@ -144,9 +187,15 @@ describe("run_agent", () => {
     }))
 
     //  --  act
-    const result = await agent.run_agent(1, 42, "test:no_text", "Hello")
+    const result = await agent.run_agent(
+      "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+      42,
+      "test:no_text",
+      "Hello",
+    )
 
     //  --  assert
     expect(result).toBe("Done.")
+    expect(mock_anthropic_module.messages_create).toHaveBeenCalled()
   })
 })

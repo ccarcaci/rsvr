@@ -5,6 +5,7 @@ export type { MessageParam }
 export type session_entry_type = {
   history: MessageParam[]
   last_active: number
+  client_id?: string
 }
 
 // Tool input shapes — validated at runtime when dispatching
@@ -16,7 +17,7 @@ export type check_availability_input_type = {
 }
 
 export type create_booking_input_type = {
-  slot_id: number
+  slot_id: string
   party_size?: number
   notes?: string
 }
@@ -24,15 +25,15 @@ export type create_booking_input_type = {
 export type list_bookings_input_type = Record<string, never>
 
 export type get_booking_input_type = {
-  reservation_id: number
+  reservation_id: string
 }
 
 export type cancel_booking_input_type = {
-  reservation_id: number
+  reservation_id: string
 }
 
 export type reschedule_booking_input_type = {
-  reservation_id: number
+  reservation_id: string
   new_date: string
   new_time: string
 }
@@ -47,3 +48,7 @@ export type tool_result_type =
       status: "error"
       error: string
     }
+
+export type retrieve_client_id_input_type = {
+  client_name: string
+}

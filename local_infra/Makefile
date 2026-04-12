@@ -328,6 +328,20 @@ api_status: ## Show recent deployments for the rsvr compose service
 		--header "x-api-key: $(DOKPLOY_DEV_AK)" \
 		"$(DOKPLOY_URL)/deployment.allByCompose?composeId=$(COMPOSE_ID)"
 
+.PHONY: seed_db
+seed_db: ## Seed the database with test data
+	sqlite3 ../data/rsvr.db < seed_data.sql
+
+.PHONY: reset_db
+reset_db: ## Delete and recreate the database, then seed with test data
+	@echo "Removing existing database..."
+	@rm -f ../data/rsvr.db
+	@echo "Creating fresh database schema..."
+	@sqlite3 ../data/rsvr.db < ../src/db/schema.sql
+	@echo "Seeding with test data..."
+	@sqlite3 ../data/rsvr.db < seed_data.sql
+	@echo "Database reset and seeded successfully."
+
 ##@ Testing
 
 # These targets test Traefik routing by hitting localhost:3001 with the Host

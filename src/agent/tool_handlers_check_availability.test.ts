@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
+import { afterEach, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test"
 
 import { mock_db_module } from "./mock"
 
 const SLOT = {
-  id: 42,
+  id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
   date: "2099-12-31",
   time: "19:00",
   capacity: 10,
@@ -11,12 +11,17 @@ const SLOT = {
   metadata: null,
 }
 
-mock.module("../db/queries", () => mock_db_module)
-
-// Import real tool_handlers AFTER mocking dependencies
-const handlers = await import("./tool_handlers")
-
 describe("tool_handlers", () => {
+  let handlers: typeof import("./tool_handlers")
+
+  beforeAll(async () => {
+    // Register mocks within describe block to prevent cross-test contamination.
+    // When mocks are at module level, they persist globally and affect other test files
+    // that import the same modules, causing them to receive mocked versions instead of real implementations.
+    mock.module("../db/queries", () => mock_db_module)
+    handlers = await import("./tool_handlers")
+  })
+
   afterEach(() => {
     mock.clearAllMocks()
   })
@@ -31,7 +36,7 @@ describe("tool_handlers", () => {
       mock_db_module.check_availability.mockReturnValue(SLOT)
 
       //  --  act
-      const result = handlers.handle_check_availability({
+      const result = handlers.handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
         date: "2099-12-31",
         time: "19:00",
         party_size: 2,
@@ -41,11 +46,17 @@ describe("tool_handlers", () => {
       expect(result.status).toBe("success")
       if (result.status === "success") {
         const data = result.data as Record<string, unknown>
-        expect(data.slot_id).toBe(42)
+        expect(data.slot_id).toBe("C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D")
         expect(data.date).toBe("2099-12-31")
         expect(data.time).toBe("19:00")
         expect(data.available_capacity).toBe(8)
       }
+      expect(mock_db_module.check_availability).toBeCalledWith(
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "2099-12-31",
+        "19:00",
+        2,
+      )
     })
 
     test("returns_error_when_no_slot_available", () => {
@@ -53,7 +64,7 @@ describe("tool_handlers", () => {
       mock_db_module.check_availability.mockReturnValue(null)
 
       //  --  act
-      const result = handlers.handle_check_availability({
+      const result = handlers.handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
         date: "2099-12-31",
         time: "19:00",
         party_size: 2,
@@ -64,6 +75,12 @@ describe("tool_handlers", () => {
       if (result.status === "error") {
         expect(result.error).toContain("No availability")
       }
+      expect(mock_db_module.check_availability).toBeCalledWith(
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "2099-12-31",
+        "19:00",
+        2,
+      )
     })
 
     test("rejects_invalid_date_format", () => {
@@ -71,7 +88,7 @@ describe("tool_handlers", () => {
       // (no additional setup — default mock returns null)
 
       //  --  act
-      const result = handlers.handle_check_availability({
+      const result = handlers.handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
         date: "31/12/2099",
         time: "19:00",
       })
@@ -81,6 +98,7 @@ describe("tool_handlers", () => {
       if (result.status === "error") {
         expect(result.error).toContain("Invalid date format")
       }
+      expect(mock_db_module.check_availability).not.toHaveBeenCalled()
     })
 
     test("rejects_invalid_time_format", () => {
@@ -88,7 +106,7 @@ describe("tool_handlers", () => {
       // (no additional setup — default mock returns null)
 
       //  --  act
-      const result = handlers.handle_check_availability({
+      const result = handlers.handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
         date: "2099-12-31",
         time: "7pm",
       })
@@ -98,26 +116,26 @@ describe("tool_handlers", () => {
       if (result.status === "error") {
         expect(result.error).toContain("Invalid time format")
       }
+      expect(mock_db_module.check_availability).not.toHaveBeenCalled()
     })
 
     test("defaults_party_size_to_1_when_not_provided", () => {
       //  --  arrange
-      let received_party_size = -1
-      mock_db_module.check_availability.mockImplementation(
-        (_dt: unknown, _t: unknown, ps: unknown) => {
-          received_party_size = ps as number
-          return SLOT
-        },
-      )
+      // (no additional setup)
 
       //  --  act
-      handlers.handle_check_availability({
+      handlers.handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
         date: "2099-12-31",
         time: "19:00",
       })
 
       //  --  assert
-      expect(received_party_size).toBe(1)
+      expect(mock_db_module.check_availability).toBeCalledWith(
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "2099-12-31",
+        "19:00",
+        1,
+      )
     })
   })
 })

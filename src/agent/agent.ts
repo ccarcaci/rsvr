@@ -14,6 +14,7 @@ import {
   handle_get_booking,
   handle_list_bookings,
   handle_reschedule_booking,
+  handle_retrieve_client_id,
 } from "./tool_handlers"
 import type {
   cancel_booking_input_type,
@@ -22,6 +23,7 @@ import type {
   get_booking_input_type,
   list_bookings_input_type,
   reschedule_booking_input_type,
+  retrieve_client_id_input_type,
   tool_result_type,
 } from "./types"
 
@@ -44,44 +46,68 @@ const call_api = async (
   }
 }
 
+type use_block_result_type = {
+  block: ToolResultBlockParam
+  resolved_client_id?: string
+}
+
 const use_block = (
-  user_id: number,
+  client_id: string,
+  user_id: string,
   current_time_ms: number,
   sender_key: string,
   tool_block: ToolUseBlock,
-) => {
+): use_block_result_type => {
   logger.info("Dispatching tool", { tool: tool_block.name, user_id, sender_key })
 
-  const result = dispatch_tool(user_id, current_time_ms, tool_block.name, tool_block.input)
+  const result = dispatch_tool(
+    client_id,
+    user_id,
+    current_time_ms,
+    tool_block.name,
+    tool_block.input,
+  )
 
-  if (result.ok) {
+  if (result.status === "success") {
+    const resolved_client_id =
+      tool_block.name === "retrieve_client_name"
+        ? (result.data as { client_id: string }).client_id
+        : undefined
+
     return {
-      type: "tool_result" as const,
-      tool_use_id: tool_block.id,
-      content: JSON.stringify(result.data),
+      block: {
+        type: "tool_result" as const,
+        tool_use_id: tool_block.id,
+        content: JSON.stringify(result.data),
+      },
+      resolved_client_id,
     }
   }
   return {
-    type: "tool_result" as const,
-    tool_use_id: tool_block.id,
-    content: result.error,
-    is_error: true,
+    block: {
+      type: "tool_result" as const,
+      tool_use_id: tool_block.id,
+      content: result.error,
+      is_error: true,
+    },
   }
 }
 
 const dispatch_tool = (
-  user_id: number,
+  client_id: string,
+  user_id: string,
   current_time_ms: number,
   tool_name: string,
   tool_input: unknown,
 ): tool_result_type => {
   switch (tool_name) {
     case "check_availability":
-      return handle_check_availability(tool_input as check_availability_input_type)
+      return handle_check_availability(client_id, tool_input as check_availability_input_type)
     case "create_booking":
       return handle_create_booking(
-        user_id,
         current_time_ms,
+        client_id,
+        user_id,
         tool_input as create_booking_input_type,
       )
     case "list_bookings":
@@ -92,6 +118,8 @@ const dispatch_tool = (
       return handle_cancel_booking(user_id, tool_input as cancel_booking_input_type)
     case "reschedule_booking":
       return handle_reschedule_booking(user_id, tool_input as reschedule_booking_input_type)
+    case "retrieve_client_name":
+      return handle_retrieve_client_id(tool_input as retrieve_client_id_input_type)
     default:
       return { status: "error", error: `Unknown tool: ${tool_name}` }
   }
@@ -100,17 +128,17 @@ const dispatch_tool = (
 //  --
 
 export const run_agent = async (
-  user_id: number,
+  user_id: string,
   current_time_ms: number,
   sender_key: string,
   text: string,
 ): Promise<string> => {
   const session = get_session(sender_key, current_time_ms)
+  let client_id = session.client_id ?? ""
 
   const history: MessageParam[] = [...session.history, { role: "user", content: text }]
 
   let tool_call_count = 0
-
   while (true) {
     if (tool_call_count >= MAX_TOOL_CALLS) {
       logger.error("Agent exceeded max tool calls", { user_id, sender_key, tool_call_count })
@@ -129,7 +157,11 @@ export const run_agent = async (
         (block: Message["content"][number]) => block.type === "text",
       )
       const reply = text_block && text_block.type === "text" ? text_block.text : ""
-      update_session(current_time_ms, sender_key, { ...session, history })
+      update_session(current_time_ms, sender_key, {
+        ...session,
+        history,
+        client_id: client_id || undefined,
+      })
       return reply || "Done."
     }
 
@@ -150,9 +182,20 @@ export const run_agent = async (
 
     tool_call_count += tool_use_blocks.length
 
-    const tool_results: ToolResultBlockParam[] = tool_use_blocks.map((tool_block: ToolUseBlock) =>
-      use_block(user_id, current_time_ms, sender_key, tool_block),
-    )
+    const tool_results: ToolResultBlockParam[] = []
+    for (const tool_block of tool_use_blocks) {
+      const { block, resolved_client_id } = use_block(
+        client_id,
+        user_id,
+        current_time_ms,
+        sender_key,
+        tool_block,
+      )
+      tool_results.push(block)
+      if (resolved_client_id) {
+        client_id = resolved_client_id
+      }
+    }
     history.push({ role: "user", content: tool_results })
   }
 }

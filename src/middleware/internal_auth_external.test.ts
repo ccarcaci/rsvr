@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, mock, test } from "bun:test"
 import type { Context } from "hono"
 import { create_internal_auth_middleware } from "./internal_auth"
 
-describe("internal_auth middleware - external access", () => {
+describe("internal_auth_middleware_external_access", () => {
   const VALID_API_KEY = "test_secret_key_12345"
   let middleware: (c: Context, next: () => Promise<void>) => Promise<undefined | Response>
   let mock_next: ReturnType<typeof mock>
@@ -30,7 +30,7 @@ describe("internal_auth middleware - external access", () => {
     } as unknown as Context
   }
 
-  describe("non-localhost access", () => {
+  describe("non_localhost_access", () => {
     test("rejects_external_ip_even_with_valid_key", async () => {
       //  --  arrange
       const context = create_mock_context("192.168.1.100", VALID_API_KEY)
@@ -86,7 +86,7 @@ describe("internal_auth middleware - external access", () => {
     })
   })
 
-  describe("edge cases", () => {
+  describe("edge_cases", () => {
     test("handles_unknown_remote_address", async () => {
       //  --  arrange
       const context = create_mock_context("unknown", VALID_API_KEY)

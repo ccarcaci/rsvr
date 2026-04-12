@@ -43,14 +43,14 @@ setup: check_version install ## Full project setup (check version + install deps
 ##@ Testing & Quality
 
 .PHONY: ci_test
-ci_test: ## Run tests with Bun native test runner
+ci_test: ## Run tests with Bun native test runner (e.g. make test test_name)
 	@echo "Running tests..."
-	@$(BUN) test $(SRC_DIR)/
+	@$(BUN) test $(if $(filter-out ci_test,$(MAKECMDGOALS)),--test-name-pattern=$(filter-out ci_test,$(MAKECMDGOALS))) $(SRC_DIR)/
 
 .PHONY: test_debug
-test_debug: ## Run tests with Bun native test runner
+test_debug: ## Run tests with debugger (e.g., make test_debug test_name)
 	@echo "Running tests..."
-	@$(BUN) test --inspect-brk $(SRC_DIR)/
+	@$(BUN) test --inspect-wait $(if $(filter-out test_debug,$(MAKECMDGOALS)),--test-name-pattern=$(filter-out test_debug,$(MAKECMDGOALS))) $(SRC_DIR)/
 
 .PHONY: lint
 lint: ## Run Biome linter on src/

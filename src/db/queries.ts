@@ -1,51 +1,12 @@
 import { get_db } from "./client"
-
-export type user_row_type = {
-  id: number
-  phone: string | null
-  telegram_id: string | null
-  name: string | null
-  channel: "whatsapp" | "telegram"
-  created_at: string
-}
-
-export type time_slot_row_type = {
-  id: number
-  date: string
-  time: string
-  capacity: number
-  booked: number
-  metadata: string | null
-}
-
-export type reservation_row_type = {
-  id: number
-  user_id: number
-  time_slot_id: number
-  party_size: number
-  status: string
-  notes: string | null
-  created_at: string
-  updated_at: string
-}
-
-export class capacity_error extends Error {
-  remaining: number
-  constructor(remaining: number) {
-    super(
-      `Not enough capacity. Only ${remaining} ${remaining === 1 ? "seat" : "seats"} remain for that slot.`,
-    )
-    this.name = "capacity_error"
-    this.remaining = remaining
-  }
-}
-
-export class slot_not_found_error extends Error {
-  constructor(slot_id: number) {
-    super(`Slot ${slot_id} no longer exists.`)
-    this.name = "slot_not_found_error"
-  }
-}
+import {
+  capacity_error,
+  type client_row_type,
+  type reservation_row_type,
+  slot_not_found_error,
+  type time_slot_row_type,
+  type user_row_type,
+} from "./types"
 
 export const find_user_by_phone = (phone: string): user_row_type | null => {
   return get_db().query<user_row_type, [string]>("SELECT * FROM users WHERE phone = ?").get(phone)
@@ -75,28 +36,32 @@ export const create_user = (
 }
 
 export const check_availability = (
+  client_id: string,
   date: string,
   time: string,
   party_size: number,
 ): time_slot_row_type | null => {
   return get_db()
-    .query<time_slot_row_type, [string, string, number]>(
-      "SELECT * FROM time_slots WHERE date = ? AND time = ? AND (capacity - booked) >= ?",
+    .query<time_slot_row_type, [string, string, string, number]>(
+      "SELECT * FROM time_slots WHERE client_id = ? AND date = ? AND time = ? AND (capacity - booked) >= ?",
     )
-    .get(date, time, party_size)
+    .get(client_id, date, time, party_size)
 }
 
+// Requires 6 parameters because a reservation spans users, time slots, clients,
+// and party details — each represents a distinct entity/value in the domain model.
 export const create_reservation = (
-  user_id: number,
-  time_slot_id: number,
   party_size: number,
   _current_time_ms: number,
+  client_id: string,
+  user_id: string,
+  time_slot_id: string,
   notes?: string,
 ): reservation_row_type => {
   const run_transaction = get_db().transaction(() => {
     // 1. Read slot inside transaction (under write lock via IMMEDIATE)
     const slot = get_db()
-      .query<time_slot_row_type, [number]>("SELECT * FROM time_slots WHERE id = ?")
+      .query<time_slot_row_type, [string]>("SELECT * FROM time_slots WHERE id = ?")
       .get(time_slot_id)
     if (!slot) {
       throw new slot_not_found_error(time_slot_id)
@@ -108,12 +73,13 @@ export const create_reservation = (
       throw new capacity_error(remaining)
     }
 
-    // 3. INSERT reservation
-    const insert_result = get_db()
+    // 3. Generate reservation ID and INSERT
+    const reservation_id = crypto.randomUUID()
+    get_db()
       .query(
-        "INSERT INTO reservations (user_id, time_slot_id, party_size, notes) VALUES (?, ?, ?, ?)",
+        "INSERT INTO reservations (id, client_id, user_id, time_slot_id, party_size, notes) VALUES (?, ?, ?, ?, ?, ?)",
       )
-      .run(user_id, time_slot_id, party_size, notes ?? null)
+      .run(reservation_id, client_id, user_id, time_slot_id, party_size, notes ?? null)
 
     // 4. UPDATE time_slots booked count
     get_db()
@@ -122,10 +88,10 @@ export const create_reservation = (
 
     // 5. Return the created reservation
     const result = get_db()
-      .query<reservation_row_type, [number]>("SELECT * FROM reservations WHERE id = ?")
-      .get(insert_result.lastInsertRowid as number)
+      .query<reservation_row_type, [string]>("SELECT * FROM reservations WHERE id = ?")
+      .get(reservation_id)
     if (!result) {
-      throw new Error(`Failed to find reservation after insert: ${insert_result.lastInsertRowid}`)
+      throw new Error(`Failed to find reservation after insert: ${reservation_id}`)
     }
     return result
   })
@@ -134,9 +100,9 @@ export const create_reservation = (
   return run_transaction.immediate()
 }
 
-export const cancel_reservation = (user_id: number, reservation_id: number): boolean => {
+export const cancel_reservation = (user_id: string, reservation_id: string): boolean => {
   const reservation = get_db()
-    .query<reservation_row_type, [number, number]>(
+    .query<reservation_row_type, [string, string]>(
       "SELECT * FROM reservations WHERE id = ? AND user_id = ? AND status = 'confirmed'",
     )
     .get(reservation_id, user_id)
@@ -155,16 +121,22 @@ export const cancel_reservation = (user_id: number, reservation_id: number): boo
   return true
 }
 
-export const list_reservations = (user_id: number): reservation_row_type[] => {
+export const find_reservations = (user_id: string): reservation_row_type[] => {
   return get_db()
-    .query<reservation_row_type, [number]>(
+    .query<reservation_row_type, [string]>(
       "SELECT * FROM reservations WHERE user_id = ? AND status = 'confirmed' ORDER BY created_at DESC",
     )
     .all(user_id)
 }
 
-export const get_slot_by_id = (slot_id: number): time_slot_row_type | null => {
+export const find_slot_by_id = (slot_id: string): time_slot_row_type | null => {
   return get_db()
-    .query<time_slot_row_type, [number]>("SELECT * FROM time_slots WHERE id = ?")
+    .query<time_slot_row_type, [string]>("SELECT * FROM time_slots WHERE id = ?")
     .get(slot_id)
+}
+
+export const find_clients_by_name = (name: string): client_row_type[] => {
+  return get_db()
+    .query<client_row_type, [string]>("SELECT * FROM client WHERE LOWER(name) = LOWER(?)")
+    .all(name)
 }

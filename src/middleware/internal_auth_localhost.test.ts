@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, mock, test } from "bun:test"
 import type { Context } from "hono"
 import { create_internal_auth_middleware } from "./internal_auth"
 
-describe("internal_auth middleware - localhost access", () => {
+describe("internal_auth_middleware_localhost_access", () => {
   const VALID_API_KEY = "test_secret_key_12345"
   let middleware: (c: Context, next: () => Promise<void>) => Promise<undefined | Response>
   let mock_next: ReturnType<typeof mock>
@@ -30,7 +30,7 @@ describe("internal_auth middleware - localhost access", () => {
     } as unknown as Context
   }
 
-  describe("valid localhost access", () => {
+  describe("valid_localhost_access", () => {
     test("allows_localhost_127_0_0_1_with_valid_key", async () => {
       //  --  arrange
       const context = create_mock_context("127.0.0.1", VALID_API_KEY)
@@ -87,7 +87,7 @@ describe("internal_auth middleware - localhost access", () => {
     })
   })
 
-  describe("localhost with invalid/missing key", () => {
+  describe("localhost_with_invalid_missing_key", () => {
     test("rejects_localhost_with_missing_api_key", async () => {
       //  --  arrange
       const context = create_mock_context("127.0.0.1", undefined)

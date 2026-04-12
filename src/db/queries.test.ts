@@ -1,43 +1,41 @@
 import type { Database } from "bun:sqlite"
 import { afterEach, beforeAll, describe, expect, test } from "bun:test"
-import {
-  capacity_error,
-  make_create_reservation,
-  seed_slot,
-  seed_user,
-  setup_db,
-  slot_not_found_error,
-} from "./queries_test_helpers"
+import { create_reservation, find_clients_by_name } from "./queries"
+import { seed_slot, setup_db } from "./queries_test_helpers"
+import { capacity_error, slot_not_found_error } from "./types"
 
-// We need to test against a real SQLite database to verify transaction semantics.
-// We re-implement the transactional create_reservation logic inline
-// against a fresh in-memory DB to test the atomicity guarantees, without importing
-// the production queries module (which has a config/args dependency chain).
+// Test database uses seed data from local_infra/seed_data.sql for realistic test environment.
+// Tests create additional slots for specific edge cases (capacity limits, exact capacity fills, etc).
+// The seed data provides:
+//   - 8 realistic users (WhatsApp + Telegram)
+//   - 24 time slots across multiple dates/times
+//   - 8 sample reservations
 
 const CURRENT_TIME_MS = 1710849600000
 
-describe("create_reservation (transactional)", () => {
+describe("create_reservation_transactional", () => {
   let test_db: Database
-  let user_id: number
-  let create_reservation: ReturnType<typeof make_create_reservation>
+  let user_id: string
+  let client_id: string
 
   beforeAll(() => {
-    test_db = setup_db()
-    user_id = seed_user(test_db)
-    create_reservation = make_create_reservation(test_db)
+    test_db = setup_db() // Load seed data
+    // Use clients and users from seed data
+    client_id = "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C" // The Golden Fork Restaurant
+    user_id = "D5F7BA6A-19C2-42F3-8080-17F098BB807D" // Alice Johnson
   })
 
   afterEach(() => {
-    test_db.exec("DELETE FROM reservations")
-    test_db.exec("DELETE FROM time_slots")
+    test_db.run("DELETE FROM reservations")
+    test_db.run("DELETE FROM time_slots")
   })
 
-  test("creates a reservation and increments booked count", () => {
+  test("creates_a_reservation_and_increments_booked_count", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, "2026-04-01", "19:00", 10)
+    const slot_id = seed_slot(test_db, client_id, "2026-04-01", "19:00", 10)
 
     //  --  act
-    const reservation = create_reservation(user_id, slot_id, 2, CURRENT_TIME_MS)
+    const reservation = create_reservation(2, CURRENT_TIME_MS, client_id, user_id, slot_id)
 
     //  --  assert
     expect(reservation.user_id).toBe(user_id)
@@ -46,98 +44,174 @@ describe("create_reservation (transactional)", () => {
     expect(reservation.status).toBe("confirmed")
 
     const slot = test_db
-      .query<{ booked: number }, [number]>("SELECT booked FROM time_slots WHERE id = ?")
+      .query<{ booked: number }, [string]>("SELECT booked FROM time_slots WHERE id = ?")
       .get(slot_id)
     expect(slot?.booked).toBe(2)
   })
 
-  test("throws slot_not_found_error when slot does not exist", () => {
+  test("throws_slot_not_found_error_when_slot_does_not_exist", () => {
     //  --  arrange
-    const nonexistent_slot_id = 9999
+    const nonexistent_slot_id = "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF"
 
     //  --  act & assert
-    expect(() => create_reservation(user_id, nonexistent_slot_id, 1, CURRENT_TIME_MS)).toThrow(
-      slot_not_found_error,
+    expect(() =>
+      create_reservation(1, CURRENT_TIME_MS, client_id, user_id, nonexistent_slot_id),
+    ).toThrow(slot_not_found_error)
+  })
+
+  test("throws_capacity_error_when_party_size_exceeds_remaining_capacity", () => {
+    //  --  arrange
+    const slot_id = seed_slot(test_db, client_id, "2026-04-01", "20:00", 4, 3)
+
+    //  --  act & assert
+    expect(() => create_reservation(2, CURRENT_TIME_MS, client_id, user_id, slot_id)).toThrow(
+      capacity_error,
     )
   })
 
-  test("throws capacity_error when party_size exceeds remaining capacity", () => {
+  test("allows_booking_when_party_size_exactly_fills_remaining_capacity", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, "2026-04-01", "20:00", 4, 3)
-
-    //  --  act & assert
-    expect(() => create_reservation(user_id, slot_id, 2, CURRENT_TIME_MS)).toThrow(capacity_error)
-  })
-
-  test("allows booking when party_size exactly fills remaining capacity", () => {
-    //  --  arrange
-    const slot_id = seed_slot(test_db, "2026-04-01", "14:00", 3, 1)
+    const slot_id = seed_slot(test_db, client_id, "2026-04-01", "14:00", 3, 1)
 
     //  --  act
-    const reservation = create_reservation(user_id, slot_id, 2, CURRENT_TIME_MS)
+    const reservation = create_reservation(2, CURRENT_TIME_MS, client_id, user_id, slot_id)
 
     //  --  assert
     expect(reservation.party_size).toBe(2)
     const slot = test_db
-      .query<{ booked: number }, [number]>("SELECT booked FROM time_slots WHERE id = ?")
+      .query<{ booked: number }, [string]>("SELECT booked FROM time_slots WHERE id = ?")
       .get(slot_id)
     expect(slot?.booked).toBe(3)
   })
 
-  test("rejects booking that overflows by exactly one seat", () => {
+  test("rejects_booking_that_overflows_by_exactly_one_seat", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, "2026-04-01", "21:00", 5, 5)
+    const slot_id = seed_slot(test_db, client_id, "2026-04-01", "21:00", 5, 5)
 
     //  --  act & assert
-    expect(() => create_reservation(user_id, slot_id, 1, CURRENT_TIME_MS)).toThrow(capacity_error)
+    expect(() => create_reservation(1, CURRENT_TIME_MS, client_id, user_id, slot_id)).toThrow(
+      capacity_error,
+    )
   })
 
-  test("sequential bookings respect capacity and prevent overbooking", () => {
+  test("sequential_bookings_respect_capacity_and_prevent_overbooking", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, "2026-04-02", "19:00", 4)
+    const slot_id = seed_slot(test_db, client_id, "2026-04-02", "19:00", 4)
 
     //  --  act — first booking takes 3 seats
-    const r1 = create_reservation(user_id, slot_id, 3, CURRENT_TIME_MS)
+    const r1 = create_reservation(3, CURRENT_TIME_MS, client_id, user_id, slot_id)
     expect(r1.party_size).toBe(3)
 
     //  --  act — second booking tries 2 seats (only 1 remaining)
-    expect(() => create_reservation(user_id, slot_id, 2, CURRENT_TIME_MS)).toThrow(capacity_error)
+    expect(() => create_reservation(2, CURRENT_TIME_MS, client_id, user_id, slot_id)).toThrow(
+      capacity_error,
+    )
 
     //  --  assert — booked count should be 3, not 5
     const slot = test_db
-      .query<{ booked: number }, [number]>("SELECT booked FROM time_slots WHERE id = ?")
+      .query<{ booked: number }, [string]>("SELECT booked FROM time_slots WHERE id = ?")
       .get(slot_id)
     expect(slot?.booked).toBe(3)
   })
 
-  test("rolls back reservation if capacity check fails mid-transaction", () => {
+  test("rolls_back_reservation_if_capacity_check_fails_mid_transaction", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, "2026-04-03", "19:00", 2, 2)
+    const slot_id = seed_slot(test_db, client_id, "2026-04-03", "19:00", 2, 2)
 
     //  --  act
-    expect(() => create_reservation(user_id, slot_id, 1, CURRENT_TIME_MS)).toThrow(capacity_error)
+    expect(() => create_reservation(1, CURRENT_TIME_MS, client_id, user_id, slot_id)).toThrow(
+      capacity_error,
+    )
 
     //  --  assert — no reservation should have been created
     const reservations = test_db
-      .query<{ id: number }, [number]>("SELECT id FROM reservations WHERE time_slot_id = ?")
+      .query<{ id: string }, [string]>("SELECT id FROM reservations WHERE time_slot_id = ?")
       .all(slot_id)
     expect(reservations.length).toBe(0)
 
     //  --  assert — booked count unchanged
     const slot = test_db
-      .query<{ booked: number }, [number]>("SELECT booked FROM time_slots WHERE id = ?")
+      .query<{ booked: number }, [string]>("SELECT booked FROM time_slots WHERE id = ?")
       .get(slot_id)
     expect(slot?.booked).toBe(2)
   })
 
-  test("creates reservation with notes", () => {
+  test("creates_reservation_with_notes", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, "2026-04-05", "09:00", 1)
+    const slot_id = seed_slot(test_db, client_id, "2026-04-05", "09:00", 1)
 
     //  --  act
-    const reservation = create_reservation(user_id, slot_id, 1, CURRENT_TIME_MS, "Annual checkup")
+    const reservation = create_reservation(
+      1,
+      CURRENT_TIME_MS,
+      client_id,
+      user_id,
+      slot_id,
+      "Annual checkup",
+    )
 
     //  --  assert
     expect(reservation.notes).toBe("Annual checkup")
+  })
+})
+
+describe("find_clients_by_name", () => {
+  let test_db: Database
+
+  beforeAll(() => {
+    test_db = setup_db()
+  })
+
+  test("returns_empty_array_when_no_clients_match", () => {
+    //  --  arrange
+    // (seed data already has clients)
+
+    //  --  act
+    const results = find_clients_by_name("Nonexistent Business")
+
+    //  --  assert
+    expect(results).toEqual([])
+  })
+
+  test("finds_client_with_exact_case_insensitive_match", () => {
+    //  --  arrange
+    // (seed data has "The Golden Fork Restaurant")
+
+    //  --  act
+    const results = find_clients_by_name("the golden fork restaurant")
+
+    //  --  assert
+    expect(results.length).toBe(1)
+    expect(results[0].name).toBe("The Golden Fork Restaurant")
+    expect(results[0].id.length).toBeGreaterThan(0)
+  })
+
+  test("returns_multiple_clients_when_multiple_match_exactly", () => {
+    //  --  arrange
+    // Insert two clients with the same name
+    test_db
+      .query("INSERT INTO client (id, name) VALUES (?, ?)")
+      .run(`ID1-${crypto.randomUUID().substring(4)}`, "Test Duplicate Client")
+    test_db
+      .query("INSERT INTO client (id, name) VALUES (?, ?)")
+      .run(`ID2-${crypto.randomUUID().substring(4)}`, "Test Duplicate Client")
+
+    //  --  act
+    const results = find_clients_by_name("Test Duplicate Client")
+
+    //  --  assert
+    expect(results.length).toBe(2)
+    expect(results.every((c) => c.name === "Test Duplicate Client")).toBe(true)
+  })
+
+  test("does_not_return_partial_matches", () => {
+    //  --  arrange
+    // (seed data has "The Golden Fork Restaurant")
+
+    //  --  act
+    const results = find_clients_by_name("Golden Fork")
+
+    //  --  assert
+    expect(results).toEqual([])
   })
 })

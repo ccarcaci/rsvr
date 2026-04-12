@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
+import { afterEach, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test"
 
 import { mock_db_module } from "./mock"
 
 const SLOT = {
-  id: 42,
+  id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
   date: "2099-12-31",
   time: "19:00",
   capacity: 10,
@@ -12,9 +12,9 @@ const SLOT = {
 }
 
 const RESERVATION = {
-  id: 99,
-  user_id: 1,
-  time_slot_id: 42,
+  id: "A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D",
+  user_id: "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+  time_slot_id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
   party_size: 2,
   status: "confirmed",
   notes: null,
@@ -22,19 +22,24 @@ const RESERVATION = {
   updated_at: "2099-01-01T00:00:00",
 }
 
-mock.module("../db/queries", () => mock_db_module)
-
-// Import real tool_handlers AFTER mocking dependencies
-const handlers = await import("./tool_handlers")
-
 describe("tool_handlers", () => {
+  let handlers: typeof import("./tool_handlers")
+
+  beforeAll(async () => {
+    // Register mocks within describe block to prevent cross-test contamination.
+    // When mocks are at module level, they persist globally and affect other test files
+    // that import the same modules, causing them to receive mocked versions instead of real implementations.
+    mock.module("../db/queries", () => mock_db_module)
+    handlers = await import("./tool_handlers")
+  })
+
   afterEach(() => {
     mock.clearAllMocks()
   })
 
   describe("handle_create_booking", () => {
     beforeEach(() => {
-      mock_db_module.get_slot_by_id.mockReturnValue(SLOT)
+      mock_db_module.find_slot_by_id.mockReturnValue(SLOT)
       mock_db_module.create_reservation.mockReturnValue(RESERVATION)
     })
 
@@ -43,36 +48,59 @@ describe("tool_handlers", () => {
       // (beforeEach sets up SLOT with capacity 10, booked 2)
 
       //  --  act
-      const result = handlers.handle_create_booking(1, 1000000, {
-        slot_id: 42,
-        party_size: 2,
-      })
+      const result = handlers.handle_create_booking(
+        1000000,
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+        {
+          slot_id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
+          party_size: 2,
+        },
+      )
 
       //  --  assert
       expect(result.status).toBe("success")
       if (result.status === "success") {
         const data = result.data as Record<string, unknown>
-        expect(data.reservation_id).toBe(99)
+        expect(data.reservation_id).toBe("A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D")
         expect(data.party_size).toBe(2)
         expect(data.status).toBe("confirmed")
       }
+      expect(mock_db_module.create_reservation).toBeCalledWith(
+        2,
+        1000000,
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+        "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
+        undefined,
+      )
+      expect(mock_db_module.find_slot_by_id).toBeCalledWith("C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D")
     })
 
     test("defaults_party_size_to_1_when_not_provided", () => {
       //  --  arrange
-      let received_party_size = -1
-      mock_db_module.create_reservation.mockImplementation(
-        (_uid: unknown, _sid: unknown, ps: unknown, _ct: unknown) => {
-          received_party_size = ps as number
-          return RESERVATION
+      // (no additional setup)
+
+      //  --  act
+      handlers.handle_create_booking(
+        1000000,
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+        {
+          slot_id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
         },
       )
 
-      //  --  act
-      handlers.handle_create_booking(1, 1000000, { slot_id: 42 })
-
       //  --  assert
-      expect(received_party_size).toBe(1)
+      expect(mock_db_module.create_reservation).toBeCalledWith(
+        1,
+        1000000,
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+        "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
+        undefined,
+      )
+      expect(mock_db_module.find_slot_by_id).toBeCalledWith("C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D")
     })
 
     test("accepts_notes_at_exactly_500_characters", () => {
@@ -80,14 +108,28 @@ describe("tool_handlers", () => {
       const notes_500 = "a".repeat(500)
 
       //  --  act
-      const result = handlers.handle_create_booking(1, 1000000, {
-        slot_id: 42,
-        party_size: 1,
-        notes: notes_500,
-      })
+      const result = handlers.handle_create_booking(
+        1000000,
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+        {
+          slot_id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
+          party_size: 1,
+          notes: notes_500,
+        },
+      )
 
       //  --  assert
       expect(result.status).toBe("success")
+      expect(mock_db_module.create_reservation).toBeCalledWith(
+        1,
+        1000000,
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+        "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
+        notes_500,
+      )
+      expect(mock_db_module.find_slot_by_id).toBeCalledWith("C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D")
     })
 
     test("rejects_notes_exceeding_500_characters", () => {
@@ -95,11 +137,16 @@ describe("tool_handlers", () => {
       const notes_501 = "a".repeat(501)
 
       //  --  act
-      const result = handlers.handle_create_booking(1, 1000000, {
-        slot_id: 42,
-        party_size: 1,
-        notes: notes_501,
-      })
+      const result = handlers.handle_create_booking(
+        1000000,
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+        {
+          slot_id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
+          party_size: 1,
+          notes: notes_501,
+        },
+      )
 
       //  --  assert
       expect(result.status).toBe("error")
@@ -107,6 +154,8 @@ describe("tool_handlers", () => {
         expect(result.error).toContain("Notes must not exceed 500 characters")
         expect(result.error).toContain("501")
       }
+      expect(mock_db_module.create_reservation).not.toHaveBeenCalled()
+      expect(mock_db_module.find_slot_by_id).not.toHaveBeenCalled()
     })
 
     test("accepts_notes_under_500_characters", () => {
@@ -114,14 +163,28 @@ describe("tool_handlers", () => {
       const notes_100 = `${"short notes here".repeat(6)} extra`
 
       //  --  act
-      const result = handlers.handle_create_booking(1, 1000000, {
-        slot_id: 42,
-        party_size: 1,
-        notes: notes_100,
-      })
+      const result = handlers.handle_create_booking(
+        1000000,
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+        {
+          slot_id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
+          party_size: 1,
+          notes: notes_100,
+        },
+      )
 
       //  --  assert
       expect(result.status).toBe("success")
+      expect(mock_db_module.create_reservation).toBeCalledWith(
+        1,
+        1000000,
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+        "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
+        notes_100,
+      )
+      expect(mock_db_module.find_slot_by_id).toBeCalledWith("C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D")
     })
 
     test("accepts_empty_notes", () => {
@@ -129,14 +192,28 @@ describe("tool_handlers", () => {
       // (no additional setup)
 
       //  --  act
-      const result = handlers.handle_create_booking(1, 1000000, {
-        slot_id: 42,
-        party_size: 1,
-        notes: "",
-      })
+      const result = handlers.handle_create_booking(
+        1000000,
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+        {
+          slot_id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
+          party_size: 1,
+          notes: "",
+        },
+      )
 
       //  --  assert
       expect(result.status).toBe("success")
+      expect(mock_db_module.create_reservation).toBeCalledWith(
+        1,
+        1000000,
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+        "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
+        "",
+      )
+      expect(mock_db_module.find_slot_by_id).toBeCalledWith("C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D")
     })
 
     test("accepts_undefined_notes", () => {
@@ -144,13 +221,27 @@ describe("tool_handlers", () => {
       // (no additional setup)
 
       //  --  act
-      const result = handlers.handle_create_booking(1, 1000000, {
-        slot_id: 42,
-        party_size: 1,
-      })
+      const result = handlers.handle_create_booking(
+        1000000,
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+        {
+          slot_id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
+          party_size: 1,
+        },
+      )
 
       //  --  assert
       expect(result.status).toBe("success")
+      expect(mock_db_module.create_reservation).toBeCalledWith(
+        1,
+        1000000,
+        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
+        "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
+        undefined,
+      )
+      expect(mock_db_module.find_slot_by_id).toBeCalledWith("C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D")
     })
   })
 })

@@ -1,14 +1,19 @@
-import { afterEach, describe, expect, mock, test } from "bun:test"
+import { afterEach, beforeAll, describe, expect, mock, test } from "bun:test"
 import type { incoming_message_type } from "../channels/types"
 import { mock_db_module, mock_transcribe_module } from "./mock"
 
-// Mock only direct dependencies of service, not the agent module (which has its own tests)
-mock.module("../voice/transcribe", () => mock_transcribe_module)
-mock.module("../db/queries", () => mock_db_module)
-
-const service = await import("./service")
-
 describe("handle_message", () => {
+  let service: typeof import("./service")
+
+  beforeAll(async () => {
+    // Register mocks within describe block to prevent cross-test contamination.
+    // When mocks are at module level, they persist globally and affect other test files
+    // that import the same modules, causing them to receive mocked versions instead of real implementations.
+    mock.module("../voice/transcribe", () => mock_transcribe_module)
+    mock.module("../db/queries", () => mock_db_module)
+    service = await import("./service")
+  })
+
   afterEach(() => {
     mock.clearAllMocks()
   })
@@ -18,7 +23,7 @@ describe("handle_message", () => {
     const voice_message: incoming_message_type = {
       voice_buffer: new TextEncoder().encode("book an appointment for tomorrow"),
       voice_mime_type: "audio/ogg",
-      sender_id: "e6be41db-8a68-47a9-9465-25cca471a105",
+      sender_id: "E6BE41DB-8A68-47A9-9465-25CCA471A105",
       channel: "whatsapp",
       sender_name: "John Doe",
       raw_payload: "",
@@ -28,7 +33,7 @@ describe("handle_message", () => {
 
     const mock_create_user = mock_db_module.create_user
     mock_create_user.mockReturnValue({
-      id: 42,
+      id: "E6BE41DB-8A68-47A9-9465-25CCA471A105",
       phone: "+3912345",
       telegram_id: null,
       name: "John Doe",
@@ -44,7 +49,7 @@ describe("handle_message", () => {
     expect(mock_transcribe_audio).toBeCalledWith(voice_message.voice_buffer, "audio/ogg")
     expect(mock_create_user).toBeCalledWith(
       "whatsapp",
-      "e6be41db-8a68-47a9-9465-25cca471a105",
+      "E6BE41DB-8A68-47A9-9465-25CCA471A105",
       "John Doe",
     )
   })

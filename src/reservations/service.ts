@@ -1,6 +1,6 @@
 import { run_agent } from "../agent/agent"
 import type { incoming_message_type } from "../channels/types"
-import * as db from "../db/queries"
+import { create_user } from "../db/queries"
 import { logger } from "../shared/logger"
 import { transcribe_audio } from "../voice/transcribe"
 
@@ -19,7 +19,7 @@ export const handle_message = async (
     return "I can help you with reservations. Send me a text or voice message!"
   }
 
-  const user = db.create_user(message.channel, message.sender_id, message.sender_name)
+  const user = create_user(message.channel, message.sender_id, message.sender_name)
 
   const sender_key = `${message.channel}:${message.sender_id}`
 
