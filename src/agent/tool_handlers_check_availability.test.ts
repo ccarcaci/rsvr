@@ -1,6 +1,10 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test"
-
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { mock_module, mock_restore } from "../mock_module"
 import { mock_db_module } from "./mock"
+
+mock_module("./db/queries", () => mock_db_module)
+
+import { handle_check_availability } from "./tool_handlers"
 
 const SLOT = {
   id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
@@ -12,31 +16,21 @@ const SLOT = {
 }
 
 describe("tool_handlers", () => {
-  let handlers: typeof import("./tool_handlers")
-
-  beforeAll(async () => {
-    // Register mocks within describe block to prevent cross-test contamination.
-    // When mocks are at module level, they persist globally and affect other test files
-    // that import the same modules, causing them to receive mocked versions instead of real implementations.
-    mock.module("../db/queries", () => mock_db_module)
-    handlers = await import("./tool_handlers")
-  })
-
   afterEach(() => {
     mock.clearAllMocks()
   })
 
-  describe("handle_check_availability", () => {
-    beforeEach(() => {
-      mock_db_module.check_availability.mockReturnValue(null)
-    })
+  afterAll(() => {
+    mock_restore()
+  })
 
+  describe("handle_check_availability", () => {
     test("returns_slot_data_when_available", () => {
       //  --  arrange
       mock_db_module.check_availability.mockReturnValue(SLOT)
 
       //  --  act
-      const result = handlers.handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
+      const result = handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
         date: "2099-12-31",
         time: "19:00",
         party_size: 2,
@@ -64,7 +58,7 @@ describe("tool_handlers", () => {
       mock_db_module.check_availability.mockReturnValue(null)
 
       //  --  act
-      const result = handlers.handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
+      const result = handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
         date: "2099-12-31",
         time: "19:00",
         party_size: 2,
@@ -88,7 +82,7 @@ describe("tool_handlers", () => {
       // (no additional setup — default mock returns null)
 
       //  --  act
-      const result = handlers.handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
+      const result = handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
         date: "31/12/2099",
         time: "19:00",
       })
@@ -106,7 +100,7 @@ describe("tool_handlers", () => {
       // (no additional setup — default mock returns null)
 
       //  --  act
-      const result = handlers.handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
+      const result = handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
         date: "2099-12-31",
         time: "7pm",
       })
@@ -124,7 +118,7 @@ describe("tool_handlers", () => {
       // (no additional setup)
 
       //  --  act
-      handlers.handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
+      handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
         date: "2099-12-31",
         time: "19:00",
       })

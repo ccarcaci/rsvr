@@ -1,5 +1,11 @@
-import { afterEach, beforeAll, describe, expect, mock, test } from "bun:test"
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { mock_module, mock_restore } from "../mock_module"
 import { mock_anthropic_module, mock_tool_handlers_module } from "./mock"
+
+mock_module("./agent/tool_handlers", () => mock_tool_handlers_module)
+mock_module("./parser/client/anthropic", () => mock_anthropic_module)
+
+import { run_agent } from "./agent"
 
 const make_end_turn = (text: string) => ({
   content: [{ type: "text" as const, text }],
@@ -22,16 +28,12 @@ const make_tool_use = (tool_id: string, tool_name: string, input: Record<string,
 })
 
 describe("run_agent", () => {
-  let agent: typeof import("./agent")
-
-  beforeAll(async () => {
-    mock.module("./tool_handlers", () => mock_tool_handlers_module)
-    mock.module("../parser/client/anthropic", () => mock_anthropic_module)
-    agent = await import("./agent")
-  })
-
   afterEach(() => {
     mock.clearAllMocks()
+  })
+
+  afterAll(() => {
+    mock_restore()
   })
 
   test("returns_assistant_text_on_end_turn", async () => {
@@ -41,7 +43,7 @@ describe("run_agent", () => {
     )
 
     //  --  act
-    const result = await agent.run_agent(
+    const result = await run_agent(
       "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
       42,
       "test:end_turn",
@@ -82,7 +84,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await agent.run_agent(
+    const result = await run_agent(
       "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
       42,
       "test:tool_dispatch",
@@ -120,7 +122,7 @@ describe("run_agent", () => {
     )
 
     //  --  act
-    const result = await agent.run_agent(
+    const result = await run_agent(
       "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
       42,
       "test:loop_limit",
@@ -140,7 +142,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await agent.run_agent(
+    const result = await run_agent(
       "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
       42,
       "test:api_error",
@@ -165,7 +167,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await agent.run_agent(
+    const result = await run_agent(
       "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
       42,
       "test:unknown_tool",
@@ -187,7 +189,7 @@ describe("run_agent", () => {
     }))
 
     //  --  act
-    const result = await agent.run_agent(
+    const result = await run_agent(
       "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
       42,
       "test:no_text",

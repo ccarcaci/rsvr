@@ -1,21 +1,20 @@
-import { afterEach, beforeAll, describe, expect, mock, test } from "bun:test"
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
 import type { incoming_message_type } from "../channels/types"
+import { mock_module, mock_restore } from "../mock_module"
 import { mock_db_module, mock_transcribe_module } from "./mock"
 
+mock_module("./voice/transcribe", () => mock_transcribe_module)
+mock_module("./db/queries", () => mock_db_module)
+
+import { handle_message } from "./service"
+
 describe("handle_message", () => {
-  let service: typeof import("./service")
-
-  beforeAll(async () => {
-    // Register mocks within describe block to prevent cross-test contamination.
-    // When mocks are at module level, they persist globally and affect other test files
-    // that import the same modules, causing them to receive mocked versions instead of real implementations.
-    mock.module("../voice/transcribe", () => mock_transcribe_module)
-    mock.module("../db/queries", () => mock_db_module)
-    service = await import("./service")
-  })
-
   afterEach(() => {
     mock.clearAllMocks()
+  })
+
+  afterAll(() => {
+    mock_restore()
   })
 
   test("voice_message_run_agent", async () => {
@@ -42,7 +41,7 @@ describe("handle_message", () => {
     })
 
     //  --  act
-    const result = await service.handle_message(42, voice_message)
+    const result = await handle_message(42, voice_message)
 
     //  --  assert
     expect(typeof result).toBe("string")

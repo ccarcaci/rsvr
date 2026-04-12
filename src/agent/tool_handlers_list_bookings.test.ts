@@ -1,6 +1,10 @@
-import { afterEach, beforeAll, describe, expect, mock, test } from "bun:test"
-
+import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { mock_module, mock_restore } from "../mock_module"
 import { mock_db_module } from "./mock"
+
+mock_module("./db/queries", () => mock_db_module)
+
+import { handle_list_bookings } from "./tool_handlers"
 
 const RESERVATION = {
   id: "A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D",
@@ -14,18 +18,12 @@ const RESERVATION = {
 }
 
 describe("tool_handlers", () => {
-  let handlers: typeof import("./tool_handlers")
-
-  beforeAll(async () => {
-    // Register mocks within describe block to prevent cross-test contamination.
-    // When mocks are at module level, they persist globally and affect other test files
-    // that import the same modules, causing them to receive mocked versions instead of real implementations.
-    mock.module("../db/queries", () => mock_db_module)
-    handlers = await import("./tool_handlers")
-  })
-
   afterEach(() => {
     mock.clearAllMocks()
+  })
+
+  afterAll(() => {
+    mock_restore()
   })
 
   describe("handle_list_bookings", () => {
@@ -34,7 +32,7 @@ describe("tool_handlers", () => {
       mock_db_module.find_reservations.mockReturnValue([])
 
       //  --  act
-      const result = handlers.handle_list_bookings("D5F7BA6A-19C2-42F3-8080-17F098BB807D", {})
+      const result = handle_list_bookings("D5F7BA6A-19C2-42F3-8080-17F098BB807D", {})
 
       //  --  assert
       expect(result.status).toBe("success")
@@ -52,7 +50,7 @@ describe("tool_handlers", () => {
       mock_db_module.find_reservations.mockReturnValue([RESERVATION])
 
       //  --  act
-      const result = handlers.handle_list_bookings("D5F7BA6A-19C2-42F3-8080-17F098BB807D", {})
+      const result = handle_list_bookings("D5F7BA6A-19C2-42F3-8080-17F098BB807D", {})
 
       //  --  assert
       expect(result.status).toBe("success")

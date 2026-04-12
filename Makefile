@@ -79,7 +79,8 @@ ci_sec: ## Audit production dependencies for known vulnerabilities (bun audit --
 	@$(BUN) audit --prod
 
 .PHONY: ci_fast
-ci_fast: check_version ci_check ci_test ci_sec ## Run ci-check, ci-test, and ci-sec in order
+ci_fast: check_version ci_check ci_sec ## Run ci-check, ci-test, and ci-sec in order
+	make ci_test
 	@echo "All CI checks passed!"
 
 ##@ Updates

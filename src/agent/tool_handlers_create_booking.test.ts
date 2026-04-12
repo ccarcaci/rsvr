@@ -1,6 +1,10 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, mock, test } from "bun:test"
-
+import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
+import { mock_module, mock_restore } from "../mock_module"
 import { mock_db_module } from "./mock"
+
+mock_module("./db/queries", () => mock_db_module)
+
+import { handle_create_booking } from "./tool_handlers"
 
 const SLOT = {
   id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
@@ -23,18 +27,12 @@ const RESERVATION = {
 }
 
 describe("tool_handlers", () => {
-  let handlers: typeof import("./tool_handlers")
-
-  beforeAll(async () => {
-    // Register mocks within describe block to prevent cross-test contamination.
-    // When mocks are at module level, they persist globally and affect other test files
-    // that import the same modules, causing them to receive mocked versions instead of real implementations.
-    mock.module("../db/queries", () => mock_db_module)
-    handlers = await import("./tool_handlers")
-  })
-
   afterEach(() => {
     mock.clearAllMocks()
+  })
+
+  afterAll(() => {
+    mock_restore()
   })
 
   describe("handle_create_booking", () => {
@@ -48,7 +46,7 @@ describe("tool_handlers", () => {
       // (beforeEach sets up SLOT with capacity 10, booked 2)
 
       //  --  act
-      const result = handlers.handle_create_booking(
+      const result = handle_create_booking(
         1000000,
         "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
         "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
@@ -82,7 +80,7 @@ describe("tool_handlers", () => {
       // (no additional setup)
 
       //  --  act
-      handlers.handle_create_booking(
+      handle_create_booking(
         1000000,
         "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
         "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
@@ -108,7 +106,7 @@ describe("tool_handlers", () => {
       const notes_500 = "a".repeat(500)
 
       //  --  act
-      const result = handlers.handle_create_booking(
+      const result = handle_create_booking(
         1000000,
         "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
         "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
@@ -137,7 +135,7 @@ describe("tool_handlers", () => {
       const notes_501 = "a".repeat(501)
 
       //  --  act
-      const result = handlers.handle_create_booking(
+      const result = handle_create_booking(
         1000000,
         "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
         "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
@@ -163,7 +161,7 @@ describe("tool_handlers", () => {
       const notes_100 = `${"short notes here".repeat(6)} extra`
 
       //  --  act
-      const result = handlers.handle_create_booking(
+      const result = handle_create_booking(
         1000000,
         "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
         "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
@@ -192,7 +190,7 @@ describe("tool_handlers", () => {
       // (no additional setup)
 
       //  --  act
-      const result = handlers.handle_create_booking(
+      const result = handle_create_booking(
         1000000,
         "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
         "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
@@ -221,7 +219,7 @@ describe("tool_handlers", () => {
       // (no additional setup)
 
       //  --  act
-      const result = handlers.handle_create_booking(
+      const result = handle_create_booking(
         1000000,
         "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
         "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
