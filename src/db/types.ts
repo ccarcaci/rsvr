@@ -7,7 +7,7 @@ export type user_row_type = {
   created_at: string
 }
 
-export type client_row_type = {
+export type business_row_type = {
   id: string
   name: string | null
 }

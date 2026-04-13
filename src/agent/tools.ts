@@ -26,6 +26,19 @@ export const AGENT_TOOLS: Tool[] = [
     },
   },
   {
+    name: "retrieve_business_name",
+    description:
+      "Identify the business to book the appointment to. Ask for the name of the activity to uniquely identify it in the database. Do not guess",    input_schema: {
+      type: "object",
+      properties: {
+        business_name: {
+          type: "string",
+          description: "The name of the business.",
+        },      },
+      required: ["business_name"],
+    },
+  },
+  {
     name: "create_booking",
     description:
       "Create a booking for a specific slot. You MUST call check_availability first and use the " +
@@ -34,7 +47,7 @@ export const AGENT_TOOLS: Tool[] = [
       type: "object",
       properties: {
         slot_id: {
-          type: "number",
+          type: "string",
           description: "The time_slot id returned by check_availability.",
         },
         party_size: {
@@ -65,7 +78,7 @@ export const AGENT_TOOLS: Tool[] = [
       type: "object",
       properties: {
         reservation_id: {
-          type: "number",
+          type: "string",
           description: "The reservation ID to look up.",
         },
       },
@@ -79,7 +92,7 @@ export const AGENT_TOOLS: Tool[] = [
       type: "object",
       properties: {
         reservation_id: {
-          type: "number",
+          type: "string",
           description: "The reservation ID to cancel.",
         },
       },
@@ -95,7 +108,7 @@ export const AGENT_TOOLS: Tool[] = [
       type: "object",
       properties: {
         reservation_id: {
-          type: "number",
+          type: "string",
           description: "The reservation ID to reschedule.",
         },
         new_date: {

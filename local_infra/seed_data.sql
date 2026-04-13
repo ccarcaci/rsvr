@@ -4,11 +4,11 @@
 -- Clear existing data (optional, comment out to preserve)
 -- DELETE FROM reservations;
 -- DELETE FROM time_slots;
--- DELETE FROM client;
+-- DELETE FROM businesses;
 -- DELETE FROM users;
 
 -- Insert test clients (businesses using the reservation system)
-INSERT OR IGNORE INTO client (id, name)
+INSERT OR IGNORE INTO businesses (id, name)
 VALUES
   ('48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', 'The Golden Fork Restaurant'),
   ('A023BCC5-B2A4-41C5-AB32-CF145D536D61', 'Wellness Medical Center'),
@@ -30,9 +30,9 @@ VALUES
   ('E7D8B2A1-C9F3-4E6D-8B1A-4C5D7E0F2A3B', '876543210', 'telegram', 'Grace Wilson', datetime('now', '-8 days')),
   ('D6C7A1B0-B8E2-4D5C-7A9B-3C4D6E7F1A2B', '765432109', 'telegram', 'Henry Taylor', datetime('now', '-5 days'));
 
--- Insert time slots for April 2026 (linked to clients)
+-- Insert time slots for April 2026 (linked to businesses)
 -- Breakfast slots (8:00 AM - 11:00 AM) - Restaurant
-INSERT OR IGNORE INTO time_slots (id, client_id, date, time, capacity, booked, metadata)
+INSERT OR IGNORE INTO time_slots (id, business_id, date, time, capacity, booked, metadata)
 VALUES
   ('A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', '2026-04-09', '08:00', 10, 2, NULL),
   ('B2C3D4E5-F6A7-4B8C-9D0E-1F2A3B4C5D6E', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', '2026-04-09', '09:00', 10, 5, NULL),
@@ -45,7 +45,7 @@ VALUES
   ('C9D0E1F2-A3B4-42C5-6D7E-8F91A2B3C4D5', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', '2026-04-11', '10:00', 10, 8, NULL);
 
 -- Lunch slots (12:00 PM - 2:00 PM) - Restaurant
-INSERT OR IGNORE INTO time_slots (id, client_id, date, time, capacity, booked, metadata)
+INSERT OR IGNORE INTO time_slots (id, business_id, date, time, capacity, booked, metadata)
 VALUES
   ('D0E1F2A3-B4C5-43D6-7E8F-91A2B3C4D5E6', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', '2026-04-09', '12:00', 15, 12, NULL),
   ('E1F2A3B4-C5D6-44E7-8F90-A2B3C4D5E6F7', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', '2026-04-09', '13:00', 15, 10, NULL),
@@ -55,7 +55,7 @@ VALUES
   ('C5D6E7F8-A9B0-48C1-2D4E-E6F708192031', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', '2026-04-11', '13:00', 15, 9, NULL);
 
 -- Dinner slots (6:00 PM - 9:00 PM) - Restaurant
-INSERT OR IGNORE INTO time_slots (id, client_id, date, time, capacity, booked, metadata)
+INSERT OR IGNORE INTO time_slots (id, business_id, date, time, capacity, booked, metadata)
 VALUES
   ('D6E7F8A9-B0C1-49D2-3E5F-F7081920314A', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', '2026-04-09', '18:00', 20, 18, NULL),
   ('E7F8A9B0-C1D2-4AE3-4F60-0819203142B5', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', '2026-04-09', '19:00', 20, 15, NULL),
@@ -68,7 +68,7 @@ VALUES
   ('F4A5B6C7-D8E9-415A-1071-7C2CCCCCCC2C', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', '2026-04-11', '20:00', 20, 19, NULL);
 
 -- Doctor appointment slots - Medical Center
-INSERT OR IGNORE INTO time_slots (id, client_id, date, time, capacity, booked, metadata)
+INSERT OR IGNORE INTO time_slots (id, business_id, date, time, capacity, booked, metadata)
 VALUES
   ('A5B6C7D8-E9FA-426B-2182-8D3DDDDDDD3D', 'A023BCC5-B2A4-41C5-AB32-CF145D536D61', '2026-04-09', '09:00', 5, 3, NULL),
   ('B6C7D8E9-FABB-437C-3293-9E4EEEEEEE4E', 'A023BCC5-B2A4-41C5-AB32-CF145D536D61', '2026-04-09', '14:00', 5, 4, NULL),
@@ -76,7 +76,7 @@ VALUES
   ('D8E9FABB-CCDD-459E-5495-1060000000G60', 'A023BCC5-B2A4-41C5-AB32-CF145D536D61', '2026-04-10', '14:00', 5, 5, NULL);
 
 -- Salon appointment slots - Beauty Salon
-INSERT OR IGNORE INTO time_slots (id, client_id, date, time, capacity, booked, metadata)
+INSERT OR IGNORE INTO time_slots (id, business_id, date, time, capacity, booked, metadata)
 VALUES
   ('E9FABBCC-DDEE-46AF-65A6-1171111111H71', '8B8624E0-7B4D-4CD0-9213-2BE3284E0DC3', '2026-04-09', '10:00', 8, 6, NULL),
   ('FABBCCDD-EEFF-47B0-76B7-2282222222I82', '8B8624E0-7B4D-4CD0-9213-2BE3284E0DC3', '2026-04-09', '15:00', 8, 7, NULL),
@@ -84,7 +84,7 @@ VALUES
   ('BBCCDDEE-GAHB-49D2-98D9-44A4444444KA4', '8B8624E0-7B4D-4CD0-9213-2BE3284E0DC3', '2026-04-10', '15:00', 8, 5, NULL);
 
 -- Insert some reservations to show activity
-INSERT OR IGNORE INTO reservations (id, client_id, user_id, time_slot_id, party_size, status, notes, created_at, updated_at)
+INSERT OR IGNORE INTO reservations (id, business_id, user_id, time_slot_id, party_size, status, notes, created_at, updated_at)
 VALUES
   ('CCDDEEEF-HBIC-4AE3-A9EA-55B5555555LB5', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', 'D5F7BA6A-19C2-42F3-8080-17F098BB807D', '1', 2, 'confirmed', 'Gluten-free breakfast needed', datetime('now', '-20 days'), datetime('now', '-20 days')),
   ('DDEEEFFA-ICJD-4BF4-BAFB-66C6666666MC6', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', '507259D3-B912-4DBE-9D87-D5F06741B021', '2', 5, 'confirmed', 'Birthday celebration', datetime('now', '-18 days'), datetime('now', '-18 days')),
@@ -92,7 +92,7 @@ VALUES
 
 -- Show summary of inserted data
 SELECT 'Database seeded successfully!' as message;
-SELECT COUNT(*) as client_count FROM client;
+SELECT COUNT(*) as business_count FROM businesses;
 SELECT COUNT(*) as user_count FROM users;
 SELECT COUNT(*) as time_slot_count FROM time_slots;
 SELECT COUNT(*) as reservation_count FROM reservations;

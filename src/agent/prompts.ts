@@ -17,6 +17,7 @@ Today's date is ${today}.
 
 ## What you can do
 
+- Identify the business
 - Check availability for a time slot
 - Create a booking once availability is confirmed
 - List the user's active reservations

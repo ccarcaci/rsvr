@@ -2,7 +2,7 @@ import {
   cancel_reservation,
   check_availability,
   create_reservation,
-  find_clients_by_name,
+  find_businesses_by_name,
   find_reservations,
   find_slot_by_id,
 } from "../db/queries"
@@ -15,18 +15,18 @@ import type {
   get_booking_input_type,
   list_bookings_input_type,
   reschedule_booking_input_type,
-  retrieve_client_id_input_type,
+  retrieve_business_id_input_type,
   tool_result_type,
 } from "./types"
 
 const try_check_availability = (
-  client_id: string,
+  business_id: string,
   date: string,
   time: string,
   party_size: number,
 ): tool_result_type => {
   try {
-    const slot = check_availability(client_id, date, time, party_size)
+    const slot = check_availability(business_id, date, time, party_size)
     if (!slot) {
       return {
         status: "error",
@@ -56,7 +56,7 @@ const INVALID_PARTY_SIZE: tool_result_type = {
 }
 
 export const handle_check_availability = (
-  client_id: string,
+  business_id: string,
   input: check_availability_input_type,
 ): tool_result_type => {
   const { date, time, party_size = 1 } = input
@@ -73,13 +73,13 @@ export const handle_check_availability = (
     return INVALID_PARTY_SIZE
   }
 
-  return try_check_availability(client_id, date, time, party_size)
+  return try_check_availability(business_id, date, time, party_size)
 }
 
 //  --
 
 const try_create_booking = (
-  client_id: string,
+  business_id: string,
   user_id: string,
   slot_id: string,
   party_size: number,
@@ -90,7 +90,7 @@ const try_create_booking = (
     const reservation = create_reservation(
       party_size,
       current_time_ms,
-      client_id,
+      business_id,
       user_id,
       slot_id,
       notes,
@@ -120,7 +120,7 @@ const try_create_booking = (
 
 export const handle_create_booking = (
   current_time_ms: number,
-  client_id: string,
+  business_id: string,
   user_id: string,
   input: create_booking_input_type,
 ): tool_result_type => {
@@ -140,7 +140,7 @@ export const handle_create_booking = (
   }
 
   return try_create_booking(
-    client_id,
+    business_id,
     user_id,
     slot_id as string,
     party_size,
@@ -224,31 +224,31 @@ export const handle_reschedule_booking = (
 
 //  --
 
-export const handle_retrieve_client_id = (
-  input: retrieve_client_id_input_type,
+export const handle_retrieve_business_id = (
+  input: retrieve_business_id_input_type,
 ): tool_result_type => {
-  const { client_name } = input
+  const { business_name } = input
 
   try {
-    const clients = find_clients_by_name(client_name)
-    if (clients.length === 0) {
-      return { status: "error", error: `No client found with name "${client_name}".` }
+    const businesses = find_businesses_by_name(business_name)
+    if (businesses.length === 0) {
+      return { status: "error", error: `No business found with name "${business_name}".` }
     }
-    if (clients.length > 1) {
-      const names = clients.map((c) => c.name ?? "unknown").join(", ")
+    if (businesses.length > 1) {
+      const names = businesses.map((c) => c.name ?? "unknown").join(", ")
       return {
         status: "error",
-        error: `Multiple clients match "${client_name}": ${names}. Please be more specific.`,
+        error: `Multiple businesses match "${business_name}": ${names}. Please be more specific.`,
       }
     }
     return {
       status: "success",
       data: {
-        client_id: clients[0].id,
+        business_id: businesses[0].id,
       },
     }
   } catch (err) {
-    logger.error("retrieve_client_id_failed", { err: String(err), client_name })
-    return { status: "error", error: "Failed to retrieve client id." }
+    logger.error("retrieve_business_id_failed", { err: String(err), business_name })
+    return { status: "error", error: "Failed to retrieve business id." }
   }
 }

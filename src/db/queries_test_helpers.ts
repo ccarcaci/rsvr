@@ -36,7 +36,7 @@ export const setup_db = (): Database => {
 
 export const seed_slot = (
   test_db: Database,
-  client_id: string,
+  business_id: string,
   date: string,
   time: string,
   capacity: number,
@@ -45,8 +45,8 @@ export const seed_slot = (
   const slot_id = crypto.randomUUID()
   test_db
     .query(
-      "INSERT INTO time_slots (id, client_id, date, time, capacity, booked) VALUES (?, ?, ?, ?, ?, ?)",
+      "INSERT INTO time_slots (id, business_id, date, time, capacity, booked) VALUES (?, ?, ?, ?, ?, ?)",
     )
-    .run(slot_id, client_id, date, time, capacity, booked)
+    .run(slot_id, business_id, date, time, capacity, booked)
   return slot_id
 }

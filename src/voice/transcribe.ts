@@ -1,6 +1,19 @@
 import { logger } from "../shared/logger"
 import { get_openai_client } from "./client/openai"
 
+const extension_from_mime = (mime: string): string => {
+  const map: Record<string, string> = {
+    "audio/ogg": "ogg",
+    "audio/mpeg": "mp3",
+    "audio/mp4": "m4a",
+    "audio/wav": "wav",
+    "audio/webm": "webm",
+  }
+  return map[mime] ?? "ogg"
+}
+
+//  --
+
 export const transcribe_audio = async (
   buffer: Uint8Array<ArrayBuffer>,
   mime_type: string,
@@ -15,17 +28,4 @@ export const transcribe_audio = async (
 
   logger.debug("Transcription result", { text: response.text })
   return response.text
-}
-
-//  --
-
-const extension_from_mime = (mime: string): string => {
-  const map: Record<string, string> = {
-    "audio/ogg": "ogg",
-    "audio/mpeg": "mp3",
-    "audio/mp4": "m4a",
-    "audio/wav": "wav",
-    "audio/webm": "webm",
-  }
-  return map[mime] ?? "ogg"
 }

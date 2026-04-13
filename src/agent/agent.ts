@@ -14,7 +14,7 @@ import {
   handle_get_booking,
   handle_list_bookings,
   handle_reschedule_booking,
-  handle_retrieve_client_id,
+  handle_retrieve_business_id,
 } from "./tool_handlers"
 import type {
   cancel_booking_input_type,
@@ -23,7 +23,7 @@ import type {
   get_booking_input_type,
   list_bookings_input_type,
   reschedule_booking_input_type,
-  retrieve_client_id_input_type,
+  retrieve_business_id_input_type,
   tool_result_type,
 } from "./types"
 
@@ -48,11 +48,11 @@ const call_api = async (
 
 type use_block_result_type = {
   block: ToolResultBlockParam
-  resolved_client_id?: string
+  resolved_business_id?: string
 }
 
 const use_block = (
-  client_id: string,
+  business_id: string,
   user_id: string,
   current_time_ms: number,
   sender_key: string,
@@ -61,7 +61,7 @@ const use_block = (
   logger.info("Dispatching tool", { tool: tool_block.name, user_id, sender_key })
 
   const result = dispatch_tool(
-    client_id,
+    business_id,
     user_id,
     current_time_ms,
     tool_block.name,
@@ -69,9 +69,9 @@ const use_block = (
   )
 
   if (result.status === "success") {
-    const resolved_client_id =
-      tool_block.name === "retrieve_client_name"
-        ? (result.data as { client_id: string }).client_id
+    const resolved_business_id =
+      tool_block.name === "retrieve_business_name"
+        ? (result.data as { business_id: string }).business_id
         : undefined
 
     return {
@@ -80,7 +80,7 @@ const use_block = (
         tool_use_id: tool_block.id,
         content: JSON.stringify(result.data),
       },
-      resolved_client_id,
+      resolved_business_id,
     }
   }
   return {
@@ -94,7 +94,7 @@ const use_block = (
 }
 
 const dispatch_tool = (
-  client_id: string,
+  business_id: string,
   user_id: string,
   current_time_ms: number,
   tool_name: string,
@@ -102,11 +102,11 @@ const dispatch_tool = (
 ): tool_result_type => {
   switch (tool_name) {
     case "check_availability":
-      return handle_check_availability(client_id, tool_input as check_availability_input_type)
+      return handle_check_availability(business_id, tool_input as check_availability_input_type)
     case "create_booking":
       return handle_create_booking(
         current_time_ms,
-        client_id,
+        business_id,
         user_id,
         tool_input as create_booking_input_type,
       )
@@ -118,8 +118,8 @@ const dispatch_tool = (
       return handle_cancel_booking(user_id, tool_input as cancel_booking_input_type)
     case "reschedule_booking":
       return handle_reschedule_booking(user_id, tool_input as reschedule_booking_input_type)
-    case "retrieve_client_name":
-      return handle_retrieve_client_id(tool_input as retrieve_client_id_input_type)
+    case "retrieve_business_name":
+      return handle_retrieve_business_id(tool_input as retrieve_business_id_input_type)
     default:
       return { status: "error", error: `Unknown tool: ${tool_name}` }
   }
@@ -134,7 +134,7 @@ export const run_agent = async (
   text: string,
 ): Promise<string> => {
   const session = get_session(sender_key, current_time_ms)
-  let client_id = session.client_id ?? ""
+  let business_id = session.business_id ?? ""
 
   const history: MessageParam[] = [...session.history, { role: "user", content: text }]
 
@@ -160,7 +160,7 @@ export const run_agent = async (
       update_session(current_time_ms, sender_key, {
         ...session,
         history,
-        client_id: client_id || undefined,
+        business_id: business_id || undefined,
       })
       return reply || "Done."
     }
@@ -184,16 +184,16 @@ export const run_agent = async (
 
     const tool_results: ToolResultBlockParam[] = []
     for (const tool_block of tool_use_blocks) {
-      const { block, resolved_client_id } = use_block(
-        client_id,
+      const { block, resolved_business_id } = use_block(
+        business_id,
         user_id,
         current_time_ms,
         sender_key,
         tool_block,
       )
       tool_results.push(block)
-      if (resolved_client_id) {
-        client_id = resolved_client_id
+      if (resolved_business_id) {
+        business_id = resolved_business_id
       }
     }
     history.push({ role: "user", content: tool_results })

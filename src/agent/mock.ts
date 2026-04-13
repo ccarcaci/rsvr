@@ -10,6 +10,8 @@ export const mock_anthropic_module: mock_anthropic_type = {
   messages_create: mock(),
 }
 
+//  --
+
 type mock_db_type = {
   find_user_by_phone: Mock<mock_fn_type>
   find_user_by_telegram_id: Mock<mock_fn_type>
@@ -19,7 +21,7 @@ type mock_db_type = {
   cancel_reservation: Mock<mock_fn_type>
   find_reservations: Mock<mock_fn_type>
   find_slot_by_id: Mock<mock_fn_type>
-  find_clients_by_name: Mock<mock_fn_type>
+  find_businesses_by_name: Mock<mock_fn_type>
 }
 export const mock_db_module: mock_db_type = {
   find_user_by_phone: mock(),
@@ -30,8 +32,10 @@ export const mock_db_module: mock_db_type = {
   cancel_reservation: mock(),
   find_reservations: mock(),
   find_slot_by_id: mock(),
-  find_clients_by_name: mock(),
+  find_businesses_by_name: mock(),
 }
+
+//  --
 
 type mock_tool_handlers_type = {
   handle_check_availability: Mock<mock_fn_type>
@@ -40,7 +44,7 @@ type mock_tool_handlers_type = {
   handle_get_booking: Mock<mock_fn_type>
   handle_cancel_booking: Mock<mock_fn_type>
   handle_reschedule_booking: Mock<mock_fn_type>
-  handle_retrieve_client_id: Mock<mock_fn_type>
+  handle_retrieve_business_id: Mock<mock_fn_type>
 }
 export const mock_tool_handlers_module: mock_tool_handlers_type = {
   handle_check_availability: mock(),
@@ -49,5 +53,5 @@ export const mock_tool_handlers_module: mock_tool_handlers_type = {
   handle_get_booking: mock(),
   handle_cancel_booking: mock(),
   handle_reschedule_booking: mock(),
-  handle_retrieve_client_id: mock(),
+  handle_retrieve_business_id: mock(),
 }

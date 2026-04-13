@@ -1,7 +1,7 @@
 import { get_db } from "./client"
 import {
   capacity_error,
-  type client_row_type,
+  type business_row_type,
   type reservation_row_type,
   slot_not_found_error,
   type time_slot_row_type,
@@ -36,24 +36,24 @@ export const create_user = (
 }
 
 export const check_availability = (
-  client_id: string,
+  business_id: string,
   date: string,
   time: string,
   party_size: number,
 ): time_slot_row_type | null => {
   return get_db()
     .query<time_slot_row_type, [string, string, string, number]>(
-      "SELECT * FROM time_slots WHERE client_id = ? AND date = ? AND time = ? AND (capacity - booked) >= ?",
+      "SELECT * FROM time_slots WHERE business_id = ? AND date = ? AND time = ? AND (capacity - booked) >= ?",
     )
-    .get(client_id, date, time, party_size)
+    .get(business_id, date, time, party_size)
 }
 
-// Requires 6 parameters because a reservation spans users, time slots, clients,
+// Requires 6 parameters because a reservation spans users, time slots, businesses,
 // and party details — each represents a distinct entity/value in the domain model.
 export const create_reservation = (
   party_size: number,
   _current_time_ms: number,
-  client_id: string,
+  business_id: string,
   user_id: string,
   time_slot_id: string,
   notes?: string,
@@ -77,9 +77,9 @@ export const create_reservation = (
     const reservation_id = crypto.randomUUID()
     get_db()
       .query(
-        "INSERT INTO reservations (id, client_id, user_id, time_slot_id, party_size, notes) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO reservations (id, business_id, user_id, time_slot_id, party_size, notes) VALUES (?, ?, ?, ?, ?, ?)",
       )
-      .run(reservation_id, client_id, user_id, time_slot_id, party_size, notes ?? null)
+      .run(reservation_id, business_id, user_id, time_slot_id, party_size, notes ?? null)
 
     // 4. UPDATE time_slots booked count
     get_db()
@@ -135,8 +135,8 @@ export const find_slot_by_id = (slot_id: string): time_slot_row_type | null => {
     .get(slot_id)
 }
 
-export const find_clients_by_name = (name: string): client_row_type[] => {
+export const find_businesses_by_name = (name: string): business_row_type[] => {
   return get_db()
-    .query<client_row_type, [string]>("SELECT * FROM client WHERE LOWER(name) = LOWER(?)")
+    .query<business_row_type, [string]>("SELECT * FROM businesses WHERE LOWER(name) = LOWER(?)")
     .all(name)
 }

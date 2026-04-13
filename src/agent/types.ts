@@ -5,7 +5,7 @@ export type { MessageParam }
 export type session_entry_type = {
   history: MessageParam[]
   last_active: number
-  client_id?: string
+  business_id?: string
 }
 
 // Tool input shapes — validated at runtime when dispatching
@@ -49,6 +49,6 @@ export type tool_result_type =
       error: string
     }
 
-export type retrieve_client_id_input_type = {
-  client_name: string
+export type retrieve_business_id_input_type = {
+  business_name: string
 }
