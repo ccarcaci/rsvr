@@ -1,7 +1,7 @@
 import { get_db } from "./client"
 import {
-  capacity_error,
   type business_row_type,
+  capacity_error,
   type reservation_row_type,
   slot_not_found_error,
   type time_slot_row_type,

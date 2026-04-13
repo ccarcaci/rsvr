@@ -28,13 +28,15 @@ export const AGENT_TOOLS: Tool[] = [
   {
     name: "retrieve_business_name",
     description:
-      "Identify the business to book the appointment to. Ask for the name of the activity to uniquely identify it in the database. Do not guess",    input_schema: {
+      "Identify the business to book the appointment to. Ask for the name of the activity to uniquely identify it in the database. Do not guess",
+    input_schema: {
       type: "object",
       properties: {
         business_name: {
           type: "string",
           description: "The name of the business.",
-        },      },
+        },
+      },
       required: ["business_name"],
     },
   },
