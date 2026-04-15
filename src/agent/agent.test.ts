@@ -1,31 +1,11 @@
 import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
 import { mock_module, mock_restore } from "../mock_module"
-import { mock_anthropic_module, mock_tool_handlers_module } from "./mock"
+import { mock_ai_client_module, mock_tool_handlers_module } from "./mock"
 
 mock_module("./agent/tool_handlers", () => mock_tool_handlers_module)
-mock_module("./parser/client/anthropic", () => mock_anthropic_module)
+mock_module("./agent/ai_client/ai_client", () => mock_ai_client_module)
 
 import { run_agent } from "./agent"
-
-const make_end_turn = (text: string) => ({
-  content: [{ type: "text" as const, text }],
-  stop_reason: "end_turn" as const,
-  stop_sequence: null,
-})
-
-const make_tool_use = (tool_id: string, tool_name: string, input: Record<string, unknown>) => ({
-  content: [
-    {
-      type: "tool_use" as const,
-      id: tool_id,
-      name: tool_name,
-      input,
-      caller: { type: "direct" as const },
-    },
-  ],
-  stop_reason: "tool_use" as const,
-  stop_sequence: null,
-})
 
 describe("run_agent", () => {
   afterEach(() => {
@@ -38,9 +18,10 @@ describe("run_agent", () => {
 
   test("returns_assistant_text_on_end_turn", async () => {
     //  --  arrange
-    mock_anthropic_module.messages_create.mockImplementation(async () =>
-      make_end_turn("How can I help you today?"),
-    )
+    mock_ai_client_module.prompt.mockResolvedValue({
+      stop_reason: "end_turn",
+      text_block: "How can I help you today?",
+    })
 
     //  --  act
     const result = await run_agent(
@@ -52,7 +33,7 @@ describe("run_agent", () => {
 
     //  --  assert
     expect(result).toBe("How can I help you today?")
-    expect(mock_anthropic_module.messages_create).toHaveBeenCalled()
+    expect(mock_ai_client_module.prompt).toHaveBeenCalled()
   })
 
   test("dispatches_tool_use_and_returns_final_text_after_tool_round-trip", async () => {
@@ -69,18 +50,30 @@ describe("run_agent", () => {
       },
     })
 
-    mock_anthropic_module.messages_create.mockImplementation(async () => {
+    mock_ai_client_module.prompt.mockImplementation(() => {
       call_count++
       if (call_count === 1) {
         // First call: model wants to check availability
-        return make_tool_use("tool_1", "check_availability", {
-          date: "2099-12-31",
-          time: "19:00",
-          party_size: 2,
+        return Promise.resolve({
+          stop_reason: "tool_use",
+          use_blocks: [
+            {
+              id: "tool_1",
+              name: "check_availability",
+              input: {
+                date: "2099-12-31",
+                time: "19:00",
+                party_size: 2,
+              },
+            },
+          ],
         })
       }
       // Second call after tool result: model gives final answer
-      return make_end_turn("Sorry, no tables available for that date.")
+      return Promise.resolve({
+        stop_reason: "end_turn",
+        text_block: "Sorry, no tables available for that date.",
+      })
     })
 
     //  --  act
@@ -103,7 +96,7 @@ describe("run_agent", () => {
         party_size: 2,
       }),
     )
-    expect(mock_anthropic_module.messages_create).toHaveBeenCalled()
+    expect(mock_ai_client_module.prompt).toHaveBeenCalled()
   })
 
   test("returns_error_message_when_tool_call_limit_is_exceeded", async () => {
@@ -114,12 +107,19 @@ describe("run_agent", () => {
       error: "No availability.",
     })
 
-    mock_anthropic_module.messages_create.mockImplementation(async () =>
-      make_tool_use("tool_x", "check_availability", {
-        date: "2099-01-01",
-        time: "12:00",
-      }),
-    )
+    mock_ai_client_module.prompt.mockResolvedValue({
+      stop_reason: "tool_use",
+      use_blocks: [
+        {
+          id: "tool_x",
+          name: "check_availability",
+          input: {
+            date: "2099-01-01",
+            time: "12:00",
+          },
+        },
+      ],
+    })
 
     //  --  act
     const result = await run_agent(
@@ -131,15 +131,13 @@ describe("run_agent", () => {
 
     //  --  assert
     expect(result).toBe("Something went wrong, please try again.")
-    expect(mock_anthropic_module.messages_create).toHaveBeenCalled()
+    expect(mock_ai_client_module.prompt).toHaveBeenCalled()
     expect(mock_tool_handlers_module.handle_check_availability).toHaveBeenCalled()
   })
 
   test("returns_connection_error_message_when_api_throws", async () => {
     //  --  arrange
-    mock_anthropic_module.messages_create.mockImplementation(async () => {
-      throw new Error("Network error")
-    })
+    mock_ai_client_module.prompt.mockRejectedValue(new Error("Network error"))
 
     //  --  act
     const result = await run_agent(
@@ -151,19 +149,26 @@ describe("run_agent", () => {
 
     //  --  assert
     expect(result).toBe("I'm having trouble connecting. Please try again in a moment.")
-    expect(mock_anthropic_module.messages_create).toHaveBeenCalled()
+    expect(mock_ai_client_module.prompt).toHaveBeenCalled()
   })
 
   test("handles_unknown_tool_name_by_passing_error_result_back_to_model", async () => {
     //  --  arrange
     let call_count = 0
 
-    mock_anthropic_module.messages_create.mockImplementation(async () => {
+    mock_ai_client_module.prompt.mockImplementation(() => {
       call_count++
       if (call_count === 1) {
-        return make_tool_use("tool_2", "nonexistent_tool", {})
+        return Promise.resolve({
+          stop_reason: "tool_use",
+          name: "nonexistent_tool",
+          input: {},
+        })
       }
-      return make_end_turn("I cannot do that.")
+      return Promise.resolve({
+        stop_reason: "end_turn",
+        text_block: "I cannot do that.",
+      })
     })
 
     //  --  act
@@ -177,16 +182,14 @@ describe("run_agent", () => {
     //  --  assert
     expect(typeof result).toBe("string")
     expect(call_count).toBe(2)
-    expect(mock_anthropic_module.messages_create).toHaveBeenCalled()
+    expect(mock_ai_client_module.prompt).toHaveBeenCalled()
   })
 
   test("returns_fallback_when_end_turn_response_has_no_text_block", async () => {
     //  --  arrange
-    mock_anthropic_module.messages_create.mockImplementation(async () => ({
-      content: [],
-      stop_reason: "end_turn" as const,
-      stop_sequence: null,
-    }))
+    mock_ai_client_module.prompt.mockResolvedValue({
+      stop_reason: "end_turn",
+    })
 
     //  --  act
     const result = await run_agent(
@@ -198,6 +201,6 @@ describe("run_agent", () => {
 
     //  --  assert
     expect(result).toBe("Done.")
-    expect(mock_anthropic_module.messages_create).toHaveBeenCalled()
+    expect(mock_ai_client_module.prompt).toHaveBeenCalled()
   })
 })

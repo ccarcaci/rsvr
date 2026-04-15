@@ -16,7 +16,7 @@ import type {
   list_bookings_input_type,
   reschedule_booking_input_type,
   retrieve_business_id_input_type,
-  tool_result_type,
+  tool_use_block_result_type,
 } from "./types"
 
 const try_check_availability = (
@@ -24,7 +24,7 @@ const try_check_availability = (
   date: string,
   time: string,
   party_size: number,
-): tool_result_type => {
+): tool_use_block_result_type => {
   try {
     const slot = check_availability(business_id, date, time, party_size)
     if (!slot) {
@@ -50,7 +50,7 @@ const try_check_availability = (
 
 //  --
 
-const INVALID_PARTY_SIZE: tool_result_type = {
+const INVALID_PARTY_SIZE: tool_use_block_result_type = {
   status: "error",
   error: "Party size must be at least 1.",
 }
@@ -58,7 +58,7 @@ const INVALID_PARTY_SIZE: tool_result_type = {
 export const handle_check_availability = (
   business_id: string,
   input: check_availability_input_type,
-): tool_result_type => {
+): tool_use_block_result_type => {
   const { date, time, party_size = 1 } = input
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -85,7 +85,7 @@ const try_create_booking = (
   party_size: number,
   current_time_ms: number,
   notes: string | undefined,
-): tool_result_type => {
+): tool_use_block_result_type => {
   try {
     const reservation = create_reservation(
       party_size,
@@ -123,7 +123,7 @@ export const handle_create_booking = (
   business_id: string,
   user_id: string,
   input: create_booking_input_type,
-): tool_result_type => {
+): tool_use_block_result_type => {
   const { slot_id, party_size = 1, notes } = input
 
   if (party_size < 1) {
@@ -154,7 +154,7 @@ export const handle_create_booking = (
 export const handle_list_bookings = (
   user_id: string,
   _input: list_bookings_input_type,
-): tool_result_type => {
+): tool_use_block_result_type => {
   try {
     const rows = find_reservations(user_id)
     return {
@@ -180,7 +180,7 @@ export const handle_list_bookings = (
 export const handle_get_booking = (
   _user_id: string,
   _input: get_booking_input_type,
-): tool_result_type => {
+): tool_use_block_result_type => {
   return { status: "error", error: "get_booking is not yet implemented." }
 }
 
@@ -189,7 +189,7 @@ export const handle_get_booking = (
 export const handle_cancel_booking = (
   user_id: string,
   input: cancel_booking_input_type,
-): tool_result_type => {
+): tool_use_block_result_type => {
   const { reservation_id } = input
 
   try {
@@ -218,7 +218,7 @@ export const handle_cancel_booking = (
 export const handle_reschedule_booking = (
   _user_id: string,
   _input: reschedule_booking_input_type,
-): tool_result_type => {
+): tool_use_block_result_type => {
   return { status: "error", error: "reschedule_booking is not yet implemented." }
 }
 
@@ -226,7 +226,7 @@ export const handle_reschedule_booking = (
 
 export const handle_retrieve_business_id = (
   input: retrieve_business_id_input_type,
-): tool_result_type => {
+): tool_use_block_result_type => {
   const { business_name } = input
 
   try {
