@@ -1,10 +1,11 @@
 import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
 import type { incoming_message_type } from "../channels/types"
 import { mock_module, mock_restore } from "../mock_module"
-import { mock_db_module, mock_transcribe_module } from "./mock"
+import { mock_agent_module, mock_db_module, mock_transcribe_module } from "./mock"
 
 mock_module("./voice/transcribe", () => mock_transcribe_module)
 mock_module("./db/queries", () => mock_db_module)
+mock_module("./agent/agent", () => mock_agent_module)
 
 import { handle_message } from "./service"
 
@@ -27,11 +28,9 @@ describe("handle_message", () => {
       sender_name: "John Doe",
       raw_payload: "",
     }
-    const mock_transcribe_audio = mock_transcribe_module.transcribe_audio
-    mock_transcribe_audio.mockResolvedValue("book an appointment for tomorrow")
+    mock_transcribe_module.transcribe_audio.mockResolvedValue("book an appointment for tomorrow")
 
-    const mock_create_user = mock_db_module.create_user
-    mock_create_user.mockReturnValue({
+    mock_db_module.create_user.mockReturnValue({
       id: "E6BE41DB-8A68-47A9-9465-25CCA471A105",
       phone: "+3912345",
       telegram_id: null,
@@ -40,16 +39,24 @@ describe("handle_message", () => {
       created_at: "yesterday",
     })
 
+    mock_agent_module.run_agent.mockResolvedValue("The answer is 42")
+
     //  --  act
     const result = await handle_message(42, voice_message)
 
     //  --  assert
-    expect(typeof result).toBe("string")
-    expect(mock_transcribe_audio).toBeCalledWith(voice_message.voice_buffer, "audio/ogg")
-    expect(mock_create_user).toBeCalledWith(
+    expect(result).toBe("The answer is 42")
+    expect(mock_transcribe_module.transcribe_audio).toBeCalledWith(voice_message.voice_buffer, "audio/ogg")
+    expect(mock_db_module.create_user).toBeCalledWith(
       "whatsapp",
       "E6BE41DB-8A68-47A9-9465-25CCA471A105",
       "John Doe",
+    )
+    expect(mock_agent_module.run_agent).toBeCalledWith(
+      42,
+      "E6BE41DB-8A68-47A9-9465-25CCA471A105",
+      "whatsapp:E6BE41DB-8A68-47A9-9465-25CCA471A105",
+      "book an appointment for tomorrow",
     )
   })
 })

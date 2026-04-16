@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, mock, test } from "bun:test"
-import { mock_module, mock_restore } from "../mock_module"
+import { mock_module, mock_restore } from "../../../mock_module"
 import { mock_db_module } from "./mock"
 
 mock_module("./db/queries", () => mock_db_module)

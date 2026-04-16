@@ -23,5 +23,5 @@ export const handle_message = async (
 
   const sender_key = `${message.channel}:${message.sender_id}`
 
-  return run_agent(user.id, current_time_ms, sender_key, text)
+  return run_agent(current_time_ms, user.id, sender_key, text)
 }

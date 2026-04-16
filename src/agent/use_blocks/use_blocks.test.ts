@@ -1,8 +1,8 @@
 import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
 import { mock_module, mock_restore } from "../../mock_module"
-import { mock_tool_handlers_module } from "../mock"
 import type { tool_use_block_request_type, tool_use_block_result_type } from "../types"
 import { use_blocks } from "./use_blocks"
+import { mock_tool_handlers_module } from "./mock"
 
 mock_module("./agent/use_blocks/tool_handlers/tool_handlers", () => mock_tool_handlers_module)
 

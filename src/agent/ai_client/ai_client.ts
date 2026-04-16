@@ -12,7 +12,6 @@ const deserialize_message = (message: Message): ai_client_prompt_result_type => 
     text_block: tb?.text ?? "",
     use_blocks: ubs.map((ub: ToolUseBlock) => ({
       id: ub.id,
-      name: ub.name,
       input: ub.input,
     })),
     feedback_content: message.content,

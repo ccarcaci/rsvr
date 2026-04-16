@@ -5,9 +5,9 @@ import {
   find_businesses_by_name,
   find_reservations,
   find_slot_by_id,
-} from "../db/queries"
-import { capacity_error, slot_not_found_error } from "../db/types"
-import { logger } from "../shared/logger"
+} from "../../../db/queries"
+import { capacity_error, slot_not_found_error } from "../../../db/types"
+import { logger } from "../../../shared/logger"
 import type {
   cancel_booking_input_type,
   check_availability_input_type,
@@ -17,7 +17,7 @@ import type {
   reschedule_booking_input_type,
   retrieve_business_id_input_type,
   tool_use_block_result_type,
-} from "./types"
+} from "../../types"
 
 const try_check_availability = (
   business_id: string,
@@ -36,10 +36,13 @@ const try_check_availability = (
     return {
       status: "success",
       data: {
-        slot_id: slot.id,
-        date: slot.date,
-        time: slot.time,
-        available_capacity: slot.capacity - slot.booked,
+        tool_use_id: "handle_check_availability",
+        content: {
+          slot_id: slot.id,
+          date: slot.date,
+          time: slot.time,
+          available_capacity: slot.capacity - slot.booked,
+        },
       },
     }
   } catch (err) {
@@ -47,8 +50,6 @@ const try_check_availability = (
     return { status: "error", error: "Failed to check availability. Please try again." }
   }
 }
-
-//  --
 
 const INVALID_PARTY_SIZE: tool_use_block_result_type = {
   status: "error",
@@ -99,12 +100,15 @@ const try_create_booking = (
     return {
       status: "success",
       data: {
-        reservation_id: reservation.id,
-        date: slot?.date ?? "",
-        time: slot?.time ?? "",
-        party_size: reservation.party_size,
-        status: reservation.status,
-        notes: reservation.notes ?? null,
+        tool_use_id: "handle_create_booking",
+        content: {
+          reservation_id: reservation.id,
+          date: slot?.date ?? "",
+          time: slot?.time ?? "",
+          party_size: reservation.party_size,
+          status: reservation.status,
+          notes: reservation.notes ?? null,
+        },
       },
     }
   } catch (err) {
@@ -115,8 +119,6 @@ const try_create_booking = (
     return { status: "error", error: "Failed to create booking. Please try again." }
   }
 }
-
-//  --
 
 export const handle_create_booking = (
   current_time_ms: number,
@@ -160,13 +162,16 @@ export const handle_list_bookings = (
     return {
       status: "success",
       data: {
-        reservations: rows.map((r) => ({
-          reservation_id: r.id,
-          party_size: r.party_size,
-          status: r.status,
-          notes: r.notes ?? null,
-          created_at: r.created_at,
-        })),
+        tool_use_id: "handle_list_bookings",
+        content: {
+          reservations: rows.map((r) => ({
+            reservation_id: r.id,
+            party_size: r.party_size,
+            status: r.status,
+            notes: r.notes ?? null,
+            created_at: r.created_at,
+          })),
+        },
       },
     }
   } catch (err) {
@@ -203,8 +208,11 @@ export const handle_cancel_booking = (
     return {
       status: "success",
       data: {
-        reservation_id,
-        status: "cancelled",
+        tool_use_id: "handle_cancel_booking",
+        content: {
+          reservation_id,
+          status: "cancelled",
+        },
       },
     }
   } catch (err) {
@@ -244,7 +252,10 @@ export const handle_retrieve_business_id = (
     return {
       status: "success",
       data: {
-        business_id: businesses[0].id,
+        tool_use_id: "handle_retrieve_business_id",
+        content: {
+          resolved_business_id: businesses[0].id,
+        },
       },
     }
   } catch (err) {

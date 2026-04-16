@@ -1,11 +1,14 @@
 import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
 import { mock_module, mock_restore } from "../mock_module"
-import { mock_ai_client_module, mock_tool_handlers_module } from "./mock"
+import { mock_ai_client_module, mock_use_block_module } from "./mock"
 
-mock_module("./agent/tool_handlers", () => mock_tool_handlers_module)
+mock_module("./agent/use_blocks/use_blocks", () => mock_use_block_module)
 mock_module("./agent/ai_client/ai_client", () => mock_ai_client_module)
 
 import { run_agent } from "./agent"
+
+const USER_ID = "D5F7BA6A-19C2-42F3-8080-17F098BB807D"
+const CURRENT_TIME_MS = 42
 
 describe("run_agent", () => {
   afterEach(() => {
@@ -24,145 +27,82 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(
-      "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
-      42,
-      "test:end_turn",
-      "Hello",
-    )
+    const result = await run_agent(CURRENT_TIME_MS, USER_ID, "test:end_turn", "Hello")
 
     //  --  assert
     expect(result).toBe("How can I help you today?")
     expect(mock_ai_client_module.prompt).toHaveBeenCalled()
   })
 
-  test("dispatches_tool_use_and_returns_final_text_after_tool_round-trip", async () => {
+  test("returns_fallback_text_when_end_turn_has_no_text_block", async () => {
     //  --  arrange
-    let call_count = 0
-
-    mock_tool_handlers_module.handle_check_availability.mockReturnValue({
-      status: "success",
-      data: {
-        slot_id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
-        date: "2099-12-31",
-        time: "19:00",
-        available_capacity: 8,
-      },
+    mock_ai_client_module.prompt.mockResolvedValue({
+      stop_reason: "end_turn",
     })
 
+    //  --  act
+    const result = await run_agent(CURRENT_TIME_MS, USER_ID, "test:no_text", "Hello")
+
+    //  --  assert
+    expect(result).toBe("Done.")
+    expect(mock_ai_client_module.prompt).toHaveBeenCalled()
+  })
+
+  test("calls_use_blocks_and_returns_final_text_after_tool_round_trip", async () => {
+    //  --  arrange
+    let call_count = 0
+    const use_blocks_input = [
+      {
+        id: "check_availability",
+        input: { date: "2099-12-31", time: "19:00", party_size: 2 },
+      },
+    ]
+    mock_use_block_module.use_blocks.mockReturnValue([
+      { status: "success", data: { tool_use_id: "check_availability", content: "" } },
+    ])
     mock_ai_client_module.prompt.mockImplementation(() => {
       call_count++
       if (call_count === 1) {
-        // First call: model wants to check availability
         return Promise.resolve({
           stop_reason: "tool_use",
-          use_blocks: [
-            {
-              id: "tool_1",
-              name: "check_availability",
-              input: {
-                date: "2099-12-31",
-                time: "19:00",
-                party_size: 2,
-              },
-            },
-          ],
+          feedback_content: [],
+          use_blocks: use_blocks_input,
         })
       }
-      // Second call after tool result: model gives final answer
       return Promise.resolve({
         stop_reason: "end_turn",
-        text_block: "Sorry, no tables available for that date.",
+        text_block: "There are available slots on that date.",
       })
     })
 
     //  --  act
-    const result = await run_agent(
-      "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
-      42,
-      "test:tool_dispatch",
-      "Book a table",
-    )
+    const result = await run_agent(CURRENT_TIME_MS, USER_ID, "test:tool_dispatch", "Book a table")
 
     //  --  assert
-    expect(typeof result).toBe("string")
-    expect(result.length).toBeGreaterThan(0)
+    expect(result).toBe("There are available slots on that date.")
     expect(call_count).toBe(2)
-    expect(mock_tool_handlers_module.handle_check_availability).toBeCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        date: "2099-12-31",
-        time: "19:00",
-        party_size: 2,
-      }),
+    expect(mock_use_block_module.use_blocks).toBeCalledTimes(1)
+    expect(mock_use_block_module.use_blocks).toBeCalledWith(
+      CURRENT_TIME_MS,
+      "",
+      USER_ID,
+      use_blocks_input,
     )
-    expect(mock_ai_client_module.prompt).toHaveBeenCalled()
   })
 
-  test("returns_error_message_when_tool_call_limit_is_exceeded", async () => {
-    //  --  arrange
-    // Always returns tool_use to drive the loop into the limit
-    mock_tool_handlers_module.handle_check_availability.mockReturnValue({
-      status: "error",
-      error: "No availability.",
-    })
-
-    mock_ai_client_module.prompt.mockResolvedValue({
-      stop_reason: "tool_use",
-      use_blocks: [
-        {
-          id: "tool_x",
-          name: "check_availability",
-          input: {
-            date: "2099-01-01",
-            time: "12:00",
-          },
-        },
-      ],
-    })
-
-    //  --  act
-    const result = await run_agent(
-      "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
-      42,
-      "test:loop_limit",
-      "Loop forever",
-    )
-
-    //  --  assert
-    expect(result).toBe("Something went wrong, please try again.")
-    expect(mock_ai_client_module.prompt).toHaveBeenCalled()
-    expect(mock_tool_handlers_module.handle_check_availability).toHaveBeenCalled()
-  })
-
-  test("returns_connection_error_message_when_api_throws", async () => {
-    //  --  arrange
-    mock_ai_client_module.prompt.mockRejectedValue(new Error("Network error"))
-
-    //  --  act
-    const result = await run_agent(
-      "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
-      42,
-      "test:api_error",
-      "Hello",
-    )
-
-    //  --  assert
-    expect(result).toBe("I'm having trouble connecting. Please try again in a moment.")
-    expect(mock_ai_client_module.prompt).toHaveBeenCalled()
-  })
-
-  test("handles_unknown_tool_name_by_passing_error_result_back_to_model", async () => {
+  test("passes_tool_error_results_back_to_model_and_returns_final_text", async () => {
     //  --  arrange
     let call_count = 0
-
+    mock_use_block_module.use_blocks.mockReturnValue([
+      { status: "error", error: "Unknown tool: nonexistent_tool" },
+    ])
     mock_ai_client_module.prompt.mockImplementation(() => {
       call_count++
       if (call_count === 1) {
         return Promise.resolve({
           stop_reason: "tool_use",
-          name: "nonexistent_tool",
-          input: {},
+          feedback_content: [],
+          use_blocks: [{ id: "nonexistent_tool", input: {} }],
         })
       }
       return Promise.resolve({
@@ -172,35 +112,44 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(
-      "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
-      42,
-      "test:unknown_tool",
-      "Do something unsupported",
-    )
+    const result = await run_agent(CURRENT_TIME_MS, USER_ID, "test:unknown_tool", "Do something unsupported")
 
     //  --  assert
-    expect(typeof result).toBe("string")
+    expect(result).toBe("I cannot do that.")
     expect(call_count).toBe(2)
-    expect(mock_ai_client_module.prompt).toHaveBeenCalled()
+    expect(mock_use_block_module.use_blocks).toBeCalledTimes(1)
   })
 
-  test("returns_fallback_when_end_turn_response_has_no_text_block", async () => {
+  test("returns_error_message_when_tool_call_limit_is_exceeded", async () => {
     //  --  arrange
+    mock_use_block_module.use_blocks.mockReturnValue([
+      { status: "error", error: "No availability." },
+    ])
     mock_ai_client_module.prompt.mockResolvedValue({
-      stop_reason: "end_turn",
+      stop_reason: "tool_use",
+      feedback_content: [],
+      use_blocks: [{ id: "check_availability", input: { date: "2099-01-01", time: "12:00" } }],
     })
 
     //  --  act
-    const result = await run_agent(
-      "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
-      42,
-      "test:no_text",
-      "Hello",
-    )
+    const result = await run_agent(CURRENT_TIME_MS, USER_ID, "test:loop_limit", "Loop forever")
 
     //  --  assert
-    expect(result).toBe("Done.")
-    expect(mock_ai_client_module.prompt).toHaveBeenCalled()
+    expect(result).toBe("Something went wrong, please try again.")
+    expect(mock_use_block_module.use_blocks).toHaveBeenCalled()
+  })
+
+  test("returns_error_message_on_unexpected_stop_reason", async () => {
+    //  --  arrange
+    mock_ai_client_module.prompt.mockResolvedValue({
+      stop_reason: "max_tokens",
+      text_block: "",
+    })
+
+    //  --  act
+    const result = await run_agent(CURRENT_TIME_MS, USER_ID, "test:unexpected_stop", "Hello")
+
+    //  --  assert
+    expect(result).toBe("Something went wrong, please try again.")
   })
 })

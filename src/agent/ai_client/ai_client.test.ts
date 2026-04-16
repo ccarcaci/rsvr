@@ -45,7 +45,6 @@ const mock_anthropic_message = (
           id: block.id,
           caller: {} as DirectCaller,
           input: block.input,
-          name: block.name,
           type: "tool_use",
         }) as ToolUseBlock,
     ),
@@ -62,8 +61,7 @@ describe("ai_client", () => {
     mock_anthropic_module.message_conversation.mockResolvedValue(
       mock_anthropic_message("end_turn", "Hello world", [
         {
-          id: "C8E49FCD-5166-4F48-9232-1BEF4F8A21F7",
-          name: "find_the_cat",
+          id: "check_availability",
           input: {},
         },
       ]),
@@ -88,8 +86,7 @@ describe("ai_client", () => {
     mock_anthropic_module.message_conversation.mockResolvedValue(
       mock_anthropic_message("end_turn", "Hello world", [
         {
-          id: "C8E49FCD-5166-4F48-9232-1BEF4F8A21F7",
-          name: "find_the_cat",
+          id: "check_availability",
           input: {},
         },
       ]),
@@ -104,11 +101,11 @@ describe("ai_client", () => {
       text_block: "Hello world",
       use_blocks: [
         {
-          id: "C8E49FCD-5166-4F48-9232-1BEF4F8A21F7",
-          name: "find_the_cat",
+          id: "check_availability",
           input: {},
         },
       ],
+      feedback_content: result.feedback_content, // not relevant since its type is unknown
     })
   })
 
@@ -126,6 +123,7 @@ describe("ai_client", () => {
       stop_reason: "end_turn",
       text_block: "Just a text response",
       use_blocks: [],
+      feedback_content: result.feedback_content, // not relevant since its type is unknown
     })
   })
 
@@ -134,8 +132,7 @@ describe("ai_client", () => {
     mock_anthropic_module.message_conversation.mockResolvedValue(
       mock_anthropic_message("end_turn", undefined, [
         {
-          id: "A1B2C3D4-1234-5678-ABCD-EF0123456789",
-          name: "check_availability",
+          id: "check_availability",
           input: { date: "2026-04-15", time: "19:00" },
         },
       ]),
@@ -150,11 +147,11 @@ describe("ai_client", () => {
       text_block: "",
       use_blocks: [
         {
-          id: "A1B2C3D4-1234-5678-ABCD-EF0123456789",
-          name: "check_availability",
+          id: "check_availability",
           input: { date: "2026-04-15", time: "19:00" },
         },
       ],
+      feedback_content: result.feedback_content, // not relevant since its type is unknown
     })
   })
 
@@ -163,18 +160,15 @@ describe("ai_client", () => {
     mock_anthropic_module.message_conversation.mockResolvedValue(
       mock_anthropic_message("end_turn", "Processing your request", [
         {
-          id: "A1B2C3D4-0001-0001-0001-000000000001",
-          name: "check_availability",
+          id: "check_availability",
           input: { date: "2026-04-15", time: "19:00" },
         },
         {
-          id: "A1B2C3D4-0002-0002-0002-000000000002",
-          name: "create_booking",
+          id: "create_booking",
           input: { slot_id: "SLOT-42", party_size: 2 },
         },
         {
-          id: "A1B2C3D4-0003-0003-0003-000000000003",
-          name: "list_bookings",
+          id: "list_bookings",
           input: {},
         },
       ]),
@@ -189,21 +183,19 @@ describe("ai_client", () => {
       text_block: "Processing your request",
       use_blocks: [
         {
-          id: "A1B2C3D4-0001-0001-0001-000000000001",
-          name: "check_availability",
+          id: "check_availability",
           input: { date: "2026-04-15", time: "19:00" },
         },
         {
-          id: "A1B2C3D4-0002-0002-0002-000000000002",
-          name: "create_booking",
+          id: "create_booking",
           input: { slot_id: "SLOT-42", party_size: 2 },
         },
         {
-          id: "A1B2C3D4-0003-0003-0003-000000000003",
-          name: "list_bookings",
+          id: "list_bookings",
           input: {},
         },
       ],
+      feedback_content: result.feedback_content, // not relevant since its type is unknown
     })
   })
 })

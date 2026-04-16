@@ -30,13 +30,60 @@ export type tool_use_block_request_type = {
     | retrieve_business_id_input_type
 }
 
+// Tool handler content types
+
+export type check_availability_content_type = {
+  slot_id: string
+  date: string
+  time: string
+  available_capacity: number
+}
+
+export type create_booking_content_type = {
+  reservation_id: string
+  date: string
+  time: string
+  party_size: number
+  status: string
+  notes: string | null
+}
+
+export type reservation_summary_type = {
+  reservation_id: string
+  party_size: number
+  status: string
+  notes: string | null
+  created_at: string
+}
+
+export type list_bookings_content_type = {
+  reservations: reservation_summary_type[]
+}
+
+export type cancel_booking_content_type = {
+  reservation_id: string
+  status: "cancelled"
+}
+
+export type retrieve_business_id_content_type = {
+  resolved_business_id: string
+}
+
+export type tool_handler_content_type =
+  | retrieve_business_id_content_type
+  | check_availability_content_type
+  | create_booking_content_type
+  | list_bookings_content_type
+  | cancel_booking_content_type
+
+//  --
+
 export type tool_use_block_result_type =
   | {
       status: "success"
       data: {
         tool_use_id: string
-        resolved_business_id?: string
-        content: unknown
+        content: tool_handler_content_type
       }
     }
   | {
