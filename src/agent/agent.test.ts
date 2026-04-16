@@ -112,7 +112,12 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(CURRENT_TIME_MS, USER_ID, "test:unknown_tool", "Do something unsupported")
+    const result = await run_agent(
+      CURRENT_TIME_MS,
+      USER_ID,
+      "test:unknown_tool",
+      "Do something unsupported",
+    )
 
     //  --  assert
     expect(result).toBe("I cannot do that.")

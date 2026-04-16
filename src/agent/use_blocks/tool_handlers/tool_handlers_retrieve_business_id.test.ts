@@ -4,6 +4,7 @@ import { mock_db_module } from "./mock"
 
 mock_module("./db/queries", () => mock_db_module)
 
+import type { retrieve_business_id_content_type } from "../../types"
 import { handle_retrieve_business_id } from "./tool_handlers"
 
 const BUSINESS_1 = {
@@ -37,8 +38,8 @@ describe("tool_handlers", () => {
     //  --  assert
     expect(result.status).toBe("success")
     if (result.status === "success") {
-      const data = result.data as { business_id: string }
-      expect(data.business_id).toBe("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C")
+      const content = result.data.content as retrieve_business_id_content_type
+      expect(content.resolved_business_id).toBe("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C")
     }
     expect(mock_db_module.find_businesses_by_name).toBeCalledWith("The Golden Fork Restaurant")
   })

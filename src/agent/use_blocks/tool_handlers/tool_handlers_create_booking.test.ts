@@ -4,6 +4,7 @@ import { mock_db_module } from "./mock"
 
 mock_module("./db/queries", () => mock_db_module)
 
+import type { create_booking_content_type } from "../../types"
 import { handle_create_booking } from "./tool_handlers"
 
 const SLOT = {
@@ -59,10 +60,15 @@ describe("tool_handlers", () => {
       //  --  assert
       expect(result.status).toBe("success")
       if (result.status === "success") {
-        const data = result.data as Record<string, unknown>
-        expect(data.reservation_id).toBe("A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D")
-        expect(data.party_size).toBe(2)
-        expect(data.status).toBe("confirmed")
+        const content = result.data.content as create_booking_content_type
+        expect(content).toEqual({
+          reservation_id: "A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D",
+          date: "2099-12-31",
+          time: "19:00",
+          party_size: 2,
+          status: "confirmed",
+          notes: null,
+        })
       }
       expect(mock_db_module.create_reservation).toBeCalledWith(
         2,

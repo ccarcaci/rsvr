@@ -7,7 +7,7 @@
     "@anthropic-ai/sdk": "0.85.0",
     "arktype": "^2.2.0",
     "grammy": "1.42.0",
-    "hono": "4.12.12",
+    "hono": "4.12.14",
     "openai": "6.33.0"
   },
   "devDependencies": {

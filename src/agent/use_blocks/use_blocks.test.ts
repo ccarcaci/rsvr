@@ -1,8 +1,12 @@
 import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
 import { mock_module, mock_restore } from "../../mock_module"
-import type { tool_use_block_request_type, tool_use_block_result_type } from "../types"
-import { use_blocks } from "./use_blocks"
+import type {
+  tool_handler_content_type,
+  tool_use_block_request_type,
+  tool_use_block_result_type,
+} from "../types"
 import { mock_tool_handlers_module } from "./mock"
+import { use_blocks } from "./use_blocks"
 
 mock_module("./agent/use_blocks/tool_handlers/tool_handlers", () => mock_tool_handlers_module)
 
@@ -10,9 +14,12 @@ const BUSINESS_ID = "DD152853-01F0-44CA-9C0D-E0109ADAFAE9"
 const USER_ID = "A7E58DB6-16E4-4688-B1ED-5A9437A7739A"
 const CURRENT_TIME_MS = 42
 
-const success = (tool_use_id: string, extra?: object): tool_use_block_result_type => ({
+const success = (
+  tool_use_id: string,
+  content?: tool_handler_content_type,
+): tool_use_block_result_type => ({
   status: "success",
-  data: { tool_use_id, content: "", ...extra },
+  data: { tool_use_id, content: content ?? ({} as tool_handler_content_type) },
 })
 
 describe("use_blocks", () => {

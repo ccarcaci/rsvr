@@ -46,7 +46,10 @@ describe("handle_message", () => {
 
     //  --  assert
     expect(result).toBe("The answer is 42")
-    expect(mock_transcribe_module.transcribe_audio).toBeCalledWith(voice_message.voice_buffer, "audio/ogg")
+    expect(mock_transcribe_module.transcribe_audio).toBeCalledWith(
+      voice_message.voice_buffer,
+      "audio/ogg",
+    )
     expect(mock_db_module.create_user).toBeCalledWith(
       "whatsapp",
       "E6BE41DB-8A68-47A9-9465-25CCA471A105",

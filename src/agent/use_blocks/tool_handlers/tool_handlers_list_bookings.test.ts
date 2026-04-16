@@ -4,6 +4,7 @@ import { mock_db_module } from "./mock"
 
 mock_module("./db/queries", () => mock_db_module)
 
+import type { list_bookings_content_type } from "../../types"
 import { handle_list_bookings } from "./tool_handlers"
 
 const RESERVATION = {
@@ -37,8 +38,8 @@ describe("tool_handlers", () => {
       //  --  assert
       expect(result.status).toBe("success")
       if (result.status === "success") {
-        const data = result.data as { reservations: unknown[] }
-        expect(data.reservations).toHaveLength(0)
+        const content = result.data.content as list_bookings_content_type
+        expect(content.reservations).toHaveLength(0)
       }
       expect(mock_db_module.find_reservations).toBeCalledWith(
         "D5F7BA6A-19C2-42F3-8080-17F098BB807D",
@@ -55,9 +56,9 @@ describe("tool_handlers", () => {
       //  --  assert
       expect(result.status).toBe("success")
       if (result.status === "success") {
-        const data = result.data as { reservations: Record<string, unknown>[] }
-        expect(data.reservations).toHaveLength(1)
-        expect(data.reservations[0].reservation_id).toBe("A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D")
+        const content = result.data.content as list_bookings_content_type
+        expect(content.reservations).toHaveLength(1)
+        expect(content.reservations[0].reservation_id).toBe("A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D")
       }
       expect(mock_db_module.find_reservations).toBeCalledWith(
         "D5F7BA6A-19C2-42F3-8080-17F098BB807D",

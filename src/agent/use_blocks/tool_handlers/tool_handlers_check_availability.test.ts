@@ -4,6 +4,7 @@ import { mock_db_module } from "./mock"
 
 mock_module("./db/queries", () => mock_db_module)
 
+import type { check_availability_content_type } from "../../types"
 import { handle_check_availability } from "./tool_handlers"
 
 const SLOT = {
@@ -39,11 +40,13 @@ describe("tool_handlers", () => {
       //  --  assert
       expect(result.status).toBe("success")
       if (result.status === "success") {
-        const data = result.data as Record<string, unknown>
-        expect(data.slot_id).toBe("C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D")
-        expect(data.date).toBe("2099-12-31")
-        expect(data.time).toBe("19:00")
-        expect(data.available_capacity).toBe(8)
+        const content = result.data.content as check_availability_content_type
+        expect(content).toEqual({
+          slot_id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
+          date: "2099-12-31",
+          time: "19:00",
+          available_capacity: 8,
+        })
       }
       expect(mock_db_module.check_availability).toBeCalledWith(
         "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
