@@ -26,7 +26,7 @@ export const AGENT_TOOLS: Tool[] = [
     },
   },
   {
-    name: "retrieve_business_name",
+    name: "retrieve_business_id",
     description:
       "Identify the business to book the appointment to. Ask for the name of the activity to uniquely identify it in the database. Do not guess",
     input_schema: {

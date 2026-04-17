@@ -31,8 +31,6 @@ export const get_session = (sender_key: string, current_time_ms: number): sessio
   return fresh
 }
 
-//  --
-
 export const update_session = (
   current_time_ms: number,
   sender_key: string,
@@ -43,10 +41,8 @@ export const update_session = (
   const capped_history =
     entry.history.length > MAX_HISTORY ? entry.history.slice(-MAX_HISTORY) : entry.history
 
-  sessions.set(sender_key, { history: capped_history, last_active: current_time_ms })
+  sessions.set(sender_key, { history: capped_history, last_active: current_time_ms, business_id: entry.business_id })
 }
-
-//  --
 
 export const clear_all_sessions = (): void => {
   sessions.clear()

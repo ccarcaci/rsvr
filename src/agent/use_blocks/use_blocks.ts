@@ -70,9 +70,6 @@ export const use_blocks = (
   for (const tool_use_block of use_blocks_requests) {
     const tool_result = dispatch_tool(current_time_ms, business_id, user_id, tool_use_block)
     tool_results.push(tool_result)
-    if (tool_result.status === "success" && tool_result.data.content.resolved_business_id) {
-      business_id = tool_result.data.content.resolved_business_id
-    }
   }
   return tool_results
 }
