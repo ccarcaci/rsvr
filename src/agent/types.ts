@@ -78,19 +78,22 @@ export type tool_handler_content_type =
 
 //  --
 
-export type tool_use_block_result_type =
-  | {
-      status: "success"
-      data: {
-        tool_use_id: string
-        content: tool_handler_content_type
-      }
-    }
-  | {
-      status: "error"
-      error: string
-    }
+export type tool_use_block_result_success_type = {
+  status: "success"
+  data: {
+    tool_use_id: string
+    content: tool_handler_content_type
+  }
+}
 
+export type tool_use_block_result_error_type = {
+  status: "error"
+  error: string
+}
+
+export type tool_use_block_result_type =
+  | tool_use_block_result_success_type
+  | tool_use_block_result_error_type
 //  --
 
 export type session_history_entry_type = {

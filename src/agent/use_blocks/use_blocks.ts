@@ -66,10 +66,19 @@ export const use_blocks = (
     throw new Error("Something went wrong, please try again.")
   }
 
+  let current_business_id = business_id
   const tool_results: tool_use_block_result_type[] = []
   for (const tool_use_block of use_blocks_requests) {
-    const tool_result = dispatch_tool(current_time_ms, business_id, user_id, tool_use_block)
+    const tool_result = dispatch_tool(current_time_ms, current_business_id, user_id, tool_use_block)
     tool_results.push(tool_result)
+
+    if (
+      tool_use_block.id === "retrieve_business_id" &&
+      tool_result.status === "success" &&
+      "resolved_business_id" in tool_result.data.content
+    ) {
+      current_business_id = tool_result.data.content.resolved_business_id
+    }
   }
   return tool_results
 }
