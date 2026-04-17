@@ -73,13 +73,18 @@ ci_check: ## Check formatting, import sorting, and linting (read-only, fails on 
 	@echo "Running CI checks (format + imports + lint)..."
 	@$(BIOME) ci $(SRC_DIR)/
 
+.PHONY: ci_build
+ci_build: ## Compile src/ with Bun without storing output (checks code is runnable)
+	@echo "Checking compilation..."
+	@BUILD_TMP=$$(mktemp -d); $(BUN) build $(SRC_DIR)/index.ts --target bun --outdir $$BUILD_TMP; EXIT=$$?; rm -rf $$BUILD_TMP; exit $$EXIT
+
 .PHONY: ci_sec
 ci_sec: ## Audit production dependencies for known vulnerabilities (bun audit --prod)
 	@echo "Running security audit (production deps)..."
 	@$(BUN) audit --prod
 
 .PHONY: ci_fast
-ci_fast: check_version ci_check ci_sec ## Run ci-check, ci-test, and ci-sec in order
+ci_fast: check_version ci_check ci_build ci_sec ## Run ci-check, ci-build, ci-test, and ci-sec in order
 	make ci_test
 	@echo "All CI checks passed!"
 

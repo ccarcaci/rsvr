@@ -1,4 +1,5 @@
 import { Hono } from "hono"
+import { init_anthropic_client } from "./agent/ai_client/anthropic/anthropic"
 import { telegram_bot } from "./channels/telegram/bot"
 import { whatsapp_routes } from "./channels/whatsapp/webhook"
 import { configs, log_config_startup } from "./config/args"
@@ -6,7 +7,6 @@ import { init_db } from "./db/client"
 import { metrics_middleware } from "./metrics/middleware"
 import { monitoring_routes } from "./metrics/routes"
 import { debug_request_logger } from "./middleware/debug_request_logger"
-import { init_anthropic_client } from "./parser/client/anthropic"
 import { logger, set_log_level } from "./shared/logger"
 import { init_openai_client } from "./voice/client/openai"
 
