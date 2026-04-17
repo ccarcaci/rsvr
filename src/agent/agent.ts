@@ -3,10 +3,8 @@ import { prompt } from "./ai_client/ai_client"
 import { get_session, update_session } from "./session"
 import type {
   ai_client_prompt_result_type,
-  retrieve_business_id_content_type,
   session_entry_type,
   session_history_entry_type,
-  tool_use_block_result_success_type,
   tool_use_block_result_type,
 } from "./types"
 import { use_blocks } from "./use_blocks/use_blocks"
@@ -55,19 +53,18 @@ const extract_business_id_from_tools = (
     return current_business_id
   }
 
-  const resolve_business_id_tool = tool_results
-    .filter((tr: tool_use_block_result_type) => tr.status === "success")
-    .find(
-      (tr: tool_use_block_result_success_type) =>
-        tr.data.tool_use_id === "handle_retrieve_busines_id" &&
-        "resolved_business_id" in tr.data.content,
-    ) as retrieve_business_id_content_type | undefined
-
-  if (resolve_business_id_tool === undefined) {
-    return ""
+  for (const result of tool_results) {
+    if (
+      result.status === "success" &&
+      typeof result.data.content === "object" &&
+      result.data.content !== null &&
+      "resolved_business_id" in result.data.content
+    ) {
+      return result.data.content.resolved_business_id
+    }
   }
 
-  return resolve_business_id_tool.resolved_business_id
+  return ""
 }
 
 //  --
