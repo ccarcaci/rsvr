@@ -45,7 +45,7 @@ setup: check_version install ## Full project setup (check version + install deps
 .PHONY: ci_test
 ci_test: ## Run tests with Bun native test runner (e.g. make test test_name)
 	@echo "Running tests..."
-	@$(BUN) test $(if $(filter-out ci_test,$(MAKECMDGOALS)),--test-name-pattern=$(filter-out ci_test,$(MAKECMDGOALS))) $(SRC_DIR)/
+	@$(BUN) test --isolate --parallel=4 $(if $(filter-out ci_test,$(MAKECMDGOALS)),--test-name-pattern=$(filter-out ci_test,$(MAKECMDGOALS))) $(SRC_DIR)/
 
 .PHONY: test_debug
 test_debug: ## Run tests with debugger (e.g., make test_debug test_name)
