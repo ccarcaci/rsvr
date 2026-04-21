@@ -100,9 +100,10 @@ export const create_user = (
   name?: string,
 ): user_row_type => {
   const field = channel === "whatsapp" ? "phone" : "telegram_id"
+  const user_id = crypto.randomUUID().toUpperCase()
   get_db()
-    .query(`INSERT OR IGNORE INTO users (${field}, channel, name) VALUES (?, ?, ?)`)
-    .run(identifier, channel, name ?? null)
+    .query(`INSERT OR IGNORE INTO users (id, ${field}, channel, name) VALUES (?, ?, ?, ?)`)
+    .run(user_id, identifier, channel, name ?? null)
   const user =
     channel === "whatsapp" ? find_user_by_phone(identifier) : find_user_by_telegram_id(identifier)
   if (!user) {
