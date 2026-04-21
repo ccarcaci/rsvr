@@ -26,30 +26,29 @@ const dispatch_tool = (
   user_id: string,
   tool_use_block_request: tool_use_block_request_type,
 ): tool_use_block_result_type => {
-  const tool_id = tool_use_block_request.id
-  const tool_input = tool_use_block_request.input
-  switch (tool_id) {
+  const { id, input } = tool_use_block_request
+  switch (id) {
     case "check_availability":
-      return handle_check_availability(business_id, tool_input as check_availability_input_type)
+      return handle_check_availability(business_id, input as check_availability_input_type)
     case "create_booking":
       return handle_create_booking(
         current_time_ms,
         business_id,
         user_id,
-        tool_input as create_booking_input_type,
+        input as create_booking_input_type,
       )
     case "list_bookings":
-      return handle_list_bookings(user_id, tool_input as list_bookings_input_type)
+      return handle_list_bookings(user_id, input as list_bookings_input_type)
     case "get_booking":
-      return handle_get_booking(user_id, tool_input as get_booking_input_type)
+      return handle_get_booking(user_id, input as get_booking_input_type)
     case "cancel_booking":
-      return handle_cancel_booking(user_id, tool_input as cancel_booking_input_type)
+      return handle_cancel_booking(user_id, input as cancel_booking_input_type)
     case "reschedule_booking":
-      return handle_reschedule_booking(user_id, tool_input as reschedule_booking_input_type)
+      return handle_reschedule_booking(user_id, input as reschedule_booking_input_type)
     case "retrieve_business_id":
-      return handle_retrieve_business_id(tool_input as retrieve_business_id_input_type)
+      return handle_retrieve_business_id(input as retrieve_business_id_input_type)
     default:
-      return { status: "error", error: `Unknown tool: ${tool_id}` }
+      return { status: "error", error: `Unknown tool: ${id}` }
   }
 }
 

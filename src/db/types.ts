@@ -14,6 +14,7 @@ export type business_row_type = {
 
 export type time_slot_row_type = {
   id: string
+  business_id: string
   date: string
   time: string
   capacity: number
@@ -23,6 +24,7 @@ export type time_slot_row_type = {
 
 export type reservation_row_type = {
   id: string
+  business_id: string
   user_id: string
   time_slot_id: string
   party_size: number

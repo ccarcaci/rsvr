@@ -8,31 +8,25 @@ import {
   type user_row_type,
 } from "./types"
 
-export const find_user_by_phone = (phone: string): user_row_type | null => {
-  return get_db().query<user_row_type, [string]>("SELECT * FROM users WHERE phone = ?").get(phone)
-}
+export const cancel_reservation = (user_id: string, reservation_id: string): boolean => {
+  const reservation = get_db()
+    .query<reservation_row_type, [string, string]>(
+      "SELECT * FROM reservations WHERE id = ? AND user_id = ? AND status = 'confirmed'",
+    )
+    .get(reservation_id, user_id)
 
-export const find_user_by_telegram_id = (telegram_id: string): user_row_type | null => {
-  return get_db()
-    .query<user_row_type, [string]>("SELECT * FROM users WHERE telegram_id = ?")
-    .get(telegram_id)
-}
+  if (!reservation) return false
 
-export const create_user = (
-  channel: "whatsapp" | "telegram",
-  identifier: string,
-  name?: string,
-): user_row_type => {
-  const field = channel === "whatsapp" ? "phone" : "telegram_id"
   get_db()
-    .query(`INSERT OR IGNORE INTO users (${field}, channel, name) VALUES (?, ?, ?)`)
-    .run(identifier, channel, name ?? null)
-  const user =
-    channel === "whatsapp" ? find_user_by_phone(identifier) : find_user_by_telegram_id(identifier)
-  if (!user) {
-    throw new Error(`Failed to create or find user: ${identifier}`)
-  }
-  return user
+    .query(
+      "UPDATE reservations SET status = 'cancelled', updated_at = datetime('now') WHERE id = ? AND user_id = ?",
+    )
+    .run(reservation_id, user_id)
+  get_db()
+    .query("UPDATE time_slots SET booked = booked - ? WHERE id = ?")
+    .run(reservation.party_size, reservation.time_slot_id)
+
+  return true
 }
 
 export const check_availability = (
@@ -100,25 +94,27 @@ export const create_reservation = (
   return run_transaction.immediate()
 }
 
-export const cancel_reservation = (user_id: string, reservation_id: string): boolean => {
-  const reservation = get_db()
-    .query<reservation_row_type, [string, string]>(
-      "SELECT * FROM reservations WHERE id = ? AND user_id = ? AND status = 'confirmed'",
-    )
-    .get(reservation_id, user_id)
-
-  if (!reservation) return false
-
+export const create_user = (
+  channel: "whatsapp" | "telegram",
+  identifier: string,
+  name?: string,
+): user_row_type => {
+  const field = channel === "whatsapp" ? "phone" : "telegram_id"
   get_db()
-    .query(
-      "UPDATE reservations SET status = 'cancelled', updated_at = datetime('now') WHERE id = ? AND user_id = ?",
-    )
-    .run(reservation_id, user_id)
-  get_db()
-    .query("UPDATE time_slots SET booked = booked - ? WHERE id = ?")
-    .run(reservation.party_size, reservation.time_slot_id)
+    .query(`INSERT OR IGNORE INTO users (${field}, channel, name) VALUES (?, ?, ?)`)
+    .run(identifier, channel, name ?? null)
+  const user =
+    channel === "whatsapp" ? find_user_by_phone(identifier) : find_user_by_telegram_id(identifier)
+  if (!user) {
+    throw new Error(`Failed to create or find user: ${identifier}`)
+  }
+  return user
+}
 
-  return true
+export const find_businesses_by_name = (name: string): business_row_type[] => {
+  return get_db()
+    .query<business_row_type, [string]>("SELECT * FROM businesses WHERE LOWER(name) = LOWER(?)")
+    .all(name)
 }
 
 export const find_reservations = (user_id: string): reservation_row_type[] => {
@@ -135,8 +131,12 @@ export const find_slot_by_id = (slot_id: string): time_slot_row_type | null => {
     .get(slot_id)
 }
 
-export const find_businesses_by_name = (name: string): business_row_type[] => {
+export const find_user_by_phone = (phone: string): user_row_type | null => {
+  return get_db().query<user_row_type, [string]>("SELECT * FROM users WHERE phone = ?").get(phone)
+}
+
+export const find_user_by_telegram_id = (telegram_id: string): user_row_type | null => {
   return get_db()
-    .query<business_row_type, [string]>("SELECT * FROM businesses WHERE LOWER(name) = LOWER(?)")
-    .all(name)
+    .query<user_row_type, [string]>("SELECT * FROM users WHERE telegram_id = ?")
+    .get(telegram_id)
 }
