@@ -10,7 +10,7 @@ import { seed_slot, setup_db } from "./queries_test_helpers"
 //   - 24 time slots across multiple dates/times
 //   - 8 sample reservations
 
-const BUSINESS_ID = "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C"
+const SEED_BUSINESS_ID = "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C"
 
 describe("find_slot_by_id", () => {
   let test_db: Database
@@ -38,7 +38,7 @@ describe("find_slot_by_id", () => {
 
   test("returns_slot_by_id", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, BUSINESS_ID, "2026-05-01", "10:00", 8, 3)
+    const slot_id = seed_slot(test_db, SEED_BUSINESS_ID, "2026-05-01", "10:00", 8, 3)
 
     //  --  act
     const result = find_slot_by_id(slot_id)
@@ -46,7 +46,7 @@ describe("find_slot_by_id", () => {
     //  --  assert
     expect(result).toEqual({
       id: slot_id,
-      business_id: BUSINESS_ID,
+      business_id: SEED_BUSINESS_ID,
       date: "2026-05-01",
       time: "10:00",
       capacity: 8,

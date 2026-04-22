@@ -10,9 +10,9 @@ import { seed_slot, setup_db } from "./queries_test_helpers"
 //   - 24 time slots across multiple dates/times
 //   - 8 sample reservations
 
-const BUSINESS_ID = "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C" // The Golden Fork Restaurant
-const USER_ID = "D5F7BA6A-19C2-42F3-8080-17F098BB807D" // Alice Johnson
-const OTHER_USER_ID = "507259D3-B912-4DBE-9D87-D5F06741B021" // Bob Smith
+const SEED_BUSINESS_ID = "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C" // The Golden Fork Restaurant
+const SEED_USER_ID = "D5F7BA6A-19C2-42F3-8080-17F098BB807D" // Alice Johnson
+const SEED_OTHER_SEED_USER_ID = "507259D3-B912-4DBE-9D87-D5F06741B021" // Bob Smith
 const CURRENT_TIME_MS = 1710849600000
 
 describe("cancel_reservation", () => {
@@ -34,7 +34,7 @@ describe("cancel_reservation", () => {
 
   test("returns_false_when_reservation_not_found", () => {
     //  --  act
-    const result = cancel_reservation(USER_ID, "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF")
+    const result = cancel_reservation(SEED_USER_ID, "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF")
 
     //  --  assert
     expect(result).toBe(false)
@@ -42,11 +42,11 @@ describe("cancel_reservation", () => {
 
   test("returns_false_when_reservation_belongs_to_different_user", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, BUSINESS_ID, "2026-05-01", "12:00", 10)
-    const reservation = create_reservation(2, CURRENT_TIME_MS, BUSINESS_ID, USER_ID, slot_id)
+    const slot_id = seed_slot(test_db, SEED_BUSINESS_ID, "2026-05-01", "12:00", 10)
+    const reservation = create_reservation(2, CURRENT_TIME_MS, SEED_BUSINESS_ID, SEED_USER_ID, slot_id)
 
-    //  --  act (OTHER_USER_ID tries to cancel Alice's reservation)
-    const result = cancel_reservation(OTHER_USER_ID, reservation.id)
+    //  --  act (SEED_OTHER_SEED_USER_ID tries to cancel Alice's reservation)
+    const result = cancel_reservation(SEED_OTHER_SEED_USER_ID, reservation.id)
 
     //  --  assert
     expect(result).toBe(false)
@@ -54,11 +54,11 @@ describe("cancel_reservation", () => {
 
   test("returns_true_and_decrements_reserved_count_on_successful_cancellation", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, BUSINESS_ID, "2026-05-01", "19:00", 10)
-    const reservation = create_reservation(3, CURRENT_TIME_MS, BUSINESS_ID, USER_ID, slot_id)
+    const slot_id = seed_slot(test_db, SEED_BUSINESS_ID, "2026-05-01", "19:00", 10)
+    const reservation = create_reservation(3, CURRENT_TIME_MS, SEED_BUSINESS_ID, SEED_USER_ID, slot_id)
 
     //  --  act
-    const result = cancel_reservation(USER_ID, reservation.id)
+    const result = cancel_reservation(SEED_USER_ID, reservation.id)
 
     //  --  assert
     expect(result).toBe(true)
@@ -70,11 +70,11 @@ describe("cancel_reservation", () => {
 
   test("sets_reservation_status_to_cancelled", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, BUSINESS_ID, "2026-05-02", "09:00", 5)
-    const reservation = create_reservation(1, CURRENT_TIME_MS, BUSINESS_ID, USER_ID, slot_id)
+    const slot_id = seed_slot(test_db, SEED_BUSINESS_ID, "2026-05-02", "09:00", 5)
+    const reservation = create_reservation(1, CURRENT_TIME_MS, SEED_BUSINESS_ID, SEED_USER_ID, slot_id)
 
     //  --  act
-    cancel_reservation(USER_ID, reservation.id)
+    cancel_reservation(SEED_USER_ID, reservation.id)
 
     //  --  assert
     const row = test_db
@@ -85,12 +85,12 @@ describe("cancel_reservation", () => {
 
   test("returns_false_when_reservation_already_cancelled", () => {
     //  --  arrange
-    const slot_id = seed_slot(test_db, BUSINESS_ID, "2026-05-03", "20:00", 5)
-    const reservation = create_reservation(1, CURRENT_TIME_MS, BUSINESS_ID, USER_ID, slot_id)
-    cancel_reservation(USER_ID, reservation.id)
+    const slot_id = seed_slot(test_db, SEED_BUSINESS_ID, "2026-05-03", "20:00", 5)
+    const reservation = create_reservation(1, CURRENT_TIME_MS, SEED_BUSINESS_ID, SEED_USER_ID, slot_id)
+    cancel_reservation(SEED_USER_ID, reservation.id)
 
     //  --  act (cancel again)
-    const result = cancel_reservation(USER_ID, reservation.id)
+    const result = cancel_reservation(SEED_USER_ID, reservation.id)
 
     //  --  assert
     expect(result).toBe(false)
