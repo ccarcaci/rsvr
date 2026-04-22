@@ -65,6 +65,15 @@ export type cancel_reservation_content_type = {
   status: "cancelled"
 }
 
+export type find_reservation_content_type = {
+  reservation_id: string
+  time_slot_id: string
+  party_size: number
+  status: string
+  notes: string | null
+  created_at: string
+}
+
 export type find_business_id_content_type = {
   resolved_business_id: string
 }
@@ -75,6 +84,7 @@ export type tool_handler_content_type =
   | create_reservation_content_type
   | list_reservations_content_type
   | cancel_reservation_content_type
+  | find_reservation_content_type
 
 //  --
 

@@ -11,6 +11,7 @@ type mock_db_type = {
   create_reservation: Mock<mock_fn_type>
   cancel_reservation: Mock<mock_fn_type>
   find_reservations: Mock<mock_fn_type>
+  find_reservation: Mock<mock_fn_type>
   find_slot_by_id: Mock<mock_fn_type>
   find_businesses_by_name: Mock<mock_fn_type>
 }
@@ -23,6 +24,7 @@ export const mock_db_module: mock_db_type = {
   create_reservation: mock(),
   cancel_reservation: mock(),
   find_reservations: mock(),
+  find_reservation: mock(),
   find_slot_by_id: mock(),
   find_businesses_by_name: mock(),
 }

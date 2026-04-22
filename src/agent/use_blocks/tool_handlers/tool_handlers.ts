@@ -3,6 +3,7 @@ import {
   check_availability,
   create_reservation,
   find_businesses_by_name,
+  find_reservation,
   find_reservations,
   find_slot_by_id,
 } from "../../../db/queries"
@@ -183,10 +184,37 @@ export const handle_list_reservations = (
 //  --
 
 export const handle_find_reservation = (
-  _user_id: string,
-  _input: find_reservation_input_type,
+  user_id: string,
+  input: find_reservation_input_type,
 ): tool_use_block_result_type => {
-  return { status: "error", error: "find_reservation is not yet implemented." }
+  const { reservation_id } = input
+
+  try {
+    const reservation = find_reservation(user_id, reservation_id)
+    if (!reservation) {
+      return {
+        status: "error",
+        error: `Reservation ${reservation_id} not found.`,
+      }
+    }
+    return {
+      status: "success",
+      data: {
+        tool_use_id: "handle_find_reservation",
+        content: {
+          reservation_id: reservation.id,
+          time_slot_id: reservation.time_slot_id,
+          party_size: reservation.party_size,
+          status: reservation.status,
+          notes: reservation.notes ?? null,
+          created_at: reservation.created_at,
+        },
+      },
+    }
+  } catch (err) {
+    logger.error("find_reservation failed", { err: String(err), user_id, reservation_id })
+    return { status: "error", error: "Failed to retrieve reservation. Please try again." }
+  }
 }
 
 //  --
