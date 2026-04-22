@@ -21,14 +21,14 @@ describe("handle_message", () => {
   test("voice_message_run_agent", async () => {
     //  --  arrange
     const voice_message: incoming_message_type = {
-      voice_buffer: new TextEncoder().encode("book an appointment for tomorrow"),
+      voice_buffer: new TextEncoder().encode("reserve an appointment for tomorrow"),
       voice_mime_type: "audio/ogg",
       sender_id: "E6BE41DB-8A68-47A9-9465-25CCA471A105",
       channel: "whatsapp",
       sender_name: "John Doe",
       raw_payload: "",
     }
-    mock_transcribe_module.transcribe_audio.mockResolvedValue("book an appointment for tomorrow")
+    mock_transcribe_module.transcribe_audio.mockResolvedValue("reserve an appointment for tomorrow")
 
     mock_db_module.create_user.mockReturnValue({
       id: "E6BE41DB-8A68-47A9-9465-25CCA471A105",
@@ -59,7 +59,7 @@ describe("handle_message", () => {
       42,
       "E6BE41DB-8A68-47A9-9465-25CCA471A105",
       "whatsapp:E6BE41DB-8A68-47A9-9465-25CCA471A105",
-      "book an appointment for tomorrow",
+      "reserve an appointment for tomorrow",
     )
   })
 })

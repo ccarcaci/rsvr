@@ -12,7 +12,7 @@ const SLOT = {
   date: "2099-12-31",
   time: "19:00",
   capacity: 10,
-  booked: 2,
+  reserved: 2,
   metadata: null,
 }
 

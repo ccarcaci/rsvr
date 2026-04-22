@@ -14,20 +14,20 @@ export type ai_client_prompt_result_type = {
 export type tool_use_block_request_type = {
   id:
     | "check_availability"
-    | "create_booking"
-    | "list_bookings"
-    | "get_booking"
-    | "cancel_booking"
-    | "reschedule_booking"
-    | "retrieve_business_id"
+    | "create_reservation"
+    | "list_reservations"
+    | "find_reservation"
+    | "cancel_reservation"
+    | "reschedule_reservation"
+    | "find_business_id"
   input:
     | check_availability_input_type
-    | create_booking_input_type
-    | list_bookings_input_type
-    | get_booking_input_type
-    | cancel_booking_input_type
-    | reschedule_booking_input_type
-    | retrieve_business_id_input_type
+    | create_reservation_input_type
+    | list_reservations_input_type
+    | find_reservation_input_type
+    | cancel_reservation_input_type
+    | reschedule_reservation_input_type
+    | find_business_id_input_type
 }
 
 // Tool handler content types
@@ -39,7 +39,7 @@ export type check_availability_content_type = {
   available_capacity: number
 }
 
-export type create_booking_content_type = {
+export type create_reservation_content_type = {
   reservation_id: string
   date: string
   time: string
@@ -56,25 +56,25 @@ export type reservation_summary_type = {
   created_at: string
 }
 
-export type list_bookings_content_type = {
+export type list_reservations_content_type = {
   reservations: reservation_summary_type[]
 }
 
-export type cancel_booking_content_type = {
+export type cancel_reservation_content_type = {
   reservation_id: string
   status: "cancelled"
 }
 
-export type retrieve_business_id_content_type = {
+export type find_business_id_content_type = {
   resolved_business_id: string
 }
 
 export type tool_handler_content_type =
-  | retrieve_business_id_content_type
+  | find_business_id_content_type
   | check_availability_content_type
-  | create_booking_content_type
-  | list_bookings_content_type
-  | cancel_booking_content_type
+  | create_reservation_content_type
+  | list_reservations_content_type
+  | cancel_reservation_content_type
 
 //  --
 
@@ -115,28 +115,28 @@ export type check_availability_input_type = {
   party_size?: number
 }
 
-export type create_booking_input_type = {
+export type create_reservation_input_type = {
   slot_id: string
   party_size?: number
   notes?: string
 }
 
-export type list_bookings_input_type = Record<string, never>
+export type list_reservations_input_type = Record<string, never>
 
-export type get_booking_input_type = {
+export type find_reservation_input_type = {
   reservation_id: string
 }
 
-export type cancel_booking_input_type = {
+export type cancel_reservation_input_type = {
   reservation_id: string
 }
 
-export type reschedule_booking_input_type = {
+export type reschedule_reservation_input_type = {
   reservation_id: string
   new_date: string
   new_time: string
 }
 
-export type retrieve_business_id_input_type = {
+export type find_business_id_input_type = {
   business_name: string
 }

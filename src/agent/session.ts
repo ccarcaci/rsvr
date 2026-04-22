@@ -17,7 +17,7 @@ const evict_expired = (current_time_ms: number): void => {
 
 //  --
 
-export const get_session = (sender_key: string, current_time_ms: number): session_entry_type => {
+export const find_session = (sender_key: string, current_time_ms: number): session_entry_type => {
   evict_expired(current_time_ms)
 
   const existing = sessions.get(sender_key)

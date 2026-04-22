@@ -127,7 +127,7 @@ The rsvr reservation system exhibits **above-average security posture** with cor
 | SQL Injection Risk | ✅ Safe | All queries parameterized |
 | Hardcoded Secrets | ✅ None | All secrets via CLI args |
 | HMAC Verification | ✅ Correct | Uses `timingSafeEqual` with hex validation |
-| Test Coverage | ⚠️ Partial | `handle_cancel_booking` untested; missing stubs for `get_booking`/`reschedule_booking` |
+| Test Coverage | ⚠️ Partial | `handle_cancel_reservation` untested; missing stubs for `find_reservation`/`reschedule_reservation` |
 | Function Size | ⚠️ 3 violations | `create_whatsapp_routes` (63), `create_monitoring_routes` (73), `create_reservation` (52) |
 | File Size | ⚠️ 2 violations | `webhook.ts` (272), `tool_handlers.ts` (225) |
 | Nesting Depth | ⚠️ 3 violations | Exceeds 2-level limit in webhook POST, transaction callback, routes factory |
@@ -174,6 +174,6 @@ make check      # Both lint and test
 
 1. **Address critical security issues** (items 1-5 above) — transaction safety, input validation, media downloads, PII exposure
 2. **Refactor second-order functions** (item 6) — large refactoring spanning 6 files but straightforward
-3. **Add missing tests** — `handle_cancel_booking` coverage
+3. **Add missing tests** — `handle_cancel_reservation` coverage
 4. **Code style cleanup** — argument order, nesting, comments, file/function justification
 5. **Verify with full test suite** — `make check` after each major change group

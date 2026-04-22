@@ -14,7 +14,7 @@
 5. [Flow 2: Voice Note (End-to-End)](#5-flow-2-voice-note-end-to-end)
 6. [Data Transformations at Each Step](#6-data-transformations-at-each-step)
 7. [Agent Processing Loop Detail](#7-agent-processing-loop-detail)
-8. [Concrete Example: Booking a Restaurant Table](#8-concrete-example-booking-a-restaurant-table)
+8. [Concrete Example: Reserving a Restaurant Table](#8-concrete-example-reserving-a-restaurant-table)
 9. [Testing with whap: Simulating Messages](#9-testing-with-whap-simulating-messages)
 10. [whap Endpoint Roles](#10-whap-endpoint-roles)
 11. [Known Limitations and Solutions](#11-known-limitations-and-solutions)
@@ -57,7 +57,7 @@ Both services run as containers on the `dokploy-network` bridge network, managed
 | Message orchestration                | `src/reservations/service.ts`              | Routes text/voice, upserts user, delegates to agent                       |
 | Agent loop                           | `src/agent/agent.ts`                       | Claude Opus 4.5 multi-turn tool_use loop (max 10 tool calls)              |
 | Session management                   | `src/agent/session.ts`                     | In-memory conversation history keyed by `channel:sender_id`               |
-| Tool dispatch                        | `src/agent/tool_handlers.ts`               | In-process SQL queries for availability, booking, listing                  |
+| Tool dispatch                        | `src/agent/tool_handlers.ts`               | In-process SQL queries for availability, reserving, listing                |
 | Database                             | `src/db/queries.ts`                        | Raw SQLite via `bun:sqlite` (users, time_slots, reservations)             |
 
 ---
@@ -346,15 +346,15 @@ The agent loop has these key properties:
 
 ---
 
-## 8. Concrete Example: Booking a Restaurant Table
+## 8. Concrete Example: Reserving a Restaurant Table
 
-User sends: **"I'd like to book a table for 2 people tomorrow at 19:00"**
+User sends: **"I'd like to reserve a table for 2 people tomorrow at 19:00"**
 
 ```
 User --> whap --> POST /webhook/whatsapp --> rsvr
                                               |
                                          webhook.ts
-                                         Parse: text = "I'd like to book..."
+                                         Parse: text = "I'd like to reserve..."
                                          sender_id = "391234567890"
                                               |
                                          service.ts
@@ -380,13 +380,13 @@ User --> whap --> POST /webhook/whatsapp --> rsvr
                                    -> SQLite: SELECT from time_slots
                                      WHERE date='2026-03-12'
                                      AND time='19:00'
-                                     AND (capacity - booked) >= 2
+                                     AND (capacity - reserved) >= 2
                                    -> Returns slot_id=7
                                               |
                                    +----------+-----------+
                                    |   Turn 2: Claude     |
                                    |   -> tool_use:       |
-                                   |     create_booking   |
+                                   |   create_reservation |
                                    |   { slot_id: 7,      |
                                    |     party_size: 2 }  |
                                    +----------+-----------+
@@ -395,7 +395,7 @@ User --> whap --> POST /webhook/whatsapp --> rsvr
                                    -> Re-verify capacity (get_slot_by_id)
                                    -> queries.create_reservation()
                                    -> INSERT into reservations
-                                   -> UPDATE time_slots SET booked += 2
+                                   -> UPDATE time_slots SET reserved += 2
                                    -> Returns reservation_id=15
                                               |
                                    +----------+-----------+
@@ -421,8 +421,8 @@ User --> whap --> POST /webhook/whatsapp --> rsvr
                                          User receives reply
 ```
 
-Total Claude API calls for this booking: **3** (check, create, summarize).
-Total tool calls: **2** (check_availability, create_booking).
+Total Claude API calls for this reservation: **3** (check, create, summarize).
+Total tool calls: **2** (check_availability, create_reservation).
 
 ---
 
@@ -444,7 +444,7 @@ podman exec whap curl --silent --show-error \
     "message": {
       "id": "wamid.test_001",
       "timestamp": "1741689600",
-      "text": { "body": "I would like to book a table for 2 people tomorrow at 19:00" }
+      "text": { "body": "I would like to reserve a table for 2 people tomorrow at 19:00" }
     }
   }' \
   http://localhost:3010/mock/simulate-message
@@ -466,7 +466,7 @@ Quick testing targets are available in `local_infra/Makefile`:
 
 ```bash
 make -C local_infra curl_whap_simulate_message   # Send a generic text message
-make -C local_infra curl_whap_simulate_booking    # Send a booking request
+make -C local_infra curl_whap_simulate_booking    # Send a reservation request
 make -C local_infra test_webhook_flow             # Full E2E: simulate + wait + tail logs
 ```
 

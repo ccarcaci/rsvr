@@ -18,7 +18,7 @@ export type time_slot_row_type = {
   date: string
   time: string
   capacity: number
-  booked: number
+  reserved: number
   metadata: string | null
 }
 

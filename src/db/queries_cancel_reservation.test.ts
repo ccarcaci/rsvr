@@ -52,7 +52,7 @@ describe("cancel_reservation", () => {
     expect(result).toBe(false)
   })
 
-  test("returns_true_and_decrements_booked_count_on_successful_cancellation", () => {
+  test("returns_true_and_decrements_reserved_count_on_successful_cancellation", () => {
     //  --  arrange
     const slot_id = seed_slot(test_db, BUSINESS_ID, "2026-05-01", "19:00", 10)
     const reservation = create_reservation(3, CURRENT_TIME_MS, BUSINESS_ID, USER_ID, slot_id)
@@ -63,9 +63,9 @@ describe("cancel_reservation", () => {
     //  --  assert
     expect(result).toBe(true)
     const slot = test_db
-      .query<{ booked: number }, [string]>("SELECT booked FROM time_slots WHERE id = ?")
+      .query<{ reserved: number }, [string]>("SELECT reserved FROM time_slots WHERE id = ?")
       .get(slot_id)
-    expect(slot).toEqual({ booked: 0 })
+    expect(slot).toEqual({ reserved: 0 })
   })
 
   test("sets_reservation_status_to_cancelled", () => {

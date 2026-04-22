@@ -164,11 +164,11 @@ describe("ai_client", () => {
           input: { date: "2026-04-15", time: "19:00" },
         },
         {
-          id: "create_booking",
+          id: "create_reservation",
           input: { slot_id: "SLOT-42", party_size: 2 },
         },
         {
-          id: "list_bookings",
+          id: "list_reservations",
           input: {},
         },
       ]),
@@ -187,11 +187,11 @@ describe("ai_client", () => {
           input: { date: "2026-04-15", time: "19:00" },
         },
         {
-          id: "create_booking",
+          id: "create_reservation",
           input: { slot_id: "SLOT-42", party_size: 2 },
         },
         {
-          id: "list_bookings",
+          id: "list_reservations",
           input: {},
         },
       ],

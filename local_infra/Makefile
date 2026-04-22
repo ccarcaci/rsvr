@@ -403,9 +403,9 @@ curl_whap_simulate_message: ## Simulate a text message via whap /mock/simulate-m
 		EOF
 	@echo ""
 
-.PHONY: curl_whap_simulate_booking
-curl_whap_simulate_booking: ## Simulate a booking request via whap /mock/simulate-message (podman exec)
-	@echo "Simulating booking request via whap /mock/simulate-message..."
+.PHONY: curl_whap_simulate_reservation
+curl_whap_simulate_reservation: ## Simulate a reservation request via whap /mock/simulate-message (podman exec)
+	@echo "Simulating reservation request via whap /mock/simulate-message..."
 	curl --verbose \
 		http://localhost:3001/whap/mock/simulate-message \
 		--request POST \
@@ -418,7 +418,7 @@ curl_whap_simulate_booking: ## Simulate a booking request via whap /mock/simulat
 			"message": {
 				"id": "wamid.test_$(shell date +%s)",
 				"timestamp": "$(shell date +%s)",
-				"text": { "body": "I would like to book a table for 2 people tomorrow at 19:00" }
+				"text": { "body": "I would like to reserve a table for 2 people tomorrow at 19:00" }
 			}
 		}
 		EOF

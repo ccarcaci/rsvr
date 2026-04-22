@@ -76,7 +76,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(CURRENT_TIME_MS, USER_ID, "test:tool_dispatch", "Book a table")
+    const result = await run_agent(CURRENT_TIME_MS, USER_ID, "test:tool_dispatch", "Reserve a table")
 
     //  --  assert
     expect(result).toBe("There are available slots on that date.")

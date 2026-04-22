@@ -37,7 +37,7 @@ describe("create_reservation_transactional", () => {
     mock_restore()
   })
 
-  test("creates_a_reservation_and_increments_booked_count", () => {
+  test("creates_a_reservation_and_increments_reserved_count", () => {
     //  --  arrange
     const slot_id = seed_slot(test_db, business_id, "2026-04-01", "19:00", 10)
 
@@ -51,9 +51,9 @@ describe("create_reservation_transactional", () => {
     expect(reservation.status).toBe("confirmed")
 
     const slot = test_db
-      .query<{ booked: number }, [string]>("SELECT booked FROM time_slots WHERE id = ?")
+      .query<{ reserved: number }, [string]>("SELECT reserved FROM time_slots WHERE id = ?")
       .get(slot_id)
-    expect(slot?.booked).toBe(2)
+    expect(slot?.reserved).toBe(2)
   })
 
   test("throws_slot_not_found_error_when_slot_does_not_exist", () => {
@@ -76,7 +76,7 @@ describe("create_reservation_transactional", () => {
     )
   })
 
-  test("allows_booking_when_party_size_exactly_fills_remaining_capacity", () => {
+  test("allows_reservation_when_party_size_exactly_fills_remaining_capacity", () => {
     //  --  arrange
     const slot_id = seed_slot(test_db, business_id, "2026-04-01", "14:00", 3, 1)
 
@@ -86,12 +86,12 @@ describe("create_reservation_transactional", () => {
     //  --  assert
     expect(reservation.party_size).toBe(2)
     const slot = test_db
-      .query<{ booked: number }, [string]>("SELECT booked FROM time_slots WHERE id = ?")
+      .query<{ reserved: number }, [string]>("SELECT reserved FROM time_slots WHERE id = ?")
       .get(slot_id)
-    expect(slot?.booked).toBe(3)
+    expect(slot?.reserved).toBe(3)
   })
 
-  test("rejects_booking_that_overflows_by_exactly_one_seat", () => {
+  test("rejects_reservation_that_overflows_by_exactly_one_seat", () => {
     //  --  arrange
     const slot_id = seed_slot(test_db, business_id, "2026-04-01", "21:00", 5, 5)
 
@@ -101,24 +101,24 @@ describe("create_reservation_transactional", () => {
     )
   })
 
-  test("sequential_bookings_respect_capacity_and_prevent_overbooking", () => {
+  test("sequential_reservations_respect_capacity_and_prevent_overbooking", () => {
     //  --  arrange
     const slot_id = seed_slot(test_db, business_id, "2026-04-02", "19:00", 4)
 
-    //  --  act — first booking takes 3 seats
+    //  --  act — first reservation takes 3 seats
     const r1 = create_reservation(3, CURRENT_TIME_MS, business_id, user_id, slot_id)
     expect(r1.party_size).toBe(3)
 
-    //  --  act — second booking tries 2 seats (only 1 remaining)
+    //  --  act — second reservation tries 2 seats (only 1 remaining)
     expect(() => create_reservation(2, CURRENT_TIME_MS, business_id, user_id, slot_id)).toThrow(
       capacity_error,
     )
 
-    //  --  assert — booked count should be 3, not 5
+    //  --  assert — reserved count should be 3, not 5
     const slot = test_db
-      .query<{ booked: number }, [string]>("SELECT booked FROM time_slots WHERE id = ?")
+      .query<{ reserved: number }, [string]>("SELECT reserved FROM time_slots WHERE id = ?")
       .get(slot_id)
-    expect(slot?.booked).toBe(3)
+    expect(slot?.reserved).toBe(3)
   })
 
   test("rolls_back_reservation_if_capacity_check_fails_mid_transaction", () => {
@@ -136,11 +136,11 @@ describe("create_reservation_transactional", () => {
       .all(slot_id)
     expect(reservations.length).toBe(0)
 
-    //  --  assert — booked count unchanged
+    //  --  assert — reserved count unchanged
     const slot = test_db
-      .query<{ booked: number }, [string]>("SELECT booked FROM time_slots WHERE id = ?")
+      .query<{ reserved: number }, [string]>("SELECT reserved FROM time_slots WHERE id = ?")
       .get(slot_id)
-    expect(slot?.booked).toBe(2)
+    expect(slot?.reserved).toBe(2)
   })
 
   test("creates_reservation_with_notes", () => {

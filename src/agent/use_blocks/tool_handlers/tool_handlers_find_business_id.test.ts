@@ -4,8 +4,8 @@ import { mock_db_module } from "./mock"
 
 mock_module("./db/queries", () => mock_db_module)
 
-import type { retrieve_business_id_content_type } from "../../types"
-import { handle_retrieve_business_id } from "./tool_handlers"
+import type { find_business_id_content_type } from "../../types"
+import { handle_find_business_id } from "./tool_handlers"
 
 const BUSINESS_1 = {
   id: "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
@@ -31,14 +31,14 @@ describe("tool_handlers", () => {
     mock_db_module.find_businesses_by_name.mockReturnValue([BUSINESS_1])
 
     //  --  act
-    const result = handle_retrieve_business_id({
+    const result = handle_find_business_id({
       business_name: "The Golden Fork Restaurant",
     })
 
     //  --  assert
     expect(result.status).toBe("success")
     if (result.status === "success") {
-      const content = result.data.content as retrieve_business_id_content_type
+      const content = result.data.content as find_business_id_content_type
       expect(content.resolved_business_id).toBe("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C")
     }
     expect(mock_db_module.find_businesses_by_name).toBeCalledWith("The Golden Fork Restaurant")
@@ -49,7 +49,7 @@ describe("tool_handlers", () => {
     mock_db_module.find_businesses_by_name.mockReturnValue([])
 
     //  --  act
-    const result = handle_retrieve_business_id({
+    const result = handle_find_business_id({
       business_name: "Nonexistent Restaurant",
     })
 
@@ -67,7 +67,7 @@ describe("tool_handlers", () => {
     mock_db_module.find_businesses_by_name.mockReturnValue([BUSINESS_1, BUSINESS_2])
 
     //  --  act
-    const result = handle_retrieve_business_id({
+    const result = handle_find_business_id({
       business_name: "The Golden",
     })
 
@@ -88,14 +88,14 @@ describe("tool_handlers", () => {
     })
 
     //  --  act
-    const result = handle_retrieve_business_id({
+    const result = handle_find_business_id({
       business_name: "Any Restaurant",
     })
 
     //  --  assert
     expect(result.status).toBe("error")
     if (result.status === "error") {
-      expect(result.error).toContain("Failed to retrieve business id")
+      expect(result.error).toContain("Failed to find business id")
     }
   })
 })

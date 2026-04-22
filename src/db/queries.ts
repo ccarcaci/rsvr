@@ -23,7 +23,7 @@ export const cancel_reservation = (user_id: string, reservation_id: string): boo
     )
     .run(reservation_id, user_id)
   get_db()
-    .query("UPDATE time_slots SET booked = booked - ? WHERE id = ?")
+    .query("UPDATE time_slots SET reserved = reserved - ? WHERE id = ?")
     .run(reservation.party_size, reservation.time_slot_id)
 
   return true
@@ -37,7 +37,7 @@ export const check_availability = (
 ): time_slot_row_type | null => {
   return get_db()
     .query<time_slot_row_type, [string, string, string, number]>(
-      "SELECT * FROM time_slots WHERE business_id = ? AND date = ? AND time = ? AND (capacity - booked) >= ?",
+      "SELECT * FROM time_slots WHERE business_id = ? AND date = ? AND time = ? AND (capacity - reserved) >= ?",
     )
     .get(business_id, date, time, party_size)
 }
@@ -46,7 +46,7 @@ export const check_availability = (
 // and party details — each represents a distinct entity/value in the domain model.
 export const create_reservation = (
   party_size: number,
-  _current_time_ms: number,
+  current_time_ms: number,
   business_id: string,
   user_id: string,
   time_slot_id: string,
@@ -62,22 +62,23 @@ export const create_reservation = (
     }
 
     // 2. Check capacity atomically
-    const remaining = slot.capacity - slot.booked
+    const remaining = slot.capacity - slot.reserved
     if (remaining < party_size) {
       throw new capacity_error(remaining)
     }
 
-    // 3. Generate reservation ID and INSERT
+    // 3. Generate reservation ID and INSERT — timestamps derived from caller-supplied ms for determinism
     const reservation_id = crypto.randomUUID()
+    const unix_seconds = current_time_ms / 1000
     get_db()
       .query(
-        "INSERT INTO reservations (id, business_id, user_id, time_slot_id, party_size, notes) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO reservations (id, business_id, user_id, time_slot_id, party_size, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, datetime(?, 'unixepoch'), datetime(?, 'unixepoch'))",
       )
-      .run(reservation_id, business_id, user_id, time_slot_id, party_size, notes ?? null)
+      .run(reservation_id, business_id, user_id, time_slot_id, party_size, notes ?? null, unix_seconds, unix_seconds)
 
-    // 4. UPDATE time_slots booked count
+    // 4. UPDATE time_slots reserved count
     get_db()
-      .query("UPDATE time_slots SET booked = booked + ? WHERE id = ?")
+      .query("UPDATE time_slots SET reserved = reserved + ? WHERE id = ?")
       .run(party_size, time_slot_id)
 
     // 5. Return the created reservation

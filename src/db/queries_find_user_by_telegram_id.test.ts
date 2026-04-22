@@ -44,7 +44,7 @@ describe("find_user_by_telegram_id", () => {
       telegram_id: "987654321",
       name: "Frank Miller",
       channel: "telegram",
-      created_at: expect.any(String),
+      created_at: "2026-04-10 00:00:00",
     })
   })
 })

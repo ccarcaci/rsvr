@@ -7,20 +7,20 @@ type mock_fn_type = (...args: any[]) => any
 
 type mock_tool_handlers_type = {
   handle_check_availability: Mock<mock_fn_type>
-  handle_create_booking: Mock<mock_fn_type>
-  handle_list_bookings: Mock<mock_fn_type>
-  handle_get_booking: Mock<mock_fn_type>
-  handle_cancel_booking: Mock<mock_fn_type>
-  handle_reschedule_booking: Mock<mock_fn_type>
-  handle_retrieve_business_id: Mock<mock_fn_type>
+  handle_create_reservation: Mock<mock_fn_type>
+  handle_list_reservations: Mock<mock_fn_type>
+  handle_find_reservation: Mock<mock_fn_type>
+  handle_cancel_reservation: Mock<mock_fn_type>
+  handle_reschedule_reservation: Mock<mock_fn_type>
+  handle_find_business_id: Mock<mock_fn_type>
 }
 
 export const mock_tool_handlers_module: mock_tool_handlers_type = {
   handle_check_availability: mock(),
-  handle_create_booking: mock(),
-  handle_list_bookings: mock(),
-  handle_get_booking: mock(),
-  handle_cancel_booking: mock(),
-  handle_reschedule_booking: mock(),
-  handle_retrieve_business_id: mock(),
+  handle_create_reservation: mock(),
+  handle_list_reservations: mock(),
+  handle_find_reservation: mock(),
+  handle_cancel_reservation: mock(),
+  handle_reschedule_reservation: mock(),
+  handle_find_business_id: mock(),
 }

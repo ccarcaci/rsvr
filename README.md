@@ -119,11 +119,11 @@ Has voice? ──yes──▶ Voice Transcriber (OpenAI) ──▶ text
 Claude Opus 4.5 Tool-Use Agent Loop
   │ multi-turn agent with tools
   ├─▶ check_availability (date, time, party_size)
-  ├─▶ create_booking (slot_id, party_size, notes)
-  ├─▶ list_bookings (user's reservations)
-  ├─▶ get_booking (reservation details)
-  ├─▶ cancel_booking (user-scoped cancellation)
-  └─▶ reschedule_booking (move to new slot)
+  ├─▶ create_reservation (slot_id, party_size, notes)
+  ├─▶ list_reservations (user's reservations)
+  ├─▶ find_reservation (reservation details)
+  ├─▶ cancel_reservation (user-scoped cancellation)
+  └─▶ reschedule_reservation (move to new slot)
   │
   ▼
 SQLite Database

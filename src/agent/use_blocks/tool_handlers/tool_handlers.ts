@@ -9,13 +9,13 @@ import {
 import { capacity_error, slot_not_found_error } from "../../../db/types"
 import { logger } from "../../../shared/logger"
 import type {
-  cancel_booking_input_type,
+  cancel_reservation_input_type,
   check_availability_input_type,
-  create_booking_input_type,
-  get_booking_input_type,
-  list_bookings_input_type,
-  reschedule_booking_input_type,
-  retrieve_business_id_input_type,
+  create_reservation_input_type,
+  find_reservation_input_type,
+  list_reservations_input_type,
+  reschedule_reservation_input_type,
+  find_business_id_input_type,
   tool_use_block_result_type,
 } from "../../types"
 
@@ -41,7 +41,7 @@ const try_check_availability = (
           slot_id: slot.id,
           date: slot.date,
           time: slot.time,
-          available_capacity: slot.capacity - slot.booked,
+          available_capacity: slot.capacity - slot.reserved,
         },
       },
     }
@@ -79,7 +79,7 @@ export const handle_check_availability = (
 
 //  --
 
-const try_create_booking = (
+const try_create_reservation = (
   business_id: string,
   user_id: string,
   slot_id: string,
@@ -100,7 +100,7 @@ const try_create_booking = (
     return {
       status: "success",
       data: {
-        tool_use_id: "handle_create_booking",
+        tool_use_id: "handle_create_reservation",
         content: {
           reservation_id: reservation.id,
           date: slot?.date ?? "",
@@ -115,16 +115,16 @@ const try_create_booking = (
     if (err instanceof capacity_error || err instanceof slot_not_found_error) {
       return { status: "error", error: err.message }
     }
-    logger.error("create_booking failed", { err: String(err), user_id, slot_id })
-    return { status: "error", error: "Failed to create booking. Please try again." }
+    logger.error("create_reservation failed", { err: String(err), user_id, slot_id })
+    return { status: "error", error: "Failed to create reservation. Please try again." }
   }
 }
 
-export const handle_create_booking = (
+export const handle_create_reservation = (
   current_time_ms: number,
   business_id: string,
   user_id: string,
-  input: create_booking_input_type,
+  input: create_reservation_input_type,
 ): tool_use_block_result_type => {
   const { slot_id, party_size = 1, notes } = input
 
@@ -141,7 +141,7 @@ export const handle_create_booking = (
     }
   }
 
-  return try_create_booking(
+  return try_create_reservation(
     business_id,
     user_id,
     slot_id as string,
@@ -153,16 +153,16 @@ export const handle_create_booking = (
 
 //  --
 
-export const handle_list_bookings = (
+export const handle_list_reservations = (
   user_id: string,
-  _input: list_bookings_input_type,
+  _input: list_reservations_input_type,
 ): tool_use_block_result_type => {
   try {
     const rows = find_reservations(user_id)
     return {
       status: "success",
       data: {
-        tool_use_id: "handle_list_bookings",
+        tool_use_id: "handle_list_reservations",
         content: {
           reservations: rows.map((r) => ({
             reservation_id: r.id,
@@ -175,25 +175,25 @@ export const handle_list_bookings = (
       },
     }
   } catch (err) {
-    logger.error("list_bookings failed", { err: String(err), user_id })
+    logger.error("list_reservations failed", { err: String(err), user_id })
     return { status: "error", error: "Failed to retrieve reservations. Please try again." }
   }
 }
 
 //  --
 
-export const handle_get_booking = (
+export const handle_find_reservation = (
   _user_id: string,
-  _input: get_booking_input_type,
+  _input: find_reservation_input_type,
 ): tool_use_block_result_type => {
-  return { status: "error", error: "get_booking is not yet implemented." }
+  return { status: "error", error: "find_reservation is not yet implemented." }
 }
 
 //  --
 
-export const handle_cancel_booking = (
+export const handle_cancel_reservation = (
   user_id: string,
-  input: cancel_booking_input_type,
+  input: cancel_reservation_input_type,
 ): tool_use_block_result_type => {
   const { reservation_id } = input
 
@@ -208,7 +208,7 @@ export const handle_cancel_booking = (
     return {
       status: "success",
       data: {
-        tool_use_id: "handle_cancel_booking",
+        tool_use_id: "handle_cancel_reservation",
         content: {
           reservation_id,
           status: "cancelled",
@@ -216,24 +216,24 @@ export const handle_cancel_booking = (
       },
     }
   } catch (err) {
-    logger.error("cancel_booking failed", { err: String(err), user_id, reservation_id })
-    return { status: "error", error: "Failed to cancel booking. Please try again." }
+    logger.error("cancel_reservation failed", { err: String(err), user_id, reservation_id })
+    return { status: "error", error: "Failed to cancel reservation. Please try again." }
   }
 }
 
 //  --
 
-export const handle_reschedule_booking = (
+export const handle_reschedule_reservation = (
   _user_id: string,
-  _input: reschedule_booking_input_type,
+  _input: reschedule_reservation_input_type,
 ): tool_use_block_result_type => {
-  return { status: "error", error: "reschedule_booking is not yet implemented." }
+  return { status: "error", error: "reschedule_reservation is not yet implemented." }
 }
 
 //  --
 
-export const handle_retrieve_business_id = (
-  input: retrieve_business_id_input_type,
+export const handle_find_business_id = (
+  input: find_business_id_input_type,
 ): tool_use_block_result_type => {
   const { business_name } = input
 
@@ -252,14 +252,14 @@ export const handle_retrieve_business_id = (
     return {
       status: "success",
       data: {
-        tool_use_id: "handle_retrieve_business_id",
+        tool_use_id: "handle_find_business_id",
         content: {
           resolved_business_id: businesses[0].id,
         },
       },
     }
   } catch (err) {
-    logger.error("retrieve_business_id_failed", { err: String(err), business_name })
-    return { status: "error", error: "Failed to retrieve business id." }
+    logger.error("find_business_id_failed", { err: String(err), business_name })
+    return { status: "error", error: "Failed to find business id." }
   }
 }

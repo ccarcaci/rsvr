@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS time_slots (
   date TEXT NOT NULL,
   time TEXT NOT NULL,
   capacity INTEGER NOT NULL DEFAULT 1,
-  booked INTEGER NOT NULL DEFAULT 0,
+  reserved INTEGER NOT NULL DEFAULT 0,
   metadata TEXT,
   UNIQUE(business_id, date, time)
 );

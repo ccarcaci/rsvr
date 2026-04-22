@@ -38,7 +38,7 @@ describe("find_reservations", () => {
   test("returns_confirmed_reservations_for_user", () => {
     //  --  arrange
     const slot_id = seed_slot(test_db, BUSINESS_ID, "2026-05-01", "19:00", 10)
-    create_reservation(2, CURRENT_TIME_MS, BUSINESS_ID, USER_ID, slot_id)
+    const reservation = create_reservation(2, CURRENT_TIME_MS, BUSINESS_ID, USER_ID, slot_id)
 
     //  --  act
     const result = find_reservations(USER_ID)
@@ -46,15 +46,15 @@ describe("find_reservations", () => {
     //  --  assert
     expect(result).toEqual([
       {
-        id: expect.any(String),
+        id: reservation.id,
         business_id: BUSINESS_ID,
         user_id: USER_ID,
         time_slot_id: slot_id,
         party_size: 2,
         status: "confirmed",
         notes: null,
-        created_at: expect.any(String),
-        updated_at: expect.any(String),
+        created_at: "2024-03-19 12:00:00",
+        updated_at: "2024-03-19 12:00:00",
       },
     ])
   })
@@ -88,8 +88,8 @@ describe("find_reservations", () => {
     //  --  arrange
     const slot1 = seed_slot(test_db, BUSINESS_ID, "2026-05-01", "18:00", 10)
     const slot2 = seed_slot(test_db, BUSINESS_ID, "2026-05-01", "20:00", 10)
-    create_reservation(2, CURRENT_TIME_MS, BUSINESS_ID, USER_ID, slot1)
-    create_reservation(4, CURRENT_TIME_MS, BUSINESS_ID, USER_ID, slot2)
+    const res1 = create_reservation(2, CURRENT_TIME_MS, BUSINESS_ID, USER_ID, slot1)
+    const res2 = create_reservation(4, CURRENT_TIME_MS, BUSINESS_ID, USER_ID, slot2)
 
     //  --  act
     const result = find_reservations(USER_ID)
@@ -98,26 +98,26 @@ describe("find_reservations", () => {
     const sorted = [...result].sort((a, b) => a.party_size - b.party_size)
     expect(sorted).toEqual([
       {
-        id: expect.any(String),
+        id: res1.id,
         business_id: BUSINESS_ID,
         user_id: USER_ID,
         time_slot_id: slot1,
         party_size: 2,
         status: "confirmed",
         notes: null,
-        created_at: expect.any(String),
-        updated_at: expect.any(String),
+        created_at: "2024-03-19 12:00:00",
+        updated_at: "2024-03-19 12:00:00",
       },
       {
-        id: expect.any(String),
+        id: res2.id,
         business_id: BUSINESS_ID,
         user_id: USER_ID,
         time_slot_id: slot2,
         party_size: 4,
         status: "confirmed",
         notes: null,
-        created_at: expect.any(String),
-        updated_at: expect.any(String),
+        created_at: "2024-03-19 12:00:00",
+        updated_at: "2024-03-19 12:00:00",
       },
     ])
   })

@@ -50,7 +50,7 @@ services:
 
   # ── rsvr ──────────────────────────────────────────────────────────────────
   # Main reservation service. Handles WhatsApp and Telegram messages, runs the
-  # Claude Opus agent loop, and exposes a REST API for booking management.
+  # Claude Opus agent loop, and exposes a REST API for reservations management.
   #
   # Image: rsvr:latest (built locally via: make build_images)
   # User:  rsvr (UID 1001, non-root)

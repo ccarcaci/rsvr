@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { clear_all_sessions, get_session, session_count, update_session } from "./session"
+import { clear_all_sessions, find_session, session_count, update_session } from "./session"
 
 const THIRTY_MINUTES_MS = 30 * 60 * 1000
 
@@ -16,12 +16,12 @@ describe("session_maintenance", () => {
     test("evicts_sessions_older_than_30_minutes_on_get_session", () => {
       //  --  arrange
       const t0 = 1_000_000
-      get_session("old:1", t0)
-      get_session("old:2", t0)
+      find_session("old:1", t0)
+      find_session("old:2", t0)
 
       //  --  act
       const t_after_ttl = t0 + THIRTY_MINUTES_MS + 1
-      get_session("new:1", t_after_ttl)
+      find_session("new:1", t_after_ttl)
 
       //  --  assert
       expect(session_count()).toBe(1)
@@ -30,7 +30,7 @@ describe("session_maintenance", () => {
     test("evicts_sessions_older_than_30_minutes_on_update_session", () => {
       //  --  arrange
       const t0 = 1_000_000
-      get_session("old:1", t0)
+      find_session("old:1", t0)
 
       //  --  act
       const t_after_ttl = t0 + THIRTY_MINUTES_MS + 1
@@ -43,11 +43,11 @@ describe("session_maintenance", () => {
     test("does_not_evict_sessions_within_30_minute_window", () => {
       //  --  arrange
       const t0 = 1_000_000
-      get_session("active:1", t0)
+      find_session("active:1", t0)
 
       //  --  act
       const t_within_ttl = t0 + THIRTY_MINUTES_MS - 1
-      get_session("active:2", t_within_ttl)
+      find_session("active:2", t_within_ttl)
 
       //  --  assert
       expect(session_count()).toBe(2)
@@ -56,11 +56,11 @@ describe("session_maintenance", () => {
     test("does_not_evict_session_accessed_exactly_at_ttl_boundary", () => {
       //  --  arrange
       const t0 = 1_000_000
-      get_session("boundary:1", t0)
+      find_session("boundary:1", t0)
 
       //  --  act
       const t_exact = t0 + THIRTY_MINUTES_MS
-      get_session("boundary:2", t_exact)
+      find_session("boundary:2", t_exact)
 
       //  --  assert
       expect(session_count()).toBe(2)
@@ -69,12 +69,12 @@ describe("session_maintenance", () => {
     test("evicts_only_stale_sessions_keeps_active_ones", () => {
       //  --  arrange
       const t0 = 1_000_000
-      get_session("old:1", t0)
-      get_session("recent:1", t0 + THIRTY_MINUTES_MS - 100)
+      find_session("old:1", t0)
+      find_session("recent:1", t0 + THIRTY_MINUTES_MS - 100)
 
       //  --  act
       const t_check = t0 + THIRTY_MINUTES_MS + 1
-      get_session("trigger:1", t_check)
+      find_session("trigger:1", t_check)
 
       //  --  assert
       expect(session_count()).toBe(2)
@@ -92,7 +92,7 @@ describe("session_maintenance", () => {
 
       //  --  act
       update_session(now, "user:1", { history: long_history, last_active: now })
-      const session = get_session("user:1", now)
+      const session = find_session("user:1", now)
 
       //  --  assert
       expect(session.history.length).toBe(40)
@@ -111,7 +111,7 @@ describe("session_maintenance", () => {
 
       //  --  act
       update_session(now, "user:1", { history: exact_history, last_active: now })
-      const session = get_session("user:1", now)
+      const session = find_session("user:1", now)
 
       //  --  assert
       expect(session.history.length).toBe(40)
@@ -128,7 +128,7 @@ describe("session_maintenance", () => {
 
       //  --  act
       update_session(now, "user:1", { history: short_history, last_active: now })
-      const session = get_session("user:1", now)
+      const session = find_session("user:1", now)
 
       //  --  assert
       expect(session.history.length).toBe(5)

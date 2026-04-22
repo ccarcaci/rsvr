@@ -33,7 +33,7 @@
 - Agent loop (`src/agent/agent.ts`) with `claude-opus-4-5` model
 - All 6 tool definitions in `src/agent/tools.ts` (Anthropic SDK `Tool[]` format)
 - Tool handlers: `check_availability` — fully implemented with date/time/party_size validation
-- Tool handlers: `create_booking` — fully implemented with pre-insert capacity re-check (partial fix for Bug #5; re-check is not inside a transaction)
+- Tool handlers: `create_reservation` — fully implemented with pre-insert capacity re-check (partial fix for Bug #5; re-check is not inside a transaction)
 - Session store (`src/agent/session.ts`) — basic `Map<sender_key, session_entry>` with `get_session` / `update_session`
 - System prompt (`src/agent/prompts.ts`) — runtime date injection, 7 core rules
 - Agent types (`src/agent/types.ts`) — all input shapes and `tool_result_type`
@@ -44,26 +44,26 @@
 
 **Partially implemented:**
 
-- Tool handler `list_bookings` — works but returns `created_at` instead of appointment `date`/`time` (Bug #1 still open)
+- Tool handler `list_reservations` — works but returns `created_at` instead of appointment `date`/`time` (Bug #1 still open)
 
 **Fully implemented:**
 
 - Session store — TTL enforcement (30 min inactivity), history cap (40 messages)
-- `create_booking` capacity re-check — wrapped in SQLite IMMEDIATE transaction
+- `create_reservation` capacity re-check — wrapped in SQLite IMMEDIATE transaction
 
 **Not yet implemented:**
 
-- Tool handlers: `get_booking`, `reschedule_booking` — return stub error strings
-- Tool handler: `cancel_booking` — fully implemented with user_id scoping
+- Tool handlers: `find_reservation`, `reschedule_reservation` — return stub error strings
+- Tool handler: `cancel_reservation` — fully implemented with user_id scoping
 - CRUD REST API (`src/api/`) — directory does not exist
 - Calendar sync stubs (`src/calendar/`) — directory does not exist
 - Database indexes on `reservations` table
-- `booked >= 0` CHECK constraint on `time_slots.booked` (present in this doc but not in `schema.sql`)
+- `reserved >= 0` CHECK constraint on `time_slots.reserved` (present in this doc but not in `schema.sql`)
 
 **Deviations from original plan:**
 
-- `list_bookings` tool has no filter parameters (`from_date`, `to_date`) — the implementation accepts an empty object
-- Tool input uses `reservation_id` (not `booking_id`) for `get_booking`, `cancel_booking`, `reschedule_booking`
+- `list_reservations` tool has no filter parameters (`from_date`, `to_date`) — the implementation accepts an empty object
+- Tool input uses `reservation_id` for `find_reservation`, `cancel_reservation`, `reschedule_reservation`
 - Monitoring system (`src/metrics/`) added: in-memory counters, latency histograms, Prometheus text exposition at `/metrics`, health checks at `/status` and `/health` (documented in Monitoring section below)
 - Legacy parser (`src/parser/`) still exists in the codebase alongside the agent; not removed
 - Anthropic SDK client is shared from `src/parser/client/anthropic.ts` (not agent-local)
@@ -158,7 +158,7 @@ erDiagram
         TEXT date "NOT NULL"
         TEXT time "NOT NULL"
         INTEGER capacity "NOT NULL, DEFAULT 1"
-        INTEGER booked "NOT NULL, DEFAULT 0"
+        INTEGER reserved "NOT NULL, DEFAULT 0"
         TEXT metadata "nullable"
     }
 
@@ -174,7 +174,7 @@ erDiagram
     }
 
     users ||--o{ reservations : "has"
-    time_slots ||--o{ reservations : "booked in"
+    time_slots ||--o{ reservations : "reserved in"
 ```
 
 **Constraints:**
@@ -187,7 +187,7 @@ erDiagram
 
 The following items are specified in this architecture document but are NOT present in the actual `schema.sql`:
 
-1. **`CHECK (booked >= 0)`** on `time_slots.booked` — prevents decrement bugs from driving the counter negative
+1. **`CHECK (reserved >= 0)`** on `time_slots.reserved` — prevents decrement bugs from driving the counter negative
 2. **Indexes** for query performance:
 
 ```sql
@@ -276,23 +276,23 @@ Six tools exported as `AGENT_TOOLS: Tool[]` (Anthropic SDK format):
 | Tool                 | Parameters                                          | Status          | Purpose                                         |
 |----------------------|-----------------------------------------------------|-----------------|--------------------------------------------------|
 | `check_availability` | `date`, `time`, `party_size?`                       | Implemented     | Check slot, return `slot_id` or error            |
-| `create_booking`     | `slot_id`, `party_size?`, `notes?`                  | Implemented     | Create reservation after confirmed availability  |
-| `list_bookings`      | _(none)_                                            | Partial         | List caller's active reservations (missing date/time)   |
-| `get_booking`        | `reservation_id`                                    | Stub            | Get a single booking's full details              |
-| `cancel_booking`     | `reservation_id`                                    | Implemented     | Cancel a reservation (user-scoped)               |
-| `reschedule_booking` | `reservation_id`, `new_date`, `new_time`            | Stub            | Move to a new slot (atomic transaction)          |
+| `create_reservation`     | `slot_id`, `party_size?`, `notes?`              | Implemented     | Create reservation after confirmed availability  |
+| `list_reservations`      | _(none)_                                        | Partial         | List caller's active reservations (missing date/time)   |
+| `find_reservation`       | `reservation_id`                                | Stub            | Find a single reservation's full details         |
+| `cancel_reservation`     | `reservation_id`                                | Implemented     | Cancel a reservation (user-scoped)               |
+| `reschedule_reservation` | `reservation_id`, `new_date`, `new_time`        | Stub            | Move to a new slot (atomic transaction)          |
 
-**Deviation from plan:** The original design specified `list_bookings` with optional `from_date`, `to_date` filters and used `booking_id` for get/cancel/reschedule. The implementation uses no filters for `list_bookings` and uses `reservation_id` for the other tools.
+**Deviation from plan:** The original design specified `list_reservations` with optional `from_date`, `to_date` filters and used `reservation_id` for get/cancel/reschedule. The implementation uses no filters for `list_reservations` and uses `reservation_id` for the other tools.
 
 Notes on specific tools:
 
-- `create_booking`: The handler re-verifies slot capacity before creating the reservation. The entire operation (check + insert + update slot) is wrapped in a SQLite IMMEDIATE transaction. See Bug #5 for resolution details.
+- `create_reservation`: The handler re-verifies slot capacity before creating the reservation. The entire operation (check + insert + update slot) is wrapped in a SQLite IMMEDIATE transaction. See Bug #5 for resolution details.
 
-- `cancel_booking`: Now fully implemented with user_id scoping. Calls `queries.cancel_reservation(user_id, reservation_id)` with proper error handling.
+- `cancel_reservation`: Now fully implemented with user_id scoping. Calls `queries.cancel_reservation(user_id, reservation_id)` with proper error handling.
 
-- `get_booking`: Not yet implemented. When implemented, must include `AND user_id = ?` in the query to prevent reading other users' bookings. The agent may hallucinate a `reservation_id`; ownership must always be verified in SQL.
+- `find_reservation`: Not yet implemented. When implemented, must include `AND user_id = ?` in the query to prevent reading other users' reservations. The agent may hallucinate a `reservation_id`; ownership must always be verified in SQL.
 
-- `reschedule_booking`: Not yet implemented. When implemented, after the `UPDATE` on `reservations`, check the affected row count. If 0, the booking does not belong to the caller — ROLLBACK the transaction and return an error string.
+- `reschedule_reservation`: Not yet implemented. When implemented, after the `UPDATE` on `reservations`, check the affected row count. If 0, the reservation does not belong to the caller — ROLLBACK the transaction and return an error string.
 
 ### Tool handlers — `src/agent/tool_handlers.ts`
 
@@ -306,14 +306,14 @@ Each handler:
 
 | Handler                      | Status      | Notes                                                         |
 |------------------------------|-------------|---------------------------------------------------------------|
-| `handle_check_availability`  | Complete    | Validates date format, time format, party_size >= 1           |
-| `handle_create_booking`      | Complete    | Re-checks capacity before insert within IMMEDIATE transaction |
-| `handle_list_bookings`       | Partial     | Returns reservations but missing `date`/`time` (Bug #1)       |
-| `handle_get_booking`         | Stub        | Returns `"get_booking is not yet implemented."`               |
-| `handle_cancel_booking`      | Complete    | Fully implemented with user_id scoping                        |
-| `handle_reschedule_booking`  | Stub        | Returns `"reschedule_booking is not yet implemented."`        |
+| `handle_check_availability`  | Complete    | Validates date format, time format, party_size >= 1              |
+| `handle_create_reservation`  | Complete    | Re-checks capacity before insert within IMMEDIATE transaction    |
+| `handle_list_reservations`   | Partial     | Returns reservations but missing `date`/`time` (Bug #1)          |
+| `handle_find_reservation`    | Stub        | Returns `"find_reservation is not yet implemented."`             |
+| `handle_cancel_reservation`  | Complete    | Fully implemented with user_id scoping                           |
+| `handle_reschedule_reservation` | Stub     | Returns `"reschedule_reservation is not yet implemented."`       |
 
-Security invariant: the handler must verify ownership. The agent may hallucinate a `reservation_id` belonging to a different user. Every `get_booking` and `reschedule_booking` call must include `AND user_id = ?` in the query. The `cancel_booking` handler already enforces this via `cancel_reservation(user_id, reservation_id)`.
+Security invariant: the handler must verify ownership. The agent may hallucinate a `reservation_id` belonging to a different user. Every `find_reservation` and `reschedule_reservation` call must include `AND user_id = ?` in the query. The `cancel_reservation` handler already enforces this via `cancel_reservation(user_id, reservation_id)`.
 
 ### Query file
 
@@ -342,7 +342,7 @@ Note: if two messages from the same sender arrive concurrently (e.g., rapid doub
 The system prompt includes:
 - Today's date (injected at runtime via `new Date().toISOString().split("T")[0]`).
 - Instruction to ask for missing information rather than guess.
-- Instruction to always call `check_availability` before `create_booking`.
+- Instruction to always call `check_availability` before `create_reservation`.
 - Instruction to convert relative dates ("tomorrow", "next Friday") to absolute dates.
 - Instruction to never expose raw error messages or database IDs (except reservation IDs).
 - Instruction to explain tool failures in plain language.
@@ -403,15 +403,15 @@ Note: the legacy Haiku-based parser still exists at `src/parser/intent.ts` (uses
 
 **Status: NOT IMPLEMENTED.** The `src/api/` directory does not exist. The design below is the original plan.
 
-A separate Hono sub-app at `src/api/bookings.ts` will expose a REST interface for external consumers (dashboards, admin tools).
+A separate Hono sub-app at `src/api/reservations.ts` will expose a REST interface for external consumers (dashboards, admin tools).
 
-| Method   | Path            | Description                                                         |
-|----------|-----------------|---------------------------------------------------------------------|
-| `GET`    | `/bookings`     | List bookings (filters: `from_date`, `to_date`, `status`)            |
-| `GET`    | `/bookings/:id` | Single booking                                                      |
-| `POST`   | `/bookings`     | Create booking                                                      |
-| `PUT`    | `/bookings/:id` | Update / reschedule                                                 |
-| `DELETE` | `/bookings/:id` | Cancel                                                              |
+| Method   | Path                | Description                                                         |
+|----------|--------------------|----------------------------------------------------------------------|
+| `GET`    | `/reservations`     | List reservations (filters: `from_date`, `to_date`, `status`)       |
+| `GET`    | `/reservations/:id` | Single reservation                                                  |
+| `POST`   | `/reservations`     | Create reservation                                                  |
+| `PUT`    | `/reservations/:id` | Update / reschedule                                                 |
+| `DELETE` | `/reservations/:id` | Cancel                                                              |
 
 Authentication: static API key via `x-api-key` header. Middleware in `src/api/middleware/auth.ts` will check the key against the `INTERNAL_API_KEY` env var (already present in `config/env.ts`).
 
@@ -461,7 +461,7 @@ Three alternatives were evaluated:
 - Adds ~20x cost per agentic step versus Haiku with no reliability gain.
 - Cal.com API availability data is the unreliable bottleneck, not model reasoning.
 
-**Conclusion:** Agentic MCP adds latency and unreliability for no benefit when user intent already includes a specific date/time. Two direct in-process calls (`check_availability` + `create_booking`) are deterministic and latency-bounded.
+**Conclusion:** Agentic MCP adds latency and unreliability for no benefit when user intent already includes a specific date/time. Two direct in-process calls (`check_availability` + `create_reservation`) are deterministic and latency-bounded.
 
 ---
 
@@ -494,7 +494,7 @@ The `date` and `time` fields come from the JOIN on `time_slots` (see Bug #1). Ph
 
 Use Cal.com Cloud REST API v2 directly (not via MCP):
 - `GET /v2/slots` — check availability
-- `POST /v2/bookings` — create booking
+- `POST /v2/bookings` — create reservation
 
 Cal.com allows each client to connect their Google Calendar, Outlook, or Apple Calendar. rsvr speaks to one REST API; Cal.com handles provider dispatch.
 
@@ -600,7 +600,7 @@ These defects exist in the current codebase. Status updated as of 2026-03-08.
 
 **Status: OPEN**
 
-`db/queries.ts`: the query selects from `reservations` only. The returned `reservation_row_type` has no `date` or `time` fields. The agent's `list_bookings` handler returns `created_at` but cannot return the actual appointment date/time.
+`db/queries.ts`: the query selects from `reservations` only. The returned `reservation_row_type` has no `date` or `time` fields. The agent's `list_reservations` handler returns `created_at` but cannot return the actual appointment date/time.
 
 Fix: add a JOIN on `time_slots` and return `time_slots.date` and `time_slots.time` in the result set.
 
@@ -608,24 +608,24 @@ Fix: add a JOIN on `time_slots` and return `time_slots.date` and `time_slots.tim
 
 **Status: RESOLVED (indirectly)**
 
-`service.ts` no longer formats reservation lists directly. It delegates to `run_agent()`, which calls `handle_list_bookings`. However, `handle_list_bookings` still only returns `created_at` (see Bug #1), so the underlying data issue persists — it has moved from the service layer to the tool handler layer.
+`service.ts` no longer formats reservation lists directly. It delegates to `run_agent()`, which calls `handle_list_reservations`. However, `handle_list_reservations` still only returns `created_at` (see Bug #1), so the underlying data issue persists — it has moved from the service layer to the tool handler layer.
 
 ### Bug #3 — `cancel_reservation`: `user_id` scoping
 
 **Status: RESOLVED**
 
-`db/queries.ts:153` now includes `user_id` scoping: `cancel_reservation(user_id: number, reservation_id: number)` performs both SELECT and UPDATE with `AND user_id = ?` in the WHERE clause. The `cancel_booking` tool handler is fully implemented and calls this function correctly.
+`db/queries.ts:153` now includes `user_id` scoping: `cancel_reservation(user_id: number, reservation_id: number)` performs both SELECT and UPDATE with `AND user_id = ?` in the WHERE clause. The `cancel_reservation` tool handler is fully implemented and calls this function correctly.
 
 ### Bug #4 — No `reschedule_reservation` query
 
 **Status: OPEN**
 
-No reschedule logic exists in `db/queries.ts`. The `reschedule_booking` tool handler is a stub. When implemented, it must be a SQLite transaction:
+No reschedule logic exists in `db/queries.ts`. The `reschedule_reservation` tool handler is a stub. When implemented, it must be a SQLite transaction:
 
 ```sql
 BEGIN;
-  UPDATE time_slots SET booked = booked - party_size WHERE id = old_slot_id;
-  UPDATE time_slots SET booked = booked + party_size WHERE id = new_slot_id;
+  UPDATE time_slots SET reserved = reserved - party_size WHERE id = old_slot_id;
+  UPDATE time_slots SET reserved = reserved + party_size WHERE id = new_slot_id;
   UPDATE reservations
     SET time_slot_id = new_slot_id, updated_at = datetime('now')
     WHERE id = reservation_id AND user_id = ?;
@@ -638,7 +638,7 @@ If any step fails or the `UPDATE reservations` affects 0 rows (wrong user), roll
 
 **Status: PARTIALLY ADDRESSED**
 
-The `handle_create_booking` handler in `tool_handlers.ts` re-verifies slot capacity by calling `get_slot_by_id` and checking `remaining < party_size` before calling `create_reservation`. However, the re-check and the insert are NOT inside a single SQLite transaction. A concurrent request could theoretically fill the slot between the check and the insert.
+The `handle_create_reservation` handler in `tool_handlers.ts` re-verifies slot capacity by calling `get_slot_by_id` and checking `remaining < party_size` before calling `create_reservation`. However, the re-check and the insert are NOT inside a single SQLite transaction. A concurrent request could theoretically fill the slot between the check and the insert.
 
 The `create_reservation` function in `db/queries.ts` performs the INSERT and UPDATE as two separate statements, also not in a transaction.
 

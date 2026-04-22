@@ -50,7 +50,7 @@ describe("find_slot_by_id", () => {
       date: "2026-05-01",
       time: "10:00",
       capacity: 8,
-      booked: 3,
+      reserved: 3,
       metadata: null,
     })
   })

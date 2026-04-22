@@ -49,8 +49,8 @@ describe("find_single_reservation", () => {
       party_size: 2,
       status: "confirmed",
       notes: "Gluten-free breakfast needed",
-      created_at: expect.any(String),
-      updated_at: expect.any(String),
+      created_at: "2026-04-02 00:00:00",
+      updated_at: "2026-04-02 00:00:00",
     })
   })
 

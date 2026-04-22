@@ -62,15 +62,15 @@ Last Updated: 2026-03-25
 
 ## Executive Summary
 
-The rsvr reservation system is **not ready for production deployment**. The core message-to-booking flow works end-to-end for WhatsApp and Telegram (text and voice), the agent loop with Claude Opus is functional, and the security posture is above average (HMAC-SHA256 verification, parameterized SQL, rate limiting, timing-safe comparisons).
+The rsvr reservation system is **not ready for production deployment**. The core message-to-reservation flow works end-to-end for WhatsApp and Telegram (text and voice), the agent loop with Claude Opus is functional, and the security posture is above average (HMAC-SHA256 verification, parameterized SQL, rate limiting, timing-safe comparisons).
 
 However, eight critical blockers must be resolved before production launch:
 
-1. Two of six agent tools are stubs (`get_booking`, `reschedule_booking`) — the system prompt advertises capabilities that do not work
+1. Two of six agent tools are stubs (`find_reservation`, `reschedule_reservation`) — the system prompt advertises capabilities that do not work
 2. `cancel_reservation` query lacks transaction wrapping — concurrent cancellations can corrupt slot capacity
 3. No timeouts on any external API call (Anthropic, OpenAI, WhatsApp Graph API) — a slow upstream hangs the request indefinitely
 4. No graceful shutdown — the process ignores SIGTERM, risking data corruption on container restart
-5. `list_bookings` returns `created_at` instead of appointment `date`/`time` — users see wrong information
+5. `list_reservations` returns `created_at` instead of appointment `date`/`time` — users see wrong information
 6. Unvalidated tool input casting — Claude outputs are cast without runtime type checks
 7. No message deduplication — Meta retries produce duplicate bookings
 8. Debug mode and remote inspector are enabled in the production compose file
@@ -99,8 +99,8 @@ These issues **must** be resolved before any production deployment. Each one can
 
 **Category:** Reliability
 **Files:** `src/agent/tool_handlers.ts:181-186`, `src/agent/tool_handlers.ts:219-224`, `src/agent/prompts.ts`
-**Description:** `get_booking` and `reschedule_booking` tool handlers return hardcoded error strings ("not yet implemented"). However, the system prompt in `prompts.ts` tells Claude it can "Retrieve details for a specific reservation" and "Reschedule a confirmed reservation." Claude will attempt to use these tools and report failures to users.
-**Impact:** Users who ask to view booking details or reschedule will hit dead ends. The agent wastes tool calls on stubs, consuming the 10-call budget.
+**Description:** `find_reservation` and `reschedule_reservation` tool handlers return hardcoded error strings ("not yet implemented"). However, the system prompt in `prompts.ts` tells Claude it can "Retrieve details for a specific reservation" and "Reschedule a confirmed reservation." Claude will attempt to use these tools and report failures to users.
+**Impact:** Users who ask to view reservation details or reschedule will hit dead ends. The agent wastes tool calls on stubs, consuming the 10-call budget.
 **Recommended Fix:** Either implement both handlers with proper SQL queries and user_id scoping, or remove them from `AGENT_TOOLS` in `tools.ts` and update the system prompt to not advertise these capabilities.
 **Effort:** 2-4 hours (implement) or 30 min (remove)
 **Dependencies:** C-02 (reschedule needs transaction support)
@@ -111,7 +111,7 @@ These issues **must** be resolved before any production deployment. Each one can
 **Category:** Data Integrity
 **Files:** `src/db/queries.ts:153-172`
 **Description:** The `cancel_reservation` function performs three separate operations (SELECT, UPDATE reservations, UPDATE time_slots) without an atomic transaction. If the process crashes between the reservation status update and the time_slots decrement, the slot capacity counter becomes permanently wrong.
-**Impact:** Concurrent cancellations can drive `time_slots.booked` negative or leave it inflated, silently corrupting availability data.
+**Impact:** Concurrent cancellations can drive `time_slots.reserved` negative or leave it inflated, silently corrupting availability data.
 **Recommended Fix:** Wrap in `db.transaction().immediate()` like `create_reservation` already does.
 **Effort:** 15 min
 **Dependencies:** None
@@ -139,12 +139,12 @@ These issues **must** be resolved before any production deployment. Each one can
 **Dependencies:** None
 **Owner:** Backend engineer
 
-### C-05: `list_bookings` returns wrong date information (Bug #1)
+### C-05: `list_reservations` returns wrong date information (Bug #1)
 
 **Category:** Data Integrity
 **Files:** `src/db/queries.ts:174-180`, `src/agent/tool_handlers.ts:154-177`
-**Description:** `list_reservations()` queries `SELECT * FROM reservations` without joining `time_slots`. The result has no `date` or `time` fields. The tool handler returns `created_at` (when the booking was made) instead of the actual appointment date and time.
-**Impact:** Users see incorrect information when listing their reservations. The agent tells users their appointment is on the creation date rather than the booked date.
+**Description:** `list_reservations()` queries `SELECT * FROM reservations` without joining `time_slots`. The result has no `date` or `time` fields. The tool handler returns `created_at` (when the reservation was made) instead of the actual appointment date and time.
+**Impact:** Users see incorrect information when listing their reservations. The agent tells users their appointment is on the creation date rather than the reserved date.
 **Recommended Fix:** Add `JOIN time_slots ON time_slots.id = reservations.time_slot_id` and include `time_slots.date` and `time_slots.time` in the SELECT and response.
 **Effort:** 30 min
 **Dependencies:** None
@@ -154,7 +154,7 @@ These issues **must** be resolved before any production deployment. Each one can
 
 **Category:** Security
 **Files:** `src/agent/agent.ts:87-101`
-**Description:** Claude's tool inputs arrive as `unknown` but are immediately cast with `as check_availability_input_type`, `as create_booking_input_type`, etc. No runtime type validation occurs. If Claude sends unexpected types (e.g., `slot_id` as a string, `reservation_id` as an object), these values flow directly into SQL queries via parameterized bindings. While parameterized SQL prevents injection, type coercion bugs in SQLite can cause incorrect query behavior.
+**Description:** Claude's tool inputs arrive as `unknown` but are immediately cast with `as check_availability_input_type`, `as create_reservation_input_type`, etc. No runtime type validation occurs. If Claude sends unexpected types (e.g., `slot_id` as a string, `reservation_id` as an object), these values flow directly into SQL queries via parameterized bindings. While parameterized SQL prevents injection, type coercion bugs in SQLite can cause incorrect query behavior.
 **Impact:** Potential for incorrect query results (e.g., string "7" vs number 7 in SQLite comparisons), application crashes on undefined property access, or unexpected behavior when Claude hallucinates malformed tool inputs.
 **Recommended Fix:** Add runtime type guard functions for each tool input type that validate field presence and types before dispatching. Return `{ ok: false, error: "..." }` for malformed inputs.
 **Effort:** 45 min
@@ -165,8 +165,8 @@ These issues **must** be resolved before any production deployment. Each one can
 
 **Category:** Data Integrity
 **Files:** `src/channels/whatsapp/webhook.ts`
-**Description:** The WhatsApp webhook handler does not track processed message IDs. Per the official WhatsApp Cloud API documentation, Meta retries webhook delivery for up to 7 days if the initial delivery times out (even if rsvr processes the message and returns 200, a network-level timeout could cause Meta to retry). Each retry triggers a new booking flow.
-**Impact:** Duplicate bookings created from a single user message. Slot capacity consumed multiple times for the same request.
+**Description:** The WhatsApp webhook handler does not track processed message IDs. Per the official WhatsApp Cloud API documentation, Meta retries webhook delivery for up to 7 days if the initial delivery times out (even if rsvr processes the message and returns 200, a network-level timeout could cause Meta to retry). Each retry triggers a new reservation flow.
+**Impact:** Duplicate reservations created from a single user message. Slot capacity consumed multiple times for the same request.
 **Recommended Fix:** Extract `message.id` from the webhook payload. Store processed IDs in an in-memory Set with TTL (24h) or in a SQLite table. Skip messages whose ID has already been processed.
 **Effort:** 1 hour
 **Dependencies:** None
@@ -199,13 +199,13 @@ These issues should be addressed before launch. They represent operational risk,
 **Effort:** 10 min
 **Dependencies:** None
 
-### I-02: Missing `CHECK (booked >= 0)` constraint on `time_slots`
+### I-02: Missing `CHECK (reserved >= 0)` constraint on `time_slots`
 
 **Category:** Data Integrity
 **Files:** `src/db/schema.sql:10-19`
-**Description:** The architecture document specifies a `CHECK (booked >= 0)` constraint on `time_slots.booked` to prevent decrement bugs from driving the counter negative. This constraint is not present in the actual schema.
-**Impact:** If a bug in the cancel or reschedule logic decrements `booked` past zero, the database silently allows it. This creates phantom capacity that leads to overbooking.
-**Recommended Fix:** Add `CHECK (booked >= 0)` to the `booked` column definition.
+**Description:** The architecture document specifies a `CHECK (reserved >= 0)` constraint on `time_slots.reserved` to prevent decrement bugs from driving the counter negative. This constraint is not present in the actual schema.
+**Impact:** If a bug in the cancel or reschedule logic decrements `reserved` past zero, the database silently allows it. This creates phantom capacity that leads to over-reserving.
+**Recommended Fix:** Add `CHECK (reserved >= 0)` to the `reserved` column definition.
 **Effort:** 5 min
 **Dependencies:** C-02
 
@@ -351,7 +351,7 @@ These are quality improvements that reduce technical debt but are not required f
 | M-13  | Code Quality    | `get_session` has side effects (creates and stores new session) while also returning a value   | 15 min  |
 | M-14  | Code Quality    | Unused parameter `_current_time_ms` in `create_reservation`                                   | 5 min   |
 | M-15  | Code Quality    | Legacy parser code (`src/parser/`) still in codebase, no longer called from service.ts        | 15 min  |
-| M-16  | Testing         | `handle_cancel_booking` lacks test coverage                                                   | 30 min  |
+| M-16  | Testing         | `handle_cancel_reservation` lacks test coverage                                               | 30 min  |
 | M-17  | Testing         | No integration/E2E tests for the full message-to-reply flow                                   | 4 hours |
 | M-18  | Documentation   | CLAUDE.md references `make start` and `make dev` targets that do not exist in the Makefile    | 10 min  |
 
@@ -403,7 +403,7 @@ The following security and reliability measures are correctly implemented and re
 |-------|------|---------------------------------------------------------|----------|
 | 1     | C-08 | Create production compose file (remove debug/inspector) | 30 min   |
 | 2     | C-02 | Wrap `cancel_reservation` in IMMEDIATE transaction      | 15 min   |
-| 3     | I-02 | Add `CHECK (booked >= 0)` to schema                     | 5 min    |
+| 3     | I-02 | Add `CHECK (reserved >= 0)` to schema                   | 5 min    |
 | 4     | C-05 | Fix `list_reservations` JOIN and tool handler response   | 30 min   |
 | 5     | C-06 | Add runtime type guards for tool inputs                 | 45 min   |
 | 6     | C-03 | Add timeouts to all external API calls                  | 1 hour   |
@@ -430,8 +430,8 @@ The following security and reliability measures are correctly implemented and re
 
 | Order | Gap  | Task                                                    | Effort   |
 |-------|------|---------------------------------------------------------|----------|
-| 20    | C-01 | Implement `get_booking` handler with user_id scoping    | 1 hour   |
-| 21    | C-01 | Implement `reschedule_booking` handler with transaction | 2 hours  |
+| 20    | C-01 | Implement `find_reservation` handler with user_id scoping    | 1 hour   |
+| 21    | C-01 | Implement `reschedule_reservation` handler with transaction  | 2 hours  |
 
 ### Phase 4: Optional Pre-Launch (Days 5-8)
 
@@ -439,7 +439,7 @@ The following security and reliability measures are correctly implemented and re
 |-------|------|---------------------------------------------------------|----------|
 | 22    | I-13 | Implement CRUD REST API (if required for launch)        | 4-8 hours|
 | 23    | I-14 | Create calendar sync stubs                              | 15 min   |
-| 24    | M-16 | Add cancel_booking test coverage                        | 30 min   |
+| 24    | M-16 | Add cancel_reservation test coverage                    | 30 min   |
 | 25    | M-08 | Replace second-order functions with for...of loops      | 60 min   |
 
 ---

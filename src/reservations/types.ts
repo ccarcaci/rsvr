@@ -15,5 +15,5 @@ export type time_slot_type = {
   date: string
   time: string
   capacity: number
-  booked: number
+  reserved: number
 }

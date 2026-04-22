@@ -1,6 +1,6 @@
 import { logger } from "../shared/logger"
 import { prompt } from "./ai_client/ai_client"
-import { get_session, update_session } from "./session"
+import { find_session, update_session } from "./session"
 import type {
   ai_client_prompt_result_type,
   session_entry_type,
@@ -75,7 +75,7 @@ export const run_agent = async (
   sender_key: string,
   text: string,
 ): Promise<string> => {
-  const session = get_session(sender_key, current_time_ms)
+  const session = find_session(sender_key, current_time_ms)
   let current_business_id = session.business_id ?? ""
 
   const history: session_history_entry_type[] = [

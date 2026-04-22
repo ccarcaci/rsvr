@@ -44,7 +44,7 @@ describe("find_user_by_phone", () => {
       telegram_id: null,
       name: "Alice Johnson",
       channel: "whatsapp",
-      created_at: expect.any(String),
+      created_at: "2026-03-23 00:00:00",
     })
   })
 

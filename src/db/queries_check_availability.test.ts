@@ -51,13 +51,13 @@ describe("check_availability", () => {
       date: "2026-05-01",
       time: "19:00",
       capacity: 10,
-      booked: 0,
+      reserved: 0,
       metadata: null,
     })
   })
 
   test("returns_slot_when_party_size_exactly_matches_remaining_capacity", () => {
-    //  --  arrange (capacity=6, booked=4, remaining=2)
+    //  --  arrange (capacity=6, reserved=4, remaining=2)
     const slot_id = seed_slot(test_db, BUSINESS_ID, "2026-05-02", "20:00", 6, 4)
 
     //  --  act
@@ -70,13 +70,13 @@ describe("check_availability", () => {
       date: "2026-05-02",
       time: "20:00",
       capacity: 6,
-      booked: 4,
+      reserved: 4,
       metadata: null,
     })
   })
 
   test("returns_null_when_remaining_capacity_is_less_than_party_size", () => {
-    //  --  arrange (capacity=4, booked=3, remaining=1)
+    //  --  arrange (capacity=4, reserved=3, remaining=1)
     seed_slot(test_db, BUSINESS_ID, "2026-05-03", "12:00", 4, 3)
 
     //  --  act (party_size=2 exceeds remaining=1)
@@ -86,8 +86,8 @@ describe("check_availability", () => {
     expect(result).toBeNull()
   })
 
-  test("returns_null_when_slot_is_fully_booked", () => {
-    //  --  arrange (capacity=5, booked=5)
+  test("returns_null_when_slot_is_fully_reserved", () => {
+    //  --  arrange (capacity=5, reserved=5)
     seed_slot(test_db, BUSINESS_ID, "2026-05-04", "09:00", 5, 5)
 
     //  --  act

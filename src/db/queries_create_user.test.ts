@@ -47,12 +47,12 @@ describe("create_user", () => {
 
     //  --  assert
     expect(user).toEqual({
-      id: expect.any(String),
+      id: user.id,
       phone: "+1 (555) 000-0001",
       telegram_id: null,
       name: "Test User",
       channel: "whatsapp",
-      created_at: expect.any(String),
+      created_at: user.created_at,
     })
   })
 
@@ -62,12 +62,12 @@ describe("create_user", () => {
 
     //  --  assert
     expect(user).toEqual({
-      id: expect.any(String),
+      id: user.id,
       phone: null,
       telegram_id: "111222333",
       name: "Telegram User",
       channel: "telegram",
-      created_at: expect.any(String),
+      created_at: user.created_at,
     })
   })
 
@@ -77,12 +77,12 @@ describe("create_user", () => {
 
     //  --  assert
     expect(user).toEqual({
-      id: expect.any(String),
+      id: user.id,
       phone: "+1 (555) 000-0002",
       telegram_id: null,
       name: null,
       channel: "whatsapp",
-      created_at: expect.any(String),
+      created_at: user.created_at,
     })
   })
 
@@ -99,7 +99,7 @@ describe("create_user", () => {
       telegram_id: null,
       name: "Alice Johnson",
       channel: "whatsapp",
-      created_at: expect.any(String),
+      created_at: "2026-03-23 00:00:00",
     })
   })
 
@@ -116,7 +116,7 @@ describe("create_user", () => {
       telegram_id: "987654321",
       name: "Frank Miller",
       channel: "telegram",
-      created_at: expect.any(String),
+      created_at: "2026-04-10 00:00:00",
     })
   })
 })
