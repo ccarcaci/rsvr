@@ -86,9 +86,9 @@ VALUES
 -- Insert some reservations to show activity
 INSERT OR IGNORE INTO reservations (id, business_id, user_id, time_slot_id, party_size, status, notes, created_at, updated_at)
 VALUES
-  ('CCDDEEEF-HBIC-4AE3-A9EA-55B5555555LB5', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', 'D5F7BA6A-19C2-42F3-8080-17F098BB807D', '1', 2, 'confirmed', 'Gluten-free breakfast needed', datetime('now', '-20 days'), datetime('now', '-20 days')),
-  ('DDEEEFFA-ICJD-4BF4-BAFB-66C6666666MC6', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', '507259D3-B912-4DBE-9D87-D5F06741B021', '2', 5, 'confirmed', 'Birthday celebration', datetime('now', '-18 days'), datetime('now', '-18 days')),
-  ('EEFFFFFB-JDKE-4C05-CBGC-77D7777777ND7', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', '9E3F8082-CBD1-4518-BE90-9F69459DE02A', '3', 1, 'confirmed', NULL, datetime('now', '-15 days'), datetime('now', '-15 days'));
+  ('CCDDEEEF-HBIC-4AE3-A9EA-55B5555555LB5', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', 'D5F7BA6A-19C2-42F3-8080-17F098BB807D', 'D6E7F8A9-B0C1-49D2-3E5F-F7081920314A', 2, 'confirmed', 'Gluten-free breakfast needed', datetime('now', '-20 days'), datetime('now', '-20 days')),
+  ('DDEEEFFA-ICJD-4BF4-BAFB-66C6666666MC6', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', '507259D3-B912-4DBE-9D87-D5F06741B021', 'E7F8A9B0-C1D2-4AE3-4F60-0819203142B5', 5, 'confirmed', 'Birthday celebration', datetime('now', '-18 days'), datetime('now', '-18 days')),
+  ('EEFFFFFB-JDKE-4C05-CBGC-77D7777777ND7', '48740B1B-0AA2-48DD-9EEE-C14B6AC3258C', '9E3F8082-CBD1-4518-BE90-9F69459DE02A', 'F8A9B0C1-D2E3-4BF4-5A71-192031425CC6', 1, 'confirmed', NULL, datetime('now', '-15 days'), datetime('now', '-15 days'));
 
 -- Show summary of inserted data
 SELECT 'Database seeded successfully!' as message;

@@ -5,10 +5,10 @@ import { resolve } from "node:path"
 const try_seeding = (seed_path: string, test_db: Database) => {
   try {
     const seed_sql = readFileSync(seed_path, "utf-8")
-    // Remove comments and SELECT statements from seed file
+    // Remove comments statements from seed file
     const cleaned = seed_sql
       .split("\n")
-      .filter((line) => !line.trim().startsWith("--") && !line.includes("SELECT"))
+      .filter((line) => !line.trim().startsWith("--"))
       .join("\n")
     test_db.run(cleaned)
   } catch (err) {

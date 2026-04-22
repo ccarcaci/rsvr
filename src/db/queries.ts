@@ -118,6 +118,13 @@ export const find_businesses_by_name = (name: string): business_row_type[] => {
     .all(name)
 }
 
+export const find_reservation = (user_id: string, reservation_id: string): reservation_row_type | null => {
+  return get_db()
+    .query<reservation_row_type, [string, string]>("SELECT * FROM reservations WHERE user_id = ? AND id = ? ORDER BY created_at DESC",
+    )
+    .get(user_id, reservation_id)
+}
+
 export const find_reservations = (user_id: string): reservation_row_type[] => {
   return get_db()
     .query<reservation_row_type, [string]>(

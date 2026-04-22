@@ -23,11 +23,6 @@ describe("find_reservations", () => {
     mock_module("./db/client.ts", () => ({ get_db: () => test_db }))
   })
 
-  afterEach(() => {
-    test_db.run("DELETE FROM reservations")
-    test_db.run("DELETE FROM time_slots")
-  })
-
   afterAll(() => {
     mock_restore()
   })
