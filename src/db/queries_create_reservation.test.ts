@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite"
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test"
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { mock_module, mock_restore } from "../mock_module"
 import { create_reservation } from "./queries"
 import { seed_slot, setup_db } from "./queries_test_helpers"
@@ -26,11 +26,6 @@ describe("create_reservation_transactional", () => {
     // Use businesses and users from seed data
     business_id = "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C" // The Golden Fork Restaurant
     user_id = "D5F7BA6A-19C2-42F3-8080-17F098BB807D" // Alice Johnson
-  })
-
-  afterEach(() => {
-    test_db.run("DELETE FROM reservations")
-    test_db.run("DELETE FROM time_slots")
   })
 
   afterAll(() => {

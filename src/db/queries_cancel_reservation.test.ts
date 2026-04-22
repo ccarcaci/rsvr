@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite"
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test"
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { mock_module, mock_restore } from "../mock_module"
 import { cancel_reservation, create_reservation } from "./queries"
 import { seed_slot, setup_db } from "./queries_test_helpers"
@@ -21,11 +21,6 @@ describe("cancel_reservation", () => {
   beforeAll(() => {
     test_db = setup_db()
     mock_module("./db/client.ts", () => ({ get_db: () => test_db }))
-  })
-
-  afterEach(() => {
-    test_db.run("DELETE FROM reservations")
-    test_db.run("DELETE FROM time_slots")
   })
 
   afterAll(() => {
