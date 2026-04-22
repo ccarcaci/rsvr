@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite"
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test"
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { mock_module, mock_restore } from "../mock_module"
 import { find_slot_by_id } from "./queries"
 import { seed_slot, setup_db } from "./queries_test_helpers"
@@ -18,10 +18,6 @@ describe("find_slot_by_id", () => {
   beforeAll(() => {
     test_db = setup_db()
     mock_module("./db/client.ts", () => ({ get_db: () => test_db }))
-  })
-
-  afterEach(() => {
-    test_db.run("DELETE FROM time_slots")
   })
 
   afterAll(() => {
@@ -46,7 +42,7 @@ describe("find_slot_by_id", () => {
     //  --  assert
     expect(result).toEqual({
       id: slot_id,
-      business_id: SEED_BUSINESS_ID,
+      business_id: "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
       date: "2026-05-01",
       time: "10:00",
       capacity: 8,

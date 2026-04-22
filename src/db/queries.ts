@@ -74,7 +74,16 @@ export const create_reservation = (
       .query(
         "INSERT INTO reservations (id, business_id, user_id, time_slot_id, party_size, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, datetime(?, 'unixepoch'), datetime(?, 'unixepoch'))",
       )
-      .run(reservation_id, business_id, user_id, time_slot_id, party_size, notes ?? null, unix_seconds, unix_seconds)
+      .run(
+        reservation_id,
+        business_id,
+        user_id,
+        time_slot_id,
+        party_size,
+        notes ?? null,
+        unix_seconds,
+        unix_seconds,
+      )
 
     // 4. UPDATE time_slots reserved count
     get_db()
@@ -119,9 +128,13 @@ export const find_businesses_by_name = (name: string): business_row_type[] => {
     .all(name)
 }
 
-export const find_reservation = (user_id: string, reservation_id: string): reservation_row_type | null => {
+export const find_reservation = (
+  user_id: string,
+  reservation_id: string,
+): reservation_row_type | null => {
   return get_db()
-    .query<reservation_row_type, [string, string]>("SELECT * FROM reservations WHERE user_id = ? AND id = ? ORDER BY created_at DESC",
+    .query<reservation_row_type, [string, string]>(
+      "SELECT * FROM reservations WHERE user_id = ? AND id = ? ORDER BY created_at DESC",
     )
     .get(user_id, reservation_id)
 }

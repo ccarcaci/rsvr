@@ -1,8 +1,8 @@
 import type { Database } from "bun:sqlite"
-import { afterAll, afterEach, beforeAll, describe, expect, expectTypeOf, mock, test } from "bun:test"
-import { setup_db } from "./queries_test_helpers"
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
 import { mock_module, mock_restore } from "../mock_module"
 import { cancel_reservation, create_reservation, find_reservation } from "./queries"
+import { setup_db } from "./queries_test_helpers"
 
 // Test database uses seed data from local_infra/seed_data.sql for realistic test environment.
 // The seed data provides:
@@ -56,7 +56,13 @@ describe("find_single_reservation", () => {
 
   test("returns_cancelled_reservation", () => {
     //  --  arrange
-    const reservation = create_reservation(2, CURRENT_TIME_MS, SEED_BUSINESS_ID, SEED_USER_ID, "A9B0C1D2-E3F4-4C05-6B82-2031425DD7D7")
+    const reservation = create_reservation(
+      2,
+      CURRENT_TIME_MS,
+      SEED_BUSINESS_ID,
+      SEED_USER_ID,
+      "A9B0C1D2-E3F4-4C05-6B82-2031425DD7D7",
+    )
     cancel_reservation(SEED_USER_ID, reservation.id)
 
     //  --  act

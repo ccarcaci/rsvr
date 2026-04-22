@@ -1,10 +1,10 @@
 export type user_row_type = {
+  channel: "whatsapp" | "telegram"
   id: string
+  created_at: string
+  name: string | null
   phone: string | null
   telegram_id: string | null
-  name: string | null
-  channel: "whatsapp" | "telegram"
-  created_at: string
 }
 
 export type business_row_type = {
@@ -13,25 +13,25 @@ export type business_row_type = {
 }
 
 export type time_slot_row_type = {
+  capacity: number
+  reserved: number
   id: string
   business_id: string
   date: string
   time: string
-  capacity: number
-  reserved: number
   metadata: string | null
 }
 
 export type reservation_row_type = {
+  party_size: number
   id: string
   business_id: string
   user_id: string
   time_slot_id: string
-  party_size: number
   status: string
-  notes: string | null
   created_at: string
   updated_at: string
+  notes: string | null
 }
 
 export class capacity_error extends Error {

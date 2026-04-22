@@ -43,7 +43,13 @@ describe("cancel_reservation", () => {
   test("returns_false_when_reservation_belongs_to_different_user", () => {
     //  --  arrange
     const slot_id = seed_slot(test_db, SEED_BUSINESS_ID, "2026-05-01", "12:00", 10)
-    const reservation = create_reservation(2, CURRENT_TIME_MS, SEED_BUSINESS_ID, SEED_USER_ID, slot_id)
+    const reservation = create_reservation(
+      2,
+      CURRENT_TIME_MS,
+      SEED_BUSINESS_ID,
+      SEED_USER_ID,
+      slot_id,
+    )
 
     //  --  act (SEED_OTHER_SEED_USER_ID tries to cancel Alice's reservation)
     const result = cancel_reservation(SEED_OTHER_SEED_USER_ID, reservation.id)
@@ -55,7 +61,13 @@ describe("cancel_reservation", () => {
   test("returns_true_and_decrements_reserved_count_on_successful_cancellation", () => {
     //  --  arrange
     const slot_id = seed_slot(test_db, SEED_BUSINESS_ID, "2026-05-01", "19:00", 10)
-    const reservation = create_reservation(3, CURRENT_TIME_MS, SEED_BUSINESS_ID, SEED_USER_ID, slot_id)
+    const reservation = create_reservation(
+      3,
+      CURRENT_TIME_MS,
+      SEED_BUSINESS_ID,
+      SEED_USER_ID,
+      slot_id,
+    )
 
     //  --  act
     const result = cancel_reservation(SEED_USER_ID, reservation.id)
@@ -71,7 +83,13 @@ describe("cancel_reservation", () => {
   test("sets_reservation_status_to_cancelled", () => {
     //  --  arrange
     const slot_id = seed_slot(test_db, SEED_BUSINESS_ID, "2026-05-02", "09:00", 5)
-    const reservation = create_reservation(1, CURRENT_TIME_MS, SEED_BUSINESS_ID, SEED_USER_ID, slot_id)
+    const reservation = create_reservation(
+      1,
+      CURRENT_TIME_MS,
+      SEED_BUSINESS_ID,
+      SEED_USER_ID,
+      slot_id,
+    )
 
     //  --  act
     cancel_reservation(SEED_USER_ID, reservation.id)
@@ -86,7 +104,13 @@ describe("cancel_reservation", () => {
   test("returns_false_when_reservation_already_cancelled", () => {
     //  --  arrange
     const slot_id = seed_slot(test_db, SEED_BUSINESS_ID, "2026-05-03", "20:00", 5)
-    const reservation = create_reservation(1, CURRENT_TIME_MS, SEED_BUSINESS_ID, SEED_USER_ID, slot_id)
+    const reservation = create_reservation(
+      1,
+      CURRENT_TIME_MS,
+      SEED_BUSINESS_ID,
+      SEED_USER_ID,
+      slot_id,
+    )
     cancel_reservation(SEED_USER_ID, reservation.id)
 
     //  --  act (cancel again)
