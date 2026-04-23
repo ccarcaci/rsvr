@@ -1,4 +1,5 @@
 import { logger } from "../shared/logger"
+import { trace } from "../tracer/tracing"
 import { get_openai_client } from "./client/openai"
 
 const extension_from_mime = (mime: string): string => {
@@ -18,6 +19,7 @@ export const transcribe_audio = async (
   buffer: Uint8Array<ArrayBuffer>,
   mime_type: string,
 ): Promise<string> => {
+  trace("transcribe_audio", mime_type)
   const file = new File([buffer], `voice.${extension_from_mime(mime_type)}`, { type: mime_type })
 
   const openai_client = get_openai_client()

@@ -30,12 +30,13 @@
 FROM oven/bun:1.3-debian AS runtime
 
 # Install curl for the HEALTHCHECK instruction below.
+# Install sqlite3 for make seed_db / reset_db / db_shell targets (podman exec).
 # Bun images include curl by default in many cases, but explicitly ensure it's
 # available. --no-install-recommends keeps the layer small by skipping optional
 # suggested packages. The apt lists are removed immediately after installation
 # to avoid stale package index data in the image layer.
 RUN apt-get update \
-    && apt-get install --yes --no-install-recommends curl \
+    && apt-get install --yes --no-install-recommends curl sqlite3 \
     && rm --recursive --force /var/lib/apt/lists/*
 
 WORKDIR /app

@@ -1,8 +1,10 @@
 import type { Message, ToolUseBlock } from "@anthropic-ai/sdk/resources"
+import { trace } from "../../tracer/tracing"
 import type { ai_client_prompt_result_type, session_history_entry_type } from "../types"
 import { message_conversation } from "./anthropic/anthropic"
 
 const deserialize_message = (message: Message): ai_client_prompt_result_type => {
+  trace("deserialize_message", message)
   const tb = message.content.find((block: Message["content"][number]) => block.type === "text")
   const ubs = message.content.filter(
     (block: Message["content"][number]) => block.type === "tool_use",
@@ -24,6 +26,7 @@ export const prompt = async (
   current_time_ms: number,
   history: session_history_entry_type[],
 ): Promise<ai_client_prompt_result_type> => {
+  trace("prompt", current_time_ms, history)
   const message = await message_conversation(current_time_ms, history)
   return deserialize_message(message)
 }

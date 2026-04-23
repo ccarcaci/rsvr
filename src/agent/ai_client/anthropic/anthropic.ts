@@ -1,5 +1,6 @@
 import Anthropic, { type APIPromise } from "@anthropic-ai/sdk"
 import type { Message, MessageParam } from "@anthropic-ai/sdk/resources"
+import { trace } from "../../../tracer/tracing"
 import { get_system_prompt } from "../../prompts"
 import { AGENT_TOOLS } from "../../tools"
 import type { session_history_entry_type } from "../../types"
@@ -21,6 +22,7 @@ export const message_conversation = (
   current_time_ms: number,
   history: session_history_entry_type[],
 ): APIPromise<Message> => {
+  trace("message_conversation", current_time_ms, history)
   const client = get_anthropic_client()
   return client.messages.create({
     model: MODEL,

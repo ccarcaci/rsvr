@@ -7,6 +7,7 @@ import { init_db } from "./db/client"
 import { metrics_middleware } from "./metrics/middleware"
 import { monitoring_routes } from "./metrics/routes"
 import { debug_request_logger } from "./middleware/debug_request_logger"
+import { logtrace } from "./middleware/logtrace"
 import { logger, set_log_level } from "./shared/logger"
 import { init_openai_client } from "./voice/client/openai"
 
@@ -24,6 +25,7 @@ if (configs.debug) {
 }
 
 app.use("*", metrics_middleware)
+app.use("*", logtrace)
 
 if (!configs.log_status_endpoint) {
   logger.info("status endpoint logging is disabled (use --log_status_endpoint to enable)")

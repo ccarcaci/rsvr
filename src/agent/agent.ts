@@ -1,4 +1,5 @@
 import { logger } from "../shared/logger"
+import { trace } from "../tracer/tracing"
 import { prompt } from "./ai_client/ai_client"
 import { find_session, update_session } from "./session"
 import type {
@@ -21,6 +22,7 @@ const handle_end_turn = (
   session: session_entry_type,
   history: session_history_entry_type[],
 ): string => {
+  trace("handle_end_turn", current_time_ms, business_id, sender_key, text_block, session, history)
   update_session(current_time_ms, sender_key, {
     ...session,
     history,
@@ -37,6 +39,7 @@ const refresh_session = (
   tool_results: tool_use_block_result_type[],
   history: session_history_entry_type[],
 ) => {
+  trace("refresh_session", current_time_ms, sender_key, current_business_id, session, tool_results)
   history.push({ role: "user", content: tool_results })
   update_session(current_time_ms, sender_key, {
     ...session,
@@ -49,6 +52,7 @@ const extract_business_id_from_tools = (
   current_business_id: string,
   tool_results: tool_use_block_result_type[],
 ): string => {
+  trace("extract_business_id_from_tools", current_business_id, tool_results)
   if (current_business_id !== "") {
     return current_business_id
   }
@@ -75,6 +79,7 @@ export const run_agent = async (
   sender_key: string,
   text: string,
 ): Promise<string> => {
+  trace("run_agent", current_time_ms, user_id, sender_key, text)
   const session = find_session(sender_key, current_time_ms)
   let current_business_id = session.business_id ?? ""
 

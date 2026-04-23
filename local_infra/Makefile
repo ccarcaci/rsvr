@@ -275,11 +275,13 @@ build_images: ## Build rsvr and whap Docker images locally
 	podman build \
 		--file $(INFRA_DIR)Dockerfile \
 		--tag $(RSVR_IMAGE) \
+		--format docker \
 		$(REPO_ROOT)
 	@echo "Built $(RSVR_IMAGE)"
 	podman build \
 		--file $(INFRA_DIR)Dockerfile_whap \
 		--tag $(WHAP_IMAGE) \
+		--format docker \
 		$(REPO_ROOT)
 	@echo "Built $(WHAP_IMAGE)"
 
@@ -328,19 +330,34 @@ api_status: ## Show recent deployments for the rsvr compose service
 		--header "x-api-key: $(DOKPLOY_DEV_AK)" \
 		"$(DOKPLOY_URL)/deployment.allByCompose?composeId=$(COMPOSE_ID)"
 
-.PHONY: seed_db
-seed_db: ## Seed the database with test data
-	sqlite3 ../data/rsvr.db < seed_data.sql
+.PHONY: db_seed
+db_seed: ## Seed the database inside the rsvr-data volume (rsvr container must be running)
+	podman exec --interactive rsvr sqlite3 /app/data/rsvr.db < $(INFRA_DIR)seed_data.sql
 
-.PHONY: reset_db
-reset_db: ## Delete and recreate the database, then seed with test data
+.PHONY: db_reset
+db_reset: ## Stop rsvr, wipe and recreate the rsvr-data database, seed, then restart rsvr
+	@echo "Stopping rsvr container..."
+	@podman stop rsvr 2>/dev/null || true
 	@echo "Removing existing database..."
-	@rm -f ../data/rsvr.db
-	@echo "Creating fresh database schema..."
-	@sqlite3 ../data/rsvr.db < ../src/db/schema.sql
-	@echo "Seeding with test data..."
-	@sqlite3 ../data/rsvr.db < seed_data.sql
+	@podman run --rm \
+		--volume rsvr-data:/app/data \
+		--entrypoint sh \
+		$(RSVR_IMAGE) \
+		-c "rm -f /app/data/rsvr.db*"
+	@echo "Applying schema and seeding..."
+	@cat "$(REPO_ROOT)/src/db/schema.sql" "$(INFRA_DIR)seed_data.sql" | \
+	podman run --rm --interactive \
+		--volume rsvr-data:/app/data \
+		--entrypoint sqlite3 \
+		$(RSVR_IMAGE) \
+		/app/data/rsvr.db
+	@echo "Starting rsvr container..."
+	@podman start rsvr
 	@echo "Database reset and seeded successfully."
+
+.PHONY: db_shell
+db_shell: ## Open an interactive SQLite shell on the rsvr-data volume (rsvr container must be running)
+	podman exec --interactive --tty rsvr sqlite3 /app/data/rsvr.db
 
 ##@ Testing
 
@@ -418,7 +435,7 @@ curl_whap_simulate_reservation: ## Simulate a reservation request via whap /mock
 			"message": {
 				"id": "wamid.test_$(shell date +%s)",
 				"timestamp": "$(shell date +%s)",
-				"text": { "body": "I would like to reserve a table for 2 people tomorrow at 19:00" }
+				"text": { "body": "I would like to reserve a table for 2 people tomorrow at 19 in The Golden Fork Restaurant" }
 			}
 		}
 		EOF

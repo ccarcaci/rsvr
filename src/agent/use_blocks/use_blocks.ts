@@ -1,4 +1,5 @@
 import { logger } from "../../shared/logger"
+import { trace } from "../../tracer/tracing"
 import type {
   cancel_reservation_input_type,
   check_availability_input_type,
@@ -26,6 +27,7 @@ const dispatch_tool = (
   user_id: string,
   tool_use_block_request: tool_use_block_request_type,
 ): tool_use_block_result_type => {
+  trace("dispatch_tool", current_time_ms, business_id, user_id, tool_use_block_request)
   const { id, input } = tool_use_block_request
   switch (id) {
     case "check_availability":
@@ -60,6 +62,7 @@ export const use_blocks = (
   user_id: string,
   use_blocks_requests: tool_use_block_request_type[],
 ): tool_use_block_result_type[] => {
+  trace("use_blocks", current_time_ms, business_id, user_id, use_blocks_requests)
   if (use_blocks_requests.length === 0) {
     logger.error("stop_reason=tool_use but no tool_use blocks found", { user_id })
     throw new Error("Something went wrong, please try again.")

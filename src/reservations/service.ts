@@ -2,12 +2,14 @@ import { run_agent } from "../agent/agent"
 import type { incoming_message_type } from "../channels/types"
 import { create_user } from "../db/queries"
 import { logger } from "../shared/logger"
+import { trace } from "../tracer/tracing"
 import { transcribe_audio } from "../voice/transcribe"
 
 export const handle_message = async (
   current_time_ms: number,
   message: incoming_message_type,
 ): Promise<string> => {
+  trace("handle_message", current_time_ms, message)
   let text = message.text
 
   if (!text && message.voice_buffer) {

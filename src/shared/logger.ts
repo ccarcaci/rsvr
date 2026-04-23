@@ -1,4 +1,5 @@
 import type { log_level_type } from "../config/args"
+import { trace_id } from "../tracer/tracing"
 
 type json_entry_type = Record<string, unknown>
 
@@ -10,6 +11,7 @@ let current_log_level: log_level_type = "info"
 const log = (level: log_level_type, message: string, data?: json_entry_type): void => {
   if (LEVEL_RANK[level] < LEVEL_RANK[current_log_level]) return
   const entry: Record<string, unknown> = {
+    trace_id: trace_id(),
     timestamp: new Date().toISOString(),
     level: level.toUpperCase(),
     message,

@@ -3,6 +3,7 @@ import { type Context, Hono, type MiddlewareHandler } from "hono"
 import { configs } from "../../config/args"
 import { handle_message } from "../../reservations/service"
 import { logger } from "../../shared/logger"
+import { trace } from "../../tracer/tracing"
 import type { incoming_message_type } from "../types"
 import { whatsapp_client } from "./client"
 import { download_voice_note } from "./media"
@@ -23,6 +24,7 @@ const sender_rate_limits = new Map<string, sender_rate_limit_entry>()
 type whatsapp_webhook_variables_type = { whatsapp_parsed_body: whatsapp_webhook_body_schema_type }
 
 const parse_and_validate_whatsapp_body = (raw_body: string): whatsapp_webhook_body_schema_type => {
+  trace("parse_and_validate_whatsapp_body")
   let parsed: unknown
   try {
     parsed = JSON.parse(raw_body)
@@ -84,6 +86,7 @@ const try_handle_whatsapp_messages = async (
   messages: whatsapp_message_schema_type[],
   contact: string | undefined,
 ): Promise<void> => {
+  trace("try_handle_whatsapp_messages", messages, contact)
   try {
     await whatsapp_messages_handler(messages, contact)
   } catch (err) {
@@ -107,6 +110,7 @@ const create_whatsapp_routes = (): Hono => {
     "/webhook/whatsapp",
     // biome-ignore lint/style/useNamingConvention: Variables is defined in Hono
     async (c: Context<{ Variables: whatsapp_webhook_variables_type }>) => {
+      trace("[POST] /webhook/whatsapp")
       const body = c.get("whatsapp_parsed_body")
 
       const entries = body.entry
@@ -136,6 +140,7 @@ const whatsapp_verify_challenge = (
   token?: string,
   challenge?: string,
 ) => {
+  trace("whatsapp_verify_challenge", mode, challenge)
   if (mode !== "subscribe" || challenge === undefined) {
     return c.text("Forbidden", 403)
   }
@@ -185,6 +190,7 @@ const verify_whatsapp_signature = (header: string | undefined, raw_body: string)
 //  --
 
 const evict_oldest_rate_limit_entry = (): void => {
+  trace("evict_oldest_rate_limit_entry")
   let oldest_sender_id: string | null = null
   let oldest_time = Infinity
 
@@ -201,6 +207,7 @@ const evict_oldest_rate_limit_entry = (): void => {
 }
 
 const check_rate_limit = (sender_id: string, current_time_ms: number): boolean => {
+  trace("check_rate_limit", current_time_ms, sender_id)
   const existing = sender_rate_limits.get(sender_id)
 
   // No entry or window expired — start new window
@@ -231,6 +238,7 @@ const try_process_single_message = async (
   contact: string | undefined,
   current_time_ms: number,
 ): Promise<void> => {
+  trace("try_process_single_message", msg, contact, current_time_ms)
   try {
     const incoming: incoming_message_type = {
       channel: "whatsapp",
@@ -260,6 +268,7 @@ const whatsapp_messages_handler = async (
   messages: whatsapp_message_schema_type[],
   contact?: string,
 ): Promise<void> => {
+  trace("whatsapp_message_handler", messages, contact)
   const current_time_ms = Date.now()
 
   // Process messages sequentially with bounded concurrency

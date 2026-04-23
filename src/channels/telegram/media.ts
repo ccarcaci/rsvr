@@ -1,9 +1,11 @@
 import type { Api } from "grammy"
+import { trace } from "../../tracer/tracing"
 
 export const download_voice_note = async (
   file_id: string,
   api: Api,
 ): Promise<{ buffer: Uint8Array<ArrayBuffer>; mime_type: string }> => {
+  trace("download_voice_note", file_id)
   const file = await api.getFile(file_id)
   const url = `https://api.telegram.org/file/bot${api.token}/${file.file_path}`
   const response = await fetch(url)
