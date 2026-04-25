@@ -1,7 +1,6 @@
 import type { Context, Next } from "hono"
 import { configs } from "../config/args"
 import { logger } from "../shared/logger"
-import { enable_trace } from "../tracer/tracing"
 
 //  Headers whose values must never appear in logs.
 const REDACTED_HEADERS = new Set([

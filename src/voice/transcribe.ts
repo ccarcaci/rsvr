@@ -19,7 +19,7 @@ export const transcribe_audio = async (
   buffer: Uint8Array<ArrayBuffer>,
   mime_type: string,
 ): Promise<string> => {
-  trace("transcribe_audio", mime_type)
+  trace("src/voice/transcribe", "transcribe_audio", mime_type)
   const file = new File([buffer], `voice.${extension_from_mime(mime_type)}`, { type: mime_type })
 
   const openai_client = get_openai_client()

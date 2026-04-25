@@ -13,7 +13,7 @@ const create_whatsapp_client = (
   whatsapp_phone_number_id: string,
 ): whatsapp_client_type => {
   const send_text_message = async (to: string, text: string): Promise<void> => {
-    trace("send_text_message", to, text)
+    trace("src/channels/whatsapp/client", "send_text_message", to, text)
     const url = `${graph_api_base}/${whatsapp_phone_number_id}/messages`
     const response = await fetch(url, {
       method: "POST",
@@ -37,7 +37,7 @@ const create_whatsapp_client = (
   }
 
   const download_media = async (media_id: string): Promise<Uint8Array<ArrayBuffer>> => {
-    trace("download_media", media_id)
+    trace("src/channels/whatsapp/client", "download_media", media_id)
     const meta_url = `${graph_api_base}/${media_id}`
     const meta_response = await fetch(meta_url, {
       headers: { Authorization: `Bearer ${whatsapp_access_token}` },

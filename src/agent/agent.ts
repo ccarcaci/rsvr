@@ -22,7 +22,16 @@ const handle_end_turn = (
   session: session_entry_type,
   history: session_history_entry_type[],
 ): string => {
-  trace("handle_end_turn", current_time_ms, business_id, sender_key, text_block, session, history)
+  trace(
+    "src/agent/agent",
+    "handle_end_turn",
+    current_time_ms,
+    business_id,
+    sender_key,
+    text_block,
+    session,
+    history,
+  )
   update_session(current_time_ms, sender_key, {
     ...session,
     history,
@@ -39,7 +48,15 @@ const refresh_session = (
   tool_results: tool_use_block_result_type[],
   history: session_history_entry_type[],
 ) => {
-  trace("refresh_session", current_time_ms, sender_key, current_business_id, session, tool_results)
+  trace(
+    "src/agent/agent",
+    "refresh_session",
+    current_time_ms,
+    sender_key,
+    current_business_id,
+    session,
+    tool_results,
+  )
   history.push({ role: "user", content: tool_results })
   update_session(current_time_ms, sender_key, {
     ...session,
@@ -52,7 +69,7 @@ const extract_business_id_from_tools = (
   current_business_id: string,
   tool_results: tool_use_block_result_type[],
 ): string => {
-  trace("extract_business_id_from_tools", current_business_id, tool_results)
+  trace("src/agent/agent", "extract_business_id_from_tools", current_business_id, tool_results)
   if (current_business_id !== "") {
     return current_business_id
   }
@@ -79,8 +96,8 @@ export const run_agent = async (
   sender_key: string,
   text: string,
 ): Promise<string> => {
-  trace("run_agent", current_time_ms, user_id, sender_key, text)
-  const session = find_session(sender_key, current_time_ms)
+  trace("src/agent/agent", "run_agent", current_time_ms, user_id, sender_key, text)
+  const session = find_session(current_time_ms, sender_key)
   let current_business_id = session.business_id ?? ""
 
   const history: session_history_entry_type[] = [

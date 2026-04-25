@@ -12,7 +12,7 @@ export type ai_client_prompt_result_type = {
 //  --
 
 export type tool_use_block_request_type = {
-  id:
+  name:
     | "check_availability"
     | "create_reservation"
     | "list_reservations"

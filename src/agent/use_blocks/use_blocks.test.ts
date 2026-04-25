@@ -45,7 +45,7 @@ describe("use_blocks", () => {
 
     //  --  act
     const block_results = use_blocks(CURRENT_TIME_MS, BUSINESS_ID, USER_ID, [
-      { id: "check_availability", input },
+      { name: "check_availability", input },
     ] as tool_use_block_request_type[])
 
     //  --  assert
@@ -62,7 +62,7 @@ describe("use_blocks", () => {
 
     //  --  act
     const block_results = use_blocks(CURRENT_TIME_MS, BUSINESS_ID, USER_ID, [
-      { id: "create_reservation", input },
+      { name: "create_reservation", input },
     ] as tool_use_block_request_type[])
 
     //  --  assert
@@ -84,7 +84,7 @@ describe("use_blocks", () => {
 
     //  --  act
     const block_results = use_blocks(CURRENT_TIME_MS, BUSINESS_ID, USER_ID, [
-      { id: "list_reservations", input },
+      { name: "list_reservations", input },
     ] as tool_use_block_request_type[])
 
     //  --  assert
@@ -104,7 +104,7 @@ describe("use_blocks", () => {
 
     //  --  act
     const block_results = use_blocks(CURRENT_TIME_MS, BUSINESS_ID, USER_ID, [
-      { id: "find_reservation", input },
+      { name: "find_reservation", input },
     ] as tool_use_block_request_type[])
 
     //  --  assert
@@ -121,7 +121,7 @@ describe("use_blocks", () => {
 
     //  --  act
     const block_results = use_blocks(CURRENT_TIME_MS, BUSINESS_ID, USER_ID, [
-      { id: "cancel_reservation", input },
+      { name: "cancel_reservation", input },
     ] as tool_use_block_request_type[])
 
     //  --  assert
@@ -141,7 +141,7 @@ describe("use_blocks", () => {
 
     //  --  act
     const block_results = use_blocks(CURRENT_TIME_MS, BUSINESS_ID, USER_ID, [
-      { id: "reschedule_reservation", input },
+      { name: "reschedule_reservation", input },
     ] as tool_use_block_request_type[])
 
     //  --  assert
@@ -158,7 +158,7 @@ describe("use_blocks", () => {
 
     //  --  act
     const block_results = use_blocks(CURRENT_TIME_MS, BUSINESS_ID, USER_ID, [
-      { id: "find_business_id", input },
+      { name: "find_business_id", input },
     ] as tool_use_block_request_type[])
 
     //  --  assert
@@ -180,8 +180,8 @@ describe("use_blocks", () => {
 
     //  --  act
     const block_results = use_blocks(CURRENT_TIME_MS, BUSINESS_ID, USER_ID, [
-      { id: "find_business_id", input: { business_name: "Acme" } },
-      { id: "check_availability", input: check_input },
+      { name: "find_business_id", input: { business_name: "Acme" } },
+      { name: "check_availability", input: check_input },
     ] as tool_use_block_request_type[])
 
     //  --  assert
@@ -201,8 +201,8 @@ describe("use_blocks", () => {
 
     //  --  act
     const block_results = use_blocks(CURRENT_TIME_MS, BUSINESS_ID, USER_ID, [
-      { id: "list_reservations", input: {} },
-      { id: "cancel_reservation", input: { reservation_id: "RES-001" } },
+      { name: "list_reservations", input: {} },
+      { name: "cancel_reservation", input: { reservation_id: "RES-001" } },
     ] as tool_use_block_request_type[])
 
     //  --  assert
@@ -212,7 +212,7 @@ describe("use_blocks", () => {
   test("returns_error_for_unknown_tool_id", () => {
     //  --  act
     const block_results = use_blocks(CURRENT_TIME_MS, BUSINESS_ID, USER_ID, [
-      { id: "unknown_tool", input: {} },
+      { name: "unknown_tool", input: {} },
     ] as unknown as tool_use_block_request_type[])
 
     //  --  assert

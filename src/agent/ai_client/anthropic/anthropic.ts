@@ -22,7 +22,7 @@ export const message_conversation = (
   current_time_ms: number,
   history: session_history_entry_type[],
 ): APIPromise<Message> => {
-  trace("message_conversation", current_time_ms, history)
+  trace("src/agent/ai_client/anthropic/anthropic", "message_conversation", current_time_ms, history)
   const client = get_anthropic_client()
   return client.messages.create({
     model: MODEL,

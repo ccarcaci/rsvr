@@ -9,7 +9,7 @@ const sessions = new Map<string, session_entry_type>()
 //  --
 
 const evict_expired = (current_time_ms: number): void => {
-  trace("evict_expired", current_time_ms)
+  trace("src/agent/session", "evict_expired", current_time_ms)
   for (const [key, entry] of sessions) {
     if (current_time_ms - entry.last_active > SESSION_TTL_MS) {
       sessions.delete(key)
@@ -19,8 +19,8 @@ const evict_expired = (current_time_ms: number): void => {
 
 //  --
 
-export const find_session = (sender_key: string, current_time_ms: number): session_entry_type => {
-  trace("find_session", current_time_ms, sender_key)
+export const find_session = (current_time_ms: number, sender_key: string): session_entry_type => {
+  trace("src/agent/session", "find_session", current_time_ms, sender_key)
   evict_expired(current_time_ms)
 
   const existing = sessions.get(sender_key)
@@ -39,7 +39,7 @@ export const update_session = (
   sender_key: string,
   entry: session_entry_type,
 ): void => {
-  trace("update_session", current_time_ms, sender_key, entry)
+  trace("src/agent/session", "update_session", current_time_ms, sender_key, entry)
   evict_expired(current_time_ms)
 
   const capped_history =
@@ -53,11 +53,11 @@ export const update_session = (
 }
 
 export const clear_all_sessions = (): void => {
-  trace("clear_all_sessions")
+  trace("src/agent/session", "clear_all_sessions")
   sessions.clear()
 }
 
 export const session_count = (): number => {
-  trace("session_count")
+  trace("src/agent/session", "session_count")
   return sessions.size
 }

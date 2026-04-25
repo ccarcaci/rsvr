@@ -16,12 +16,12 @@ describe("session_maintenance", () => {
     test("evicts_sessions_older_than_30_minutes_on_get_session", () => {
       //  --  arrange
       const t0 = 1_000_000
-      find_session("old:1", t0)
-      find_session("old:2", t0)
+      find_session(t0, "old:1")
+      find_session(t0, "old:2")
 
       //  --  act
       const t_after_ttl = t0 + THIRTY_MINUTES_MS + 1
-      find_session("new:1", t_after_ttl)
+      find_session(t_after_ttl, "new:1")
 
       //  --  assert
       expect(session_count()).toBe(1)
@@ -30,7 +30,7 @@ describe("session_maintenance", () => {
     test("evicts_sessions_older_than_30_minutes_on_update_session", () => {
       //  --  arrange
       const t0 = 1_000_000
-      find_session("old:1", t0)
+      find_session(t0, "old:1")
 
       //  --  act
       const t_after_ttl = t0 + THIRTY_MINUTES_MS + 1
@@ -43,11 +43,11 @@ describe("session_maintenance", () => {
     test("does_not_evict_sessions_within_30_minute_window", () => {
       //  --  arrange
       const t0 = 1_000_000
-      find_session("active:1", t0)
+      find_session(t0, "active:1")
 
       //  --  act
       const t_within_ttl = t0 + THIRTY_MINUTES_MS - 1
-      find_session("active:2", t_within_ttl)
+      find_session(t_within_ttl, "active:2")
 
       //  --  assert
       expect(session_count()).toBe(2)
@@ -56,11 +56,11 @@ describe("session_maintenance", () => {
     test("does_not_evict_session_accessed_exactly_at_ttl_boundary", () => {
       //  --  arrange
       const t0 = 1_000_000
-      find_session("boundary:1", t0)
+      find_session(t0, "boundary:1")
 
       //  --  act
       const t_exact = t0 + THIRTY_MINUTES_MS
-      find_session("boundary:2", t_exact)
+      find_session(t_exact, "boundary:2")
 
       //  --  assert
       expect(session_count()).toBe(2)
@@ -69,12 +69,12 @@ describe("session_maintenance", () => {
     test("evicts_only_stale_sessions_keeps_active_ones", () => {
       //  --  arrange
       const t0 = 1_000_000
-      find_session("old:1", t0)
-      find_session("recent:1", t0 + THIRTY_MINUTES_MS - 100)
+      find_session(t0, "old:1")
+      find_session(t0 + THIRTY_MINUTES_MS - 100, "recent:1")
 
       //  --  act
       const t_check = t0 + THIRTY_MINUTES_MS + 1
-      find_session("trigger:1", t_check)
+      find_session(t_check, "trigger:1")
 
       //  --  assert
       expect(session_count()).toBe(2)
@@ -92,7 +92,7 @@ describe("session_maintenance", () => {
 
       //  --  act
       update_session(now, "user:1", { history: long_history, last_active: now })
-      const session = find_session("user:1", now)
+      const session = find_session(now, "user:1")
 
       //  --  assert
       expect(session.history.length).toBe(40)
@@ -111,7 +111,7 @@ describe("session_maintenance", () => {
 
       //  --  act
       update_session(now, "user:1", { history: exact_history, last_active: now })
-      const session = find_session("user:1", now)
+      const session = find_session(now, "user:1")
 
       //  --  assert
       expect(session.history.length).toBe(40)
@@ -128,7 +128,7 @@ describe("session_maintenance", () => {
 
       //  --  act
       update_session(now, "user:1", { history: short_history, last_active: now })
-      const session = find_session("user:1", now)
+      const session = find_session(now, "user:1")
 
       //  --  assert
       expect(session.history.length).toBe(5)

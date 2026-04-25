@@ -1,4 +1,4 @@
-import { AsyncLocalStorage } from "async_hooks"
+import { AsyncLocalStorage } from "node:async_hooks"
 import { logger } from "../shared/logger"
 
 const storage = new AsyncLocalStorage<string>()
@@ -20,9 +20,9 @@ const serialize_arg = (arg_value: unknown): unknown => {
 export const enable_trace = (fn: () => Promise<void>): Promise<void> =>
   storage.run(crypto.randomUUID(), fn)
 
-export const trace_id = storage.getStore
+export const trace_id = () => storage.getStore()
 
-export const trace = (method_name: string, ...params: unknown[]) => {
+export const trace = (module_path: string, method_name: string, ...params: unknown[]) => {
   const trace_id = storage.getStore()
   if (trace_id === undefined) {
     logger.warn("tracing not enabled")
@@ -30,6 +30,7 @@ export const trace = (method_name: string, ...params: unknown[]) => {
   }
   logger.debug("trace", {
     trace_id,
+    module_path,
     method_name,
     method_arguments: params.map(serialize_arg),
   })

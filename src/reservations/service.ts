@@ -9,7 +9,7 @@ export const handle_message = async (
   current_time_ms: number,
   message: incoming_message_type,
 ): Promise<string> => {
-  trace("handle_message", current_time_ms, message)
+  trace("src/reservations/service", "handle_message", current_time_ms, message)
   let text = message.text
 
   if (!text && message.voice_buffer) {

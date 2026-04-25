@@ -27,9 +27,16 @@ const dispatch_tool = (
   user_id: string,
   tool_use_block_request: tool_use_block_request_type,
 ): tool_use_block_result_type => {
-  trace("dispatch_tool", current_time_ms, business_id, user_id, tool_use_block_request)
-  const { id, input } = tool_use_block_request
-  switch (id) {
+  trace(
+    "src/agent/use_blocks/use_blocks",
+    "dispatch_tool",
+    current_time_ms,
+    business_id,
+    user_id,
+    tool_use_block_request,
+  )
+  const { name, input } = tool_use_block_request
+  switch (name) {
     case "check_availability":
       return handle_check_availability(business_id, input as check_availability_input_type)
     case "create_reservation":
@@ -50,7 +57,7 @@ const dispatch_tool = (
     case "find_business_id":
       return handle_find_business_id(input as find_business_id_input_type)
     default:
-      return { status: "error", error: `Unknown tool: ${id}` }
+      return { status: "error", error: `Unknown tool: ${name}` }
   }
 }
 
@@ -62,7 +69,14 @@ export const use_blocks = (
   user_id: string,
   use_blocks_requests: tool_use_block_request_type[],
 ): tool_use_block_result_type[] => {
-  trace("use_blocks", current_time_ms, business_id, user_id, use_blocks_requests)
+  trace(
+    "src/agent/use_blocks/use_blocks",
+    "use_blocks",
+    current_time_ms,
+    business_id,
+    user_id,
+    use_blocks_requests,
+  )
   if (use_blocks_requests.length === 0) {
     logger.error("stop_reason=tool_use but no tool_use blocks found", { user_id })
     throw new Error("Something went wrong, please try again.")
@@ -75,7 +89,7 @@ export const use_blocks = (
     tool_results.push(tool_result)
 
     if (
-      tool_use_block.id === "find_business_id" &&
+      tool_use_block.name === "find_business_id" &&
       tool_result.status === "success" &&
       "resolved_business_id" in tool_result.data.content
     ) {

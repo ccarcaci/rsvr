@@ -16,7 +16,7 @@ const handle_text_message = async (
   ctx: Context,
   validated: telegram_text_ctx_schema_type,
 ): Promise<void> => {
-  trace("handle_text_message", validated)
+  trace("src/channels/telegram/bot", "handle_text_message", validated)
   const incoming: incoming_message_type = {
     channel: "telegram",
     sender_id: String(validated.from.id),
@@ -33,7 +33,7 @@ const handle_voice_message = async (
   ctx: Context,
   validated: telegram_voice_ctx_schema_type,
 ): Promise<void> => {
-  trace("handle_voice_message", validated)
+  trace("src/channels/telegram/bot", "handle_voice_message", validated)
   const voice = await download_voice_note(validated.message.voice.file_id, ctx.api)
 
   const incoming: incoming_message_type = {
@@ -50,7 +50,7 @@ const handle_voice_message = async (
 }
 
 const try_validate_and_handle_text_message = async (ctx: Context): Promise<void> => {
-  trace("try_validate_and_handle_text_message")
+  trace("src/channels/telegram/bot", "try_validate_and_handle_text_message")
   try {
     const validated = parse_telegram_text_ctx(ctx)
     await handle_text_message(ctx, validated)
@@ -61,7 +61,7 @@ const try_validate_and_handle_text_message = async (ctx: Context): Promise<void>
 }
 
 const try_validate_and_handle_voice_message = async (ctx: Context): Promise<void> => {
-  trace("try_validate_and_handle_voice_message")
+  trace("src/channels/telegram/bot", "try_validate_and_handle_voice_message")
   try {
     const validated = parse_telegram_voice_ctx(ctx)
     await handle_voice_message(ctx, validated)

@@ -27,7 +27,14 @@ const try_check_availability = (
   time: string,
   party_size: number,
 ): tool_use_block_result_type => {
-  trace("try_check_availability", business_id, date, time, party_size)
+  trace(
+    "src/agent/use_blocks/tool_handlers/tool_handlers",
+    "try_check_availability",
+    business_id,
+    date,
+    time,
+    party_size,
+  )
   try {
     const slot = check_availability(business_id, date, time, party_size)
     if (!slot) {
@@ -63,7 +70,12 @@ export const handle_check_availability = (
   business_id: string,
   input: check_availability_input_type,
 ): tool_use_block_result_type => {
-  trace("handle_check_availability", business_id, input)
+  trace(
+    "src/agent/use_blocks/tool_handlers/tool_handlers",
+    "handle_check_availability",
+    business_id,
+    input,
+  )
   const { date, time, party_size = 1 } = input
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -91,7 +103,16 @@ const try_create_reservation = (
   current_time_ms: number,
   notes: string | undefined,
 ): tool_use_block_result_type => {
-  trace("try_create_reservation", party_size, current_time_ms, business_id, user_id, slot_id, notes)
+  trace(
+    "src/agent/use_blocks/tool_handlers/tool_handlers",
+    "try_create_reservation",
+    party_size,
+    current_time_ms,
+    business_id,
+    user_id,
+    slot_id,
+    notes,
+  )
   try {
     const reservation = create_reservation(
       party_size,
@@ -131,7 +152,14 @@ export const handle_create_reservation = (
   user_id: string,
   input: create_reservation_input_type,
 ): tool_use_block_result_type => {
-  trace("handle_create_reservation", current_time_ms, business_id, user_id, input)
+  trace(
+    "src/agent/use_blocks/tool_handlers/tool_handlers",
+    "handle_create_reservation",
+    current_time_ms,
+    business_id,
+    user_id,
+    input,
+  )
   const { slot_id, party_size = 1, notes } = input
 
   if (party_size < 1) {
@@ -161,9 +189,14 @@ export const handle_create_reservation = (
 
 export const handle_list_reservations = (
   user_id: string,
-  _input: list_reservations_input_type,
+  input: list_reservations_input_type,
 ): tool_use_block_result_type => {
-  trace("handle_list_reservations", user_id)
+  trace(
+    "src/agent/use_blocks/tool_handlers/tool_handlers",
+    "handle_list_reservations",
+    user_id,
+    input,
+  )
   try {
     const rows = find_reservations(user_id)
     return {
@@ -193,7 +226,12 @@ export const handle_find_reservation = (
   user_id: string,
   input: find_reservation_input_type,
 ): tool_use_block_result_type => {
-  trace("handle_find_reservation", user_id, input)
+  trace(
+    "src/agent/use_blocks/tool_handlers/tool_handlers",
+    "handle_find_reservation",
+    user_id,
+    input,
+  )
   const { reservation_id } = input
 
   try {
@@ -230,7 +268,12 @@ export const handle_cancel_reservation = (
   user_id: string,
   input: cancel_reservation_input_type,
 ): tool_use_block_result_type => {
-  trace("handle_cancel_reservation", user_id, input)
+  trace(
+    "src/agent/use_blocks/tool_handlers/tool_handlers",
+    "handle_cancel_reservation",
+    user_id,
+    input,
+  )
   const { reservation_id } = input
 
   try {
@@ -260,10 +303,15 @@ export const handle_cancel_reservation = (
 //  --
 
 export const handle_reschedule_reservation = (
-  _user_id: string,
-  _input: reschedule_reservation_input_type,
+  user_id: string,
+  input: reschedule_reservation_input_type,
 ): tool_use_block_result_type => {
-  trace("handle_reschedule_reservation")
+  trace(
+    "src/agent/use_blocks/tool_handlers/tool_handlers",
+    "handle_reschedule_reservation",
+    user_id,
+    input,
+  )
   return { status: "error", error: "reschedule_reservation is not yet implemented." }
 }
 
@@ -272,7 +320,7 @@ export const handle_reschedule_reservation = (
 export const handle_find_business_id = (
   input: find_business_id_input_type,
 ): tool_use_block_result_type => {
-  trace("handle_find_business_id", input)
+  trace("src/agent/use_blocks/tool_handlers/tool_handlers", "handle_find_business_id", input)
   const { business_name } = input
 
   try {

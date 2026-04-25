@@ -10,7 +10,7 @@ import {
 } from "./types"
 
 export const cancel_reservation = (user_id: string, reservation_id: string): boolean => {
-  trace("cancel_reservation", user_id, reservation_id)
+  trace("src/db/queries", "cancel_reservation", user_id, reservation_id)
   const reservation = get_db()
     .query<reservation_row_type, [string, string]>(
       "SELECT * FROM reservations WHERE id = ? AND user_id = ? AND status = 'confirmed'",
@@ -37,7 +37,7 @@ export const check_availability = (
   time: string,
   party_size: number,
 ): time_slot_row_type | null => {
-  trace("check_availability", business_id, date, time, party_size)
+  trace("src/db/queries", "check_availability", business_id, date, time, party_size)
   return get_db()
     .query<time_slot_row_type, [string, string, string, number]>(
       "SELECT * FROM time_slots WHERE business_id = ? AND date = ? AND time = ? AND (capacity - reserved) >= ?",
@@ -55,7 +55,16 @@ export const create_reservation = (
   time_slot_id: string,
   notes?: string,
 ): reservation_row_type => {
-  trace("create_reservation", party_size, current_time_ms, business_id, user_id, time_slot_id, notes)
+  trace(
+    "src/db/queries",
+    "create_reservation",
+    party_size,
+    current_time_ms,
+    business_id,
+    user_id,
+    time_slot_id,
+    notes,
+  )
   const run_transaction = get_db().transaction(() => {
     // 1. Read slot inside transaction (under write lock via IMMEDIATE)
     const slot = get_db()
@@ -113,7 +122,7 @@ export const create_user = (
   identifier: string,
   name?: string,
 ): user_row_type => {
-  trace("create_user", channel, identifier, name)
+  trace("src/db/queries", "create_user", channel, identifier, name)
   const field = channel === "whatsapp" ? "phone" : "telegram_id"
   const user_id = crypto.randomUUID().toUpperCase()
   get_db()
@@ -128,7 +137,7 @@ export const create_user = (
 }
 
 export const find_businesses_by_name = (name: string): business_row_type[] => {
-  trace("find_businesses_by_name", name)
+  trace("src/db/queries", "find_businesses_by_name", name)
   return get_db()
     .query<business_row_type, [string]>("SELECT * FROM businesses WHERE LOWER(name) = LOWER(?)")
     .all(name)
@@ -138,7 +147,7 @@ export const find_reservation = (
   user_id: string,
   reservation_id: string,
 ): reservation_row_type | null => {
-  trace("find_reservation", user_id, reservation_id)
+  trace("src/db/queries", "find_reservation", user_id, reservation_id)
   return get_db()
     .query<reservation_row_type, [string, string]>(
       "SELECT * FROM reservations WHERE user_id = ? AND id = ? ORDER BY created_at DESC",
@@ -147,7 +156,7 @@ export const find_reservation = (
 }
 
 export const find_reservations = (user_id: string): reservation_row_type[] => {
-  trace("find_reservations", user_id)
+  trace("src/db/queries", "find_reservations", user_id)
   return get_db()
     .query<reservation_row_type, [string]>(
       "SELECT * FROM reservations WHERE user_id = ? AND status = 'confirmed' ORDER BY created_at DESC",
@@ -156,19 +165,19 @@ export const find_reservations = (user_id: string): reservation_row_type[] => {
 }
 
 export const find_slot_by_id = (slot_id: string): time_slot_row_type | null => {
-  trace("find_slot_by_id", slot_id)
+  trace("src/db/queries", "find_slot_by_id", slot_id)
   return get_db()
     .query<time_slot_row_type, [string]>("SELECT * FROM time_slots WHERE id = ?")
     .get(slot_id)
 }
 
 export const find_user_by_phone = (phone: string): user_row_type | null => {
-  trace("find_user_by_phone", phone)
+  trace("src/db/queries", "find_user_by_phone", phone)
   return get_db().query<user_row_type, [string]>("SELECT * FROM users WHERE phone = ?").get(phone)
 }
 
 export const find_user_by_telegram_id = (telegram_id: string): user_row_type | null => {
-  trace("find_user_by_telegram_id", telegram_id)
+  trace("src/db/queries", "find_user_by_telegram_id", telegram_id)
   return get_db()
     .query<user_row_type, [string]>("SELECT * FROM users WHERE telegram_id = ?")
     .get(telegram_id)
