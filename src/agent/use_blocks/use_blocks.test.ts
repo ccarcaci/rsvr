@@ -15,11 +15,11 @@ const USER_ID = "A7E58DB6-16E4-4688-B1ED-5A9437A7739A"
 const CURRENT_TIME_MS = 42
 
 const success = (
-  tool_use_id: string,
+  tool_use_name: string,
   content?: tool_handler_content_type,
 ): tool_use_block_result_type => ({
   status: "success",
-  data: { tool_use_id, content: content ?? ({} as tool_handler_content_type) },
+  data: { tool_use_name, content: content ?? ({} as tool_handler_content_type) },
 })
 
 describe("use_blocks", () => {

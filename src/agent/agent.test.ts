@@ -58,7 +58,7 @@ describe("run_agent", () => {
       },
     ]
     mock_use_block_module.use_blocks.mockReturnValue([
-      { status: "success", data: { tool_use_id: "check_availability", content: "" } },
+      { status: "success", data: { tool_use_name: "check_availability", content: "" } },
     ])
     mock_ai_client_module.prompt.mockImplementation(() => {
       call_count++

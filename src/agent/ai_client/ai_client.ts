@@ -20,6 +20,7 @@ const deserialize_message = (message: Message): ai_client_prompt_result_type => 
       (ub: ToolUseBlock) =>
         ({
           id: ub.id,
+          name: ub.name,
           input: ub.input,
         }) as tool_use_block_request_type,
     ),

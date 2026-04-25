@@ -46,7 +46,7 @@ const try_check_availability = (
     return {
       status: "success",
       data: {
-        tool_use_id: "handle_check_availability",
+        tool_use_name: "handle_check_availability",
         content: {
           slot_id: slot.id,
           date: slot.date,
@@ -126,7 +126,7 @@ const try_create_reservation = (
     return {
       status: "success",
       data: {
-        tool_use_id: "handle_create_reservation",
+        tool_use_name: "handle_create_reservation",
         content: {
           reservation_id: reservation.id,
           date: slot?.date ?? "",
@@ -202,7 +202,7 @@ export const handle_list_reservations = (
     return {
       status: "success",
       data: {
-        tool_use_id: "handle_list_reservations",
+        tool_use_name: "handle_list_reservations",
         content: {
           reservations: rows.map((r) => ({
             reservation_id: r.id,
@@ -245,7 +245,7 @@ export const handle_find_reservation = (
     return {
       status: "success",
       data: {
-        tool_use_id: "handle_find_reservation",
+        tool_use_name: "handle_find_reservation",
         content: {
           reservation_id: reservation.id,
           time_slot_id: reservation.time_slot_id,
@@ -287,7 +287,7 @@ export const handle_cancel_reservation = (
     return {
       status: "success",
       data: {
-        tool_use_id: "handle_cancel_reservation",
+        tool_use_name: "handle_cancel_reservation",
         content: {
           reservation_id,
           status: "cancelled",
@@ -338,7 +338,7 @@ export const handle_find_business_id = (
     return {
       status: "success",
       data: {
-        tool_use_id: "handle_find_business_id",
+        tool_use_name: "handle_find_business_id",
         content: {
           resolved_business_id: businesses[0].id,
         },

@@ -12,6 +12,7 @@ export type ai_client_prompt_result_type = {
 //  --
 
 export type tool_use_block_request_type = {
+  id: string
   name:
     | "check_availability"
     | "create_reservation"
@@ -91,7 +92,7 @@ export type tool_handler_content_type =
 export type tool_use_block_result_success_type = {
   status: "success"
   data: {
-    tool_use_id: string
+    tool_use_name: string
     content: tool_handler_content_type
   }
 }
