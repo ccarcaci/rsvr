@@ -1,11 +1,9 @@
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from "bun:test"
 import { mock_module, mock_restore } from "../../../mock_module"
+import type { tool_handlers_check_availability_result_type } from "../../types"
 import { mock_db_module } from "./mock"
 
-mock_module("./db/queries", () => mock_db_module)
-
-import type { tool_handlers_check_availability_result_type } from "../../types"
-import { handle_check_availability } from "./tool_handlers"
+const BUSINESS_ID = "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C"
 
 const SLOT = {
   id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
@@ -17,6 +15,13 @@ const SLOT = {
 }
 
 describe("tool_handlers", () => {
+  let tool_handlers: typeof import("./tool_handlers")
+
+  beforeAll(async () => {
+    mock_module("./db/queries", () => mock_db_module)
+    tool_handlers = await import("./tool_handlers")
+  })
+
   afterEach(() => {
     mock.clearAllMocks()
   })
@@ -31,7 +36,8 @@ describe("tool_handlers", () => {
       mock_db_module.check_availability.mockReturnValue(SLOT)
 
       //  --  act
-      const result = handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
+      const result = tool_handlers.handle_check_availability({
+        business_id: BUSINESS_ID,
         date: "2099-12-31",
         time: "19:00",
         party_size: 2,
@@ -49,7 +55,7 @@ describe("tool_handlers", () => {
         })
       }
       expect(mock_db_module.check_availability).toBeCalledWith(
-        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        BUSINESS_ID,
         "2099-12-31",
         "19:00",
         2,
@@ -61,7 +67,8 @@ describe("tool_handlers", () => {
       mock_db_module.check_availability.mockReturnValue(null)
 
       //  --  act
-      const result = handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
+      const result = tool_handlers.handle_check_availability({
+        business_id: BUSINESS_ID,
         date: "2099-12-31",
         time: "19:00",
         party_size: 2,
@@ -73,7 +80,7 @@ describe("tool_handlers", () => {
         expect(result.error).toContain("No availability")
       }
       expect(mock_db_module.check_availability).toBeCalledWith(
-        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        BUSINESS_ID,
         "2099-12-31",
         "19:00",
         2,
@@ -85,7 +92,8 @@ describe("tool_handlers", () => {
       // (no additional setup — default mock returns null)
 
       //  --  act
-      const result = handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
+      const result = tool_handlers.handle_check_availability({
+        business_id: BUSINESS_ID,
         date: "31/12/2099",
         time: "19:00",
       })
@@ -103,7 +111,8 @@ describe("tool_handlers", () => {
       // (no additional setup — default mock returns null)
 
       //  --  act
-      const result = handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
+      const result = tool_handlers.handle_check_availability({
+        business_id: BUSINESS_ID,
         date: "2099-12-31",
         time: "7pm",
       })
@@ -121,14 +130,15 @@ describe("tool_handlers", () => {
       // (no additional setup)
 
       //  --  act
-      handle_check_availability("48740B1B-0AA2-48DD-9EEE-C14B6AC3258C", {
+      tool_handlers.handle_check_availability({
+        business_id: BUSINESS_ID,
         date: "2099-12-31",
         time: "19:00",
       })
 
       //  --  assert
       expect(mock_db_module.check_availability).toBeCalledWith(
-        "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
+        BUSINESS_ID,
         "2099-12-31",
         "19:00",
         1,

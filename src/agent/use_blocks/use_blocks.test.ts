@@ -1,4 +1,4 @@
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from "bun:test"
 import { mock_module, mock_restore } from "../../mock_module"
 import type {
   tool_handlers_result_type,
@@ -6,9 +6,6 @@ import type {
   tool_use_block_result_type,
 } from "../types"
 import { mock_tool_handlers_module } from "./mock"
-import { use_blocks } from "./use_blocks"
-
-mock_module("./agent/use_blocks/tool_handlers/tool_handlers", () => mock_tool_handlers_module)
 
 const BUSINESS_ID = "DD152853-01F0-44CA-9C0D-E0109ADAFAE9"
 const USER_ID = "A7E58DB6-16E4-4688-B1ED-5A9437A7739A"
@@ -25,6 +22,13 @@ const success = (
 })
 
 describe("use_blocks", () => {
+  let use_blocks_module: typeof import("./use_blocks")
+
+  beforeAll(async () => {
+    mock_module("./agent/use_blocks/tool_handlers/tool_handlers", () => mock_tool_handlers_module)
+    use_blocks_module = await import("./use_blocks")
+  })
+
   afterEach(() => {
     mock.clearAllMocks()
   })
@@ -34,7 +38,9 @@ describe("use_blocks", () => {
   })
 
   test("throws_when_use_blocks_requests_is_empty", () => {
-    expect(() => use_blocks(CURRENT_TIME_MS, [])).toThrow("Something went wrong, please try again.")
+    expect(() => use_blocks_module.use_blocks(CURRENT_TIME_MS, [])).toThrow(
+      "Something went wrong, please try again.",
+    )
   })
 
   test("dispatches_check_availability_with_input", () => {
@@ -45,7 +51,7 @@ describe("use_blocks", () => {
     mock_tool_handlers_module.handle_check_availability.mockReturnValue(result)
 
     //  --  act
-    const block_results = use_blocks(CURRENT_TIME_MS, [
+    const block_results = use_blocks_module.use_blocks(CURRENT_TIME_MS, [
       { id, name: "check_availability", input },
     ] as tool_use_block_request_type[])
 
@@ -63,7 +69,7 @@ describe("use_blocks", () => {
     mock_tool_handlers_module.handle_create_reservation.mockReturnValue(result)
 
     //  --  act
-    const block_results = use_blocks(CURRENT_TIME_MS, [
+    const block_results = use_blocks_module.use_blocks(CURRENT_TIME_MS, [
       { id, name: "create_reservation", input },
     ] as tool_use_block_request_type[])
 
@@ -84,7 +90,7 @@ describe("use_blocks", () => {
     mock_tool_handlers_module.handle_list_reservations.mockReturnValue(result)
 
     //  --  act
-    const block_results = use_blocks(CURRENT_TIME_MS, [
+    const block_results = use_blocks_module.use_blocks(CURRENT_TIME_MS, [
       { id, name: "list_reservations", input },
     ] as tool_use_block_request_type[])
 
@@ -106,7 +112,7 @@ describe("use_blocks", () => {
     mock_tool_handlers_module.handle_find_reservation.mockReturnValue(result)
 
     //  --  act
-    const block_results = use_blocks(CURRENT_TIME_MS, [
+    const block_results = use_blocks_module.use_blocks(CURRENT_TIME_MS, [
       { id, name: "find_reservation", input },
     ] as tool_use_block_request_type[])
 
@@ -124,7 +130,7 @@ describe("use_blocks", () => {
     mock_tool_handlers_module.handle_cancel_reservation.mockReturnValue(result)
 
     //  --  act
-    const block_results = use_blocks(CURRENT_TIME_MS, [
+    const block_results = use_blocks_module.use_blocks(CURRENT_TIME_MS, [
       { id, name: "cancel_reservation", input },
     ] as tool_use_block_request_type[])
 
@@ -151,7 +157,7 @@ describe("use_blocks", () => {
     mock_tool_handlers_module.handle_reschedule_reservation.mockReturnValue(result)
 
     //  --  act
-    const block_results = use_blocks(CURRENT_TIME_MS, [
+    const block_results = use_blocks_module.use_blocks(CURRENT_TIME_MS, [
       { id, name: "reschedule_reservation", input },
     ] as tool_use_block_request_type[])
 
@@ -169,7 +175,7 @@ describe("use_blocks", () => {
     mock_tool_handlers_module.handle_find_business_id.mockReturnValue(result)
 
     //  --  act
-    const block_results = use_blocks(CURRENT_TIME_MS, [
+    const block_results = use_blocks_module.use_blocks(CURRENT_TIME_MS, [
       { id, name: "find_business_id", input },
     ] as tool_use_block_request_type[])
 
@@ -189,7 +195,7 @@ describe("use_blocks", () => {
     mock_tool_handlers_module.handle_cancel_reservation.mockReturnValue(cancel_result)
 
     //  --  act
-    const block_results = use_blocks(CURRENT_TIME_MS, [
+    const block_results = use_blocks_module.use_blocks(CURRENT_TIME_MS, [
       { id: list_id, name: "list_reservations", input: { user_id: USER_ID } },
       {
         id: cancel_id,
@@ -207,7 +213,7 @@ describe("use_blocks", () => {
     const id = "A1B2C3D4-0010-0000-0000-000000000010"
 
     //  --  act
-    const block_results = use_blocks(CURRENT_TIME_MS, [
+    const block_results = use_blocks_module.use_blocks(CURRENT_TIME_MS, [
       { id, name: "unknown_tool", input: {} },
     ] as unknown as tool_use_block_request_type[])
 

@@ -1,11 +1,7 @@
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from "bun:test"
 import { mock_module, mock_restore } from "../../../mock_module"
-import { mock_db_module } from "./mock"
-
-mock_module("./db/queries", () => mock_db_module)
-
 import type { tool_handlers_find_reservation_result_type } from "../../types"
-import { handle_find_reservation } from "./tool_handlers"
+import { mock_db_module } from "./mock"
 
 const USER_ID = "D5F7BA6A-19C2-42F3-8080-17F098BB807D"
 const RESERVATION_ID = "CCDDEEEF-HBIC-4AE3-A9EA-55B5555555LB5"
@@ -22,6 +18,13 @@ const RESERVATION = {
 }
 
 describe("tool_handlers", () => {
+  let tool_handlers: typeof import("./tool_handlers")
+
+  beforeAll(async () => {
+    mock_module("./db/queries", () => mock_db_module)
+    tool_handlers = await import("./tool_handlers")
+  })
+
   afterEach(() => {
     mock.clearAllMocks()
   })
@@ -36,7 +39,8 @@ describe("tool_handlers", () => {
       mock_db_module.find_reservation.mockReturnValue(RESERVATION)
 
       //  --  act
-      const result = handle_find_reservation(USER_ID, {
+      const result = tool_handlers.handle_find_reservation({
+        user_id: USER_ID,
         reservation_id: RESERVATION_ID,
       })
 
@@ -61,7 +65,8 @@ describe("tool_handlers", () => {
       mock_db_module.find_reservation.mockReturnValue(null)
 
       //  --  act
-      const result = handle_find_reservation(USER_ID, {
+      const result = tool_handlers.handle_find_reservation({
+        user_id: USER_ID,
         reservation_id: RESERVATION_ID,
       })
 
@@ -80,7 +85,8 @@ describe("tool_handlers", () => {
       })
 
       //  --  act
-      const result = handle_find_reservation(USER_ID, {
+      const result = tool_handlers.handle_find_reservation({
+        user_id: USER_ID,
         reservation_id: RESERVATION_ID,
       })
 

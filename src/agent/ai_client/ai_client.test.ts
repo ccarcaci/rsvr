@@ -1,6 +1,4 @@
 import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from "bun:test"
-import { mock_module, mock_restore } from "../../mock_module"
-import { mock_anthropic_module, mock_session_module } from "./mock"
 import type {
   DirectCaller,
   Message,
@@ -10,7 +8,9 @@ import type {
   ToolUseBlock,
   Usage,
 } from "@anthropic-ai/sdk/resources"
+import { mock_module, mock_restore } from "../../mock_module"
 import type { session_entry_type } from "../types"
+import { mock_anthropic_module, mock_session_module } from "./mock"
 
 const SENDER_KEY = "0A67E73B-4D82-415F-B574-740D5455E8D0"
 
@@ -31,12 +31,12 @@ const mock_anthropic_message = (
   content: [
     ...(text !== undefined
       ? [
-        {
-          citations: null,
-          text,
-          type: "text",
-        } as TextBlock,
-      ]
+          {
+            citations: null,
+            text,
+            type: "text",
+          } as TextBlock,
+        ]
       : []),
     ...blocks.map(
       (block) =>

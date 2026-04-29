@@ -53,9 +53,7 @@ export const add_message_to_session = (
   const existing_session = find_session(current_time_ms, sender_key)
   existing_session.push(api_message)
   const capped_history =
-    existing_session.length > MAX_HISTORY
-      ? existing_session.slice(-MAX_HISTORY)
-      : existing_session
+    existing_session.length > MAX_HISTORY ? existing_session.slice(-MAX_HISTORY) : existing_session
   sessions.set(sender_key, {
     history: capped_history,
     last_active: current_time_ms,

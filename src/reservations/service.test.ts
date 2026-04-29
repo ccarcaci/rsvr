@@ -1,15 +1,18 @@
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from "bun:test"
 import type { incoming_message_type } from "../channels/types"
 import { mock_module, mock_restore } from "../mock_module"
 import { mock_agent_module, mock_db_module, mock_transcribe_module } from "./mock"
 
-mock_module("./voice/transcribe", () => mock_transcribe_module)
-mock_module("./db/queries", () => mock_db_module)
-mock_module("./agent/agent", () => mock_agent_module)
-
-import { handle_message } from "./service"
-
 describe("handle_message", () => {
+  let service: typeof import("./service")
+
+  beforeAll(async () => {
+    mock_module("./voice/transcribe", () => mock_transcribe_module)
+    mock_module("./db/queries", () => mock_db_module)
+    mock_module("./agent/agent", () => mock_agent_module)
+    service = await import("./service")
+  })
+
   afterEach(() => {
     mock.clearAllMocks()
   })
@@ -42,7 +45,7 @@ describe("handle_message", () => {
     mock_agent_module.run_agent.mockResolvedValue("The answer is 42")
 
     //  --  act
-    const result = await handle_message(42, voice_message)
+    const result = await service.handle_message(42, voice_message)
 
     //  --  assert
     expect(result).toBe("The answer is 42")

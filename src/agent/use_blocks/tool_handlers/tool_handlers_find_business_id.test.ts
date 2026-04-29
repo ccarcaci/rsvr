@@ -1,11 +1,7 @@
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from "bun:test"
 import { mock_module, mock_restore } from "../../../mock_module"
-import { mock_db_module } from "./mock"
-
-mock_module("./db/queries", () => mock_db_module)
-
 import type { tool_handlers_find_business_id_result_type } from "../../types"
-import { handle_find_business_id } from "./tool_handlers"
+import { mock_db_module } from "./mock"
 
 const BUSINESS_1 = {
   id: "48740B1B-0AA2-48DD-9EEE-C14B6AC3258C",
@@ -18,6 +14,13 @@ const BUSINESS_2 = {
 }
 
 describe("tool_handlers", () => {
+  let tool_handlers: typeof import("./tool_handlers")
+
+  beforeAll(async () => {
+    mock_module("./db/queries", () => mock_db_module)
+    tool_handlers = await import("./tool_handlers")
+  })
+
   afterEach(() => {
     mock.clearAllMocks()
   })
@@ -31,7 +34,7 @@ describe("tool_handlers", () => {
     mock_db_module.find_businesses_by_name.mockReturnValue([BUSINESS_1])
 
     //  --  act
-    const result = handle_find_business_id({
+    const result = tool_handlers.handle_find_business_id({
       business_name: "The Golden Fork Restaurant",
     })
 
@@ -49,7 +52,7 @@ describe("tool_handlers", () => {
     mock_db_module.find_businesses_by_name.mockReturnValue([])
 
     //  --  act
-    const result = handle_find_business_id({
+    const result = tool_handlers.handle_find_business_id({
       business_name: "Nonexistent Restaurant",
     })
 
@@ -67,7 +70,7 @@ describe("tool_handlers", () => {
     mock_db_module.find_businesses_by_name.mockReturnValue([BUSINESS_1, BUSINESS_2])
 
     //  --  act
-    const result = handle_find_business_id({
+    const result = tool_handlers.handle_find_business_id({
       business_name: "The Golden",
     })
 
@@ -88,7 +91,7 @@ describe("tool_handlers", () => {
     })
 
     //  --  act
-    const result = handle_find_business_id({
+    const result = tool_handlers.handle_find_business_id({
       business_name: "Any Restaurant",
     })
 

@@ -1,15 +1,18 @@
-import { afterAll, afterEach, describe, expect, mock, test } from "bun:test"
+import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from "bun:test"
 import { mock_module, mock_restore } from "../mock_module"
 import { mock_ai_client_module, mock_use_block_module } from "./mock"
-
-mock_module("./agent/use_blocks/use_blocks", () => mock_use_block_module)
-mock_module("./agent/ai_client/ai_client", () => mock_ai_client_module)
-
-import { run_agent } from "./agent"
 
 const CURRENT_TIME_MS = 42
 
 describe("run_agent", () => {
+  let agent: typeof import("./agent")
+
+  beforeAll(async () => {
+    mock_module("./agent/use_blocks/use_blocks", () => mock_use_block_module)
+    mock_module("./agent/ai_client/ai_client", () => mock_ai_client_module)
+    agent = await import("./agent")
+  })
+
   afterEach(() => {
     mock.clearAllMocks()
   })
@@ -26,7 +29,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(CURRENT_TIME_MS, "test:end_turn", "Hello")
+    const result = await agent.run_agent(CURRENT_TIME_MS, "test:end_turn", "Hello")
 
     //  --  assert
     expect(result).toBe("How can I help you today?")
@@ -40,7 +43,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(CURRENT_TIME_MS, "test:no_text", "Hello")
+    const result = await agent.run_agent(CURRENT_TIME_MS, "test:no_text", "Hello")
 
     //  --  assert
     expect(result).toBe("Done.")
@@ -75,7 +78,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(CURRENT_TIME_MS, "test:tool_dispatch", "Reserve a table")
+    const result = await agent.run_agent(CURRENT_TIME_MS, "test:tool_dispatch", "Reserve a table")
 
     //  --  assert
     expect(result).toBe("There are available slots on that date.")
@@ -106,7 +109,11 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(CURRENT_TIME_MS, "test:unknown_tool", "Do something unsupported")
+    const result = await agent.run_agent(
+      CURRENT_TIME_MS,
+      "test:unknown_tool",
+      "Do something unsupported",
+    )
 
     //  --  assert
     expect(result).toBe("I cannot do that.")
@@ -126,7 +133,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(CURRENT_TIME_MS, "test:loop_limit", "Loop forever")
+    const result = await agent.run_agent(CURRENT_TIME_MS, "test:loop_limit", "Loop forever")
 
     //  --  assert
     expect(result).toBe("Something went wrong, please try again.")
@@ -141,7 +148,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(CURRENT_TIME_MS, "test:unexpected_stop", "Hello")
+    const result = await agent.run_agent(CURRENT_TIME_MS, "test:unexpected_stop", "Hello")
 
     //  --  assert
     expect(result).toBe("Something went wrong, please try again.")
