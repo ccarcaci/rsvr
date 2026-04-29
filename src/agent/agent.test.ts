@@ -27,7 +27,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(CURRENT_TIME_MS, USER_ID, "test:end_turn", "Hello")
+    const result = await run_agent(CURRENT_TIME_MS, "test:end_turn", "Hello")
 
     //  --  assert
     expect(result).toBe("How can I help you today?")
@@ -41,7 +41,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(CURRENT_TIME_MS, USER_ID, "test:no_text", "Hello")
+    const result = await run_agent(CURRENT_TIME_MS, "test:no_text", "Hello")
 
     //  --  assert
     expect(result).toBe("Done.")
@@ -78,7 +78,6 @@ describe("run_agent", () => {
     //  --  act
     const result = await run_agent(
       CURRENT_TIME_MS,
-      USER_ID,
       "test:tool_dispatch",
       "Reserve a table",
     )
@@ -89,8 +88,6 @@ describe("run_agent", () => {
     expect(mock_use_block_module.use_blocks).toBeCalledTimes(1)
     expect(mock_use_block_module.use_blocks).toBeCalledWith(
       CURRENT_TIME_MS,
-      "",
-      USER_ID,
       use_blocks_input,
     )
   })
@@ -119,7 +116,6 @@ describe("run_agent", () => {
     //  --  act
     const result = await run_agent(
       CURRENT_TIME_MS,
-      USER_ID,
       "test:unknown_tool",
       "Do something unsupported",
     )
@@ -142,7 +138,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(CURRENT_TIME_MS, USER_ID, "test:loop_limit", "Loop forever")
+    const result = await run_agent(CURRENT_TIME_MS, "test:loop_limit", "Loop forever")
 
     //  --  assert
     expect(result).toBe("Something went wrong, please try again.")
@@ -157,7 +153,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(CURRENT_TIME_MS, USER_ID, "test:unexpected_stop", "Hello")
+    const result = await run_agent(CURRENT_TIME_MS, "test:unexpected_stop", "Hello")
 
     //  --  assert
     expect(result).toBe("Something went wrong, please try again.")

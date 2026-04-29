@@ -4,7 +4,7 @@ import { mock_db_module } from "./mock"
 
 mock_module("./db/queries", () => mock_db_module)
 
-import type { find_reservation_content_type } from "../../types"
+import type { tool_handlers_find_reservation_result_type } from "../../types"
 import { handle_find_reservation } from "./tool_handlers"
 
 const USER_ID = "D5F7BA6A-19C2-42F3-8080-17F098BB807D"
@@ -43,7 +43,7 @@ describe("tool_handlers", () => {
       //  --  assert
       expect(result.status).toBe("success")
       if (result.status === "success") {
-        const content = result.data.content as find_reservation_content_type
+        const content = result.data.content as tool_handlers_find_reservation_result_type
         expect(content).toEqual({
           reservation_id: "CCDDEEEF-HBIC-4AE3-A9EA-55B5555555LB5",
           time_slot_id: "A9B0C1D2-E3F4-4C05-6B82-2031425DD7D7",

@@ -4,7 +4,7 @@ import { mock_db_module } from "./mock"
 
 mock_module("./db/queries", () => mock_db_module)
 
-import type { check_availability_content_type } from "../../types"
+import type { tool_handlers_check_availability_result_type } from "../../types"
 import { handle_check_availability } from "./tool_handlers"
 
 const SLOT = {
@@ -40,7 +40,7 @@ describe("tool_handlers", () => {
       //  --  assert
       expect(result.status).toBe("success")
       if (result.status === "success") {
-        const content = result.data.content as check_availability_content_type
+        const content = result.data.content as tool_handlers_check_availability_result_type
         expect(content).toEqual({
           slot_id: "C9F7A3D1-4E2B-4F1C-8A5D-7B9C2E6F1A3D",
           date: "2099-12-31",

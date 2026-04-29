@@ -1,9 +1,9 @@
-import Anthropic, { type APIPromise } from "@anthropic-ai/sdk"
+import Anthropic from "@anthropic-ai/sdk"
 import type { Message, MessageParam } from "@anthropic-ai/sdk/resources"
 import { trace } from "../../../tracer/tracing"
 import { get_system_prompt } from "../../prompts"
 import { AGENT_TOOLS } from "../../tools"
-import type { session_history_entry_type } from "../../types"
+import { anthropic_api_message_type } from "./types"
 
 let cached_client: Anthropic | null = null
 
@@ -16,20 +16,26 @@ const get_anthropic_client = (): Anthropic => {
   return cached_client
 }
 
+export const convert_message_to_message_param = (message: Message | MessageParam): MessageParam => ({
+  role: message.role,
+  content: message.content,
+})
+
 //  --
 
-export const message_conversation = (
+export const message_conversation =  async (
   current_time_ms: number,
-  history: session_history_entry_type[],
-): APIPromise<Message> => {
+  history: anthropic_api_message_type[],
+  ): Promise<anthropic_api_message_type> => {
   trace("src/agent/ai_client/anthropic/anthropic", "message_conversation", current_time_ms, history)
+  const history_mp = history.map(convert_message_to_message_param)
   const client = get_anthropic_client()
   return client.messages.create({
     model: MODEL,
     max_tokens: 1024,
     system: get_system_prompt(current_time_ms),
     tools: AGENT_TOOLS,
-    messages: history as MessageParam[],
+    messages: history_mp,
   })
 }
 

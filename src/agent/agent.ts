@@ -1,7 +1,8 @@
+import type { ToolResultBlockParam } from "@anthropic-ai/sdk/resources"
 import { logger } from "../shared/logger"
 import { trace } from "../tracer/tracing"
 import { prompt } from "./ai_client/ai_client"
-import { find_session, update_session } from "./session"
+import { add_message_to_session, find_session } from "./ai_client/session/session"
 import type {
   ai_client_prompt_result_type,
   session_entry_type,
@@ -20,7 +21,6 @@ const handle_end_turn = (
   sender_key: string,
   text_block: string,
   session: session_entry_type,
-  history: session_history_entry_type[],
 ): string => {
   trace(
     "src/agent/agent",
@@ -30,13 +30,7 @@ const handle_end_turn = (
     sender_key,
     text_block,
     session,
-    history,
   )
-  update_session(current_time_ms, sender_key, {
-    ...session,
-    history,
-    business_id: business_id || undefined,
-  })
   return text_block || "Done."
 }
 
@@ -45,8 +39,7 @@ const refresh_session = (
   sender_key: string,
   current_business_id: string,
   session: session_entry_type,
-  tool_results: tool_use_block_result_type[],
-  history: session_history_entry_type[],
+  tool_result_blocks: ToolResultBlockParam[],
 ) => {
   trace(
     "src/agent/agent",
@@ -55,14 +48,8 @@ const refresh_session = (
     sender_key,
     current_business_id,
     session,
-    tool_results,
+    tool_result_blocks,
   )
-  history.push({ role: "user", content: tool_results })
-  update_session(current_time_ms, sender_key, {
-    ...session,
-    history,
-    business_id: current_business_id || undefined,
-  })
 }
 
 const extract_business_id_from_tools = (
@@ -92,64 +79,35 @@ const extract_business_id_from_tools = (
 
 export const run_agent = async (
   current_time_ms: number,
-  user_id: string,
   sender_key: string,
   text: string,
 ): Promise<string> => {
-  trace("src/agent/agent", "run_agent", current_time_ms, user_id, sender_key, text)
-  const session = find_session(current_time_ms, sender_key)
-  let current_business_id = session.business_id ?? ""
+  trace("src/agent/agent", "run_agent", current_time_ms, sender_key, text)
 
-  const history: session_history_entry_type[] = [
-    ...session.history,
-    { role: "user", content: text },
-  ]
-
+  let next_stage_input: string | tool_use_block_result_type[] = text
   let tool_call_count = 0
   while (true) {
     if (tool_call_count >= MAX_TOOL_CALLS) {
-      logger.error("Agent exceeded max tool calls", { user_id, sender_key, tool_call_count })
+      logger.error("Agent exceeded max tool calls", { sender_key, tool_call_count })
       return "Something went wrong, please try again."
     }
 
-    const prompt_response: ai_client_prompt_result_type = await prompt(current_time_ms, history)
-
-    history.push({ role: "assistant", content: prompt_response.feedback_content })
+    const prompt_response: ai_client_prompt_result_type = await prompt(current_time_ms, sender_key, next_stage_input)
 
     if (prompt_response.stop_reason === "end_turn") {
-      return handle_end_turn(
-        current_time_ms,
-        current_business_id,
-        sender_key,
-        prompt_response.text_block,
-        session,
-        history,
-      )
+      return prompt_response.text_block || "Done."
     }
 
     if (prompt_response.stop_reason !== "tool_use") {
       // Unexpected stop reason (max_tokens, stop_sequence, refusal, etc.)
-      logger.warn("Unexpected stop_reason", { stop_reason: prompt_response.stop_reason, user_id })
+      logger.warn("Unexpected stop_reason", { stop_reason: prompt_response.stop_reason })
       return "Something went wrong, please try again."
     }
 
     tool_call_count += prompt_response.use_blocks.length
-
-    const tool_results = use_blocks(
+    next_stage_input = use_blocks(
       current_time_ms,
-      current_business_id,
-      user_id,
       prompt_response.use_blocks,
-    )
-    current_business_id = extract_business_id_from_tools(current_business_id, tool_results)
-
-    refresh_session(
-      current_time_ms,
-      sender_key,
-      current_business_id,
-      session,
-      tool_results,
-      history,
     )
   }
 }

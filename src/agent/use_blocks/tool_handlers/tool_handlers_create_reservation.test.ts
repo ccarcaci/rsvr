@@ -4,7 +4,7 @@ import { mock_db_module } from "./mock"
 
 mock_module("./db/queries", () => mock_db_module)
 
-import type { create_reservation_content_type } from "../../types"
+import type { tool_handlers_create_reservation_result_type } from "../../types"
 import { handle_create_reservation } from "./tool_handlers"
 
 const SLOT = {
@@ -60,7 +60,7 @@ describe("tool_handlers", () => {
       //  --  assert
       expect(result.status).toBe("success")
       if (result.status === "success") {
-        const content = result.data.content as create_reservation_content_type
+        const content = result.data.content as tool_handlers_create_reservation_result_type
         expect(content).toEqual({
           reservation_id: "A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D",
           date: "2099-12-31",

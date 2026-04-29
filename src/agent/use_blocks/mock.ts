@@ -24,3 +24,15 @@ export const mock_tool_handlers_module: mock_tool_handlers_type = {
   handle_reschedule_reservation: mock(),
   handle_find_business_id: mock(),
 }
+
+//  --
+
+type mock_session_type = {
+  find_session: Mock<mock_fn_type>
+  add_message_to_session: Mock<mock_fn_type>
+}
+
+export const mock_session_module: mock_session_type = {
+  find_session: mock(),
+  add_message_to_session: mock(),
+}

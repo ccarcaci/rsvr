@@ -67,16 +67,14 @@ const INVALID_PARTY_SIZE: tool_use_block_result_type = {
 }
 
 export const handle_check_availability = (
-  business_id: string,
   input: check_availability_input_type,
 ): tool_use_block_result_type => {
   trace(
     "src/agent/use_blocks/tool_handlers/tool_handlers",
     "handle_check_availability",
-    business_id,
     input,
   )
-  const { date, time, party_size = 1 } = input
+  const { business_id, date, time, party_size = 1 } = input
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return { status: "error", error: `Invalid date format "${date}". Use YYYY-MM-DD.` }
@@ -148,19 +146,15 @@ const try_create_reservation = (
 
 export const handle_create_reservation = (
   current_time_ms: number,
-  business_id: string,
-  user_id: string,
   input: create_reservation_input_type,
 ): tool_use_block_result_type => {
   trace(
     "src/agent/use_blocks/tool_handlers/tool_handlers",
     "handle_create_reservation",
     current_time_ms,
-    business_id,
-    user_id,
     input,
   )
-  const { slot_id, party_size = 1, notes } = input
+  const { user_id, business_id, slot_id, party_size = 1, notes } = input
 
   if (party_size < 1) {
     return INVALID_PARTY_SIZE
@@ -188,15 +182,14 @@ export const handle_create_reservation = (
 //  --
 
 export const handle_list_reservations = (
-  user_id: string,
   input: list_reservations_input_type,
 ): tool_use_block_result_type => {
   trace(
     "src/agent/use_blocks/tool_handlers/tool_handlers",
     "handle_list_reservations",
-    user_id,
     input,
   )
+  const { user_id } = input
   try {
     const rows = find_reservations(user_id)
     return {
@@ -223,16 +216,14 @@ export const handle_list_reservations = (
 //  --
 
 export const handle_find_reservation = (
-  user_id: string,
   input: find_reservation_input_type,
 ): tool_use_block_result_type => {
   trace(
     "src/agent/use_blocks/tool_handlers/tool_handlers",
     "handle_find_reservation",
-    user_id,
     input,
   )
-  const { reservation_id } = input
+  const { user_id, reservation_id } = input
 
   try {
     const reservation = find_reservation(user_id, reservation_id)
@@ -265,16 +256,14 @@ export const handle_find_reservation = (
 //  --
 
 export const handle_cancel_reservation = (
-  user_id: string,
   input: cancel_reservation_input_type,
 ): tool_use_block_result_type => {
   trace(
     "src/agent/use_blocks/tool_handlers/tool_handlers",
     "handle_cancel_reservation",
-    user_id,
     input,
   )
-  const { reservation_id } = input
+  const { user_id, reservation_id } = input
 
   try {
     const cancelled = cancel_reservation(user_id, reservation_id as string)
@@ -303,13 +292,11 @@ export const handle_cancel_reservation = (
 //  --
 
 export const handle_reschedule_reservation = (
-  user_id: string,
   input: reschedule_reservation_input_type,
 ): tool_use_block_result_type => {
   trace(
     "src/agent/use_blocks/tool_handlers/tool_handlers",
     "handle_reschedule_reservation",
-    user_id,
     input,
   )
   return { status: "error", error: "reschedule_reservation is not yet implemented." }
