@@ -23,14 +23,14 @@ const evict_expired = (current_time_ms: number): void => {
 export const find_session = (
   current_time_ms: number,
   sender_key: string,
-): anthropic_api_message_type => {
+): anthropic_api_message_type[] => {
   trace("src/agent/ai_client/session/session", "find_session", current_time_ms, sender_key)
   evict_expired(current_time_ms)
 
   const existing = sessions.get(sender_key)
   if (existing) {
     existing.last_active = current_time_ms
-    return existing
+    return existing.history
   }
 
   const fresh: session_entry_type = { history: [], last_active: current_time_ms }
@@ -51,11 +51,11 @@ export const add_message_to_session = (
     api_message,
   )
   const existing_session = find_session(current_time_ms, sender_key)
-  existing_session.history = [...existing_session.history, api_message]
+  existing_session.push(api_message)
   const capped_history =
-    existing_session.history.length > MAX_HISTORY
-      ? existing_session.history.slice(-MAX_HISTORY)
-      : existing_session.history
+    existing_session.length > MAX_HISTORY
+      ? existing_session.slice(-MAX_HISTORY)
+      : existing_session
   sessions.set(sender_key, {
     history: capped_history,
     last_active: current_time_ms,

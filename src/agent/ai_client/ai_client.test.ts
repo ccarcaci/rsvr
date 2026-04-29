@@ -1,10 +1,6 @@
-import { afterAll, afterEach, describe, expect, test } from "bun:test"
+import { afterAll, afterEach, beforeAll, describe, expect, mock, test } from "bun:test"
 import { mock_module, mock_restore } from "../../mock_module"
 import { mock_anthropic_module, mock_session_module } from "./mock"
-
-mock_module("./agent/ai_client/anthropic/anthropic", () => mock_anthropic_module)
-mock_module("./agent/ai_client/session/session", () => mock_session_module)
-
 import type {
   DirectCaller,
   Message,
@@ -15,7 +11,6 @@ import type {
   Usage,
 } from "@anthropic-ai/sdk/resources"
 import type { session_entry_type } from "../types"
-import { prompt } from "./ai_client"
 
 const SENDER_KEY = "0A67E73B-4D82-415F-B574-740D5455E8D0"
 
@@ -36,12 +31,12 @@ const mock_anthropic_message = (
   content: [
     ...(text !== undefined
       ? [
-          {
-            citations: null,
-            text,
-            type: "text",
-          } as TextBlock,
-        ]
+        {
+          citations: null,
+          text,
+          type: "text",
+        } as TextBlock,
+      ]
       : []),
     ...blocks.map(
       (block) =>
@@ -62,9 +57,21 @@ const mock_anthropic_prompt = (text: string): MessageParam => ({
 })
 
 describe("ai_client", () => {
-  afterEach(() => mock_anthropic_module.message_conversation.mockClear())
+  let ai_client: typeof import("./ai_client")
 
-  afterAll(() => mock_restore)
+  beforeAll(async () => {
+    mock_module("./agent/ai_client/anthropic/anthropic", () => mock_anthropic_module)
+    mock_module("./agent/ai_client/session/session", () => mock_session_module)
+    ai_client = await import("./ai_client")
+  })
+
+  afterEach(() => {
+    mock.clearAllMocks()
+  })
+
+  afterAll(() => {
+    mock_restore()
+  })
 
   test("forwards_current_time_ms_and_history_to_message_conversation", async () => {
     //  --  arrange
@@ -97,7 +104,7 @@ describe("ai_client", () => {
 
     //  --  act
     const prompt_input = "I need a table at the end of universe"
-    const result = await prompt(42, SENDER_KEY, prompt_input)
+    const result = await ai_client.prompt(42, SENDER_KEY, prompt_input)
 
     //  --  assert
     expect(mock_session_module.add_message_to_session).nthCalledWith(
@@ -146,7 +153,7 @@ describe("ai_client", () => {
     mock_anthropic_module.message_conversation.mockResolvedValue(api_response)
 
     //  --  act
-    const result = await prompt(42, SENDER_KEY, "prompt input")
+    const result = await ai_client.prompt(42, SENDER_KEY, "prompt input")
 
     //  --  assert
     expect(result).toEqual({
@@ -174,7 +181,7 @@ describe("ai_client", () => {
     mock_anthropic_module.message_conversation.mockResolvedValue(api_response)
 
     //  --  act
-    const result = await prompt(42, SENDER_KEY, "prompt input")
+    const result = await ai_client.prompt(42, SENDER_KEY, "prompt input")
 
     //  --  assert
     expect(result).toEqual({
@@ -202,7 +209,7 @@ describe("ai_client", () => {
     mock_anthropic_module.message_conversation.mockResolvedValue(api_response)
 
     //  --  act
-    const result = await prompt(42, SENDER_KEY, "prompt input")
+    const result = await ai_client.prompt(42, SENDER_KEY, "prompt input")
 
     //  --  assert
     expect(result).toEqual({
@@ -256,7 +263,7 @@ describe("ai_client", () => {
     mock_anthropic_module.message_conversation.mockResolvedValue(api_response)
 
     //  --  act
-    const result = await prompt(42, SENDER_KEY, "prompt input")
+    const result = await ai_client.prompt(42, SENDER_KEY, "prompt input")
 
     //  --  assert
     expect(result).toEqual({

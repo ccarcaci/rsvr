@@ -14,7 +14,7 @@ describe("add_message_to_session", () => {
 
     //  --  assert
     const session = find_session(now, "add_msg:user")
-    expect(session.history).toEqual([{ role: "user", content: "hello" }])
+    expect(session).toEqual([{ role: "user", content: "hello" }])
   })
 
   test("creates_session_when_none_exists", () => {
@@ -26,21 +26,20 @@ describe("add_message_to_session", () => {
 
     //  --  assert
     const session = find_session(now, "add_msg_create:user")
-    expect(session.history).toEqual([{ role: "user", content: "hello" }])
+    expect(session).toEqual([{ role: "user", content: "hello" }])
   })
 
   test("triggers_eviction_of_expired_sessions", () => {
     //  --  arrange
     const t0 = 1_000_000
-    const stale = find_session(t0, "add_msg_evict:stale")
-    stale.history.push({ role: "user", content: "stale" })
+    add_message_to_session(t0, "add_msd_evict:stale", { role: "user", content: "stale" })
 
     //  --  act
     const t_expired = t0 + THIRTY_MINUTES_MS + 1
     add_message_to_session(t_expired, "add_msg_evict:new", { role: "user", content: "new" })
 
     //  --  assert — evicted session is recreated fresh
-    expect(find_session(t_expired, "add_msg_evict:stale").history).toEqual([])
+    expect(find_session(t_expired, "add_msg_evict:stale")).toEqual([])
   })
 
   describe("history_capping", () => {
@@ -55,9 +54,9 @@ describe("add_message_to_session", () => {
       const session = find_session(now, "cap_history:user")
 
       //  --  assert — keeps most recent 40 (indices 10–49)
-      expect(session.history.length).toBe(40)
-      expect(session.history[0]).toEqual({ role: "user", content: "message 10" })
-      expect(session.history[39]).toEqual({ role: "user", content: "message 49" })
+      expect(session.length).toBe(40)
+      expect(session[0]).toEqual({ role: "user", content: "message 10" })
+      expect(session[39]).toEqual({ role: "user", content: "message 49" })
     })
 
     test("does_not_trim_history_at_exactly_40_messages", () => {
@@ -71,8 +70,8 @@ describe("add_message_to_session", () => {
       const session = find_session(now, "exact_40:user")
 
       //  --  assert
-      expect(session.history.length).toBe(40)
-      expect(session.history[0]).toEqual({ role: "user", content: "msg 0" })
+      expect(session.length).toBe(40)
+      expect(session[0]).toEqual({ role: "user", content: "msg 0" })
     })
 
     test("does_not_trim_history_under_40_messages", () => {
@@ -86,7 +85,7 @@ describe("add_message_to_session", () => {
       const session = find_session(now, "under_40:user")
 
       //  --  assert
-      expect(session.history.length).toBe(5)
+      expect(session.length).toBe(5)
     })
   })
 })

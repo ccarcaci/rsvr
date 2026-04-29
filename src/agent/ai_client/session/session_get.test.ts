@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { find_session } from "./session"
+import { add_message_to_session, find_session } from "./session"
 
 const THIRTY_MINUTES_MS = 30 * 60 * 1000
 
@@ -19,14 +19,13 @@ describe("find_session", () => {
   test("returns_existing_session_for_known_sender_key", () => {
     //  --  arrange
     const now = 1_000_000
-    const session_a = find_session(now, "existing_key:user")
-    session_a.history.push({ role: "user", content: "hello" })
+    add_message_to_session(now, "existing_key:user", { role: "user", content: "hello" })
 
     //  --  act
-    const session_b = find_session(now + 1000, "existing_key:user")
+    const session = find_session(now + 1000, "existing_key:user")
 
     //  --  assert
-    expect(session_b.history).toEqual([{ role: "user", content: "hello" }])
+    expect(session.history).toEqual([{ role: "user", content: "hello" }])
   })
 
   test("updates_last_active_on_read", () => {
