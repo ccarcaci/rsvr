@@ -69,11 +69,7 @@ const INVALID_PARTY_SIZE: tool_use_block_result_type = {
 export const handle_check_availability = (
   input: check_availability_input_type,
 ): tool_use_block_result_type => {
-  trace(
-    "src/agent/use_blocks/tool_handlers/tool_handlers",
-    "handle_check_availability",
-    input,
-  )
+  trace("src/agent/use_blocks/tool_handlers/tool_handlers", "handle_check_availability", input)
   const { business_id, date, time, party_size = 1 } = input
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -184,11 +180,7 @@ export const handle_create_reservation = (
 export const handle_list_reservations = (
   input: list_reservations_input_type,
 ): tool_use_block_result_type => {
-  trace(
-    "src/agent/use_blocks/tool_handlers/tool_handlers",
-    "handle_list_reservations",
-    input,
-  )
+  trace("src/agent/use_blocks/tool_handlers/tool_handlers", "handle_list_reservations", input)
   const { user_id } = input
   try {
     const rows = find_reservations(user_id)
@@ -218,11 +210,7 @@ export const handle_list_reservations = (
 export const handle_find_reservation = (
   input: find_reservation_input_type,
 ): tool_use_block_result_type => {
-  trace(
-    "src/agent/use_blocks/tool_handlers/tool_handlers",
-    "handle_find_reservation",
-    input,
-  )
+  trace("src/agent/use_blocks/tool_handlers/tool_handlers", "handle_find_reservation", input)
   const { user_id, reservation_id } = input
 
   try {
@@ -258,11 +246,7 @@ export const handle_find_reservation = (
 export const handle_cancel_reservation = (
   input: cancel_reservation_input_type,
 ): tool_use_block_result_type => {
-  trace(
-    "src/agent/use_blocks/tool_handlers/tool_handlers",
-    "handle_cancel_reservation",
-    input,
-  )
+  trace("src/agent/use_blocks/tool_handlers/tool_handlers", "handle_cancel_reservation", input)
   const { user_id, reservation_id } = input
 
   try {
@@ -294,11 +278,7 @@ export const handle_cancel_reservation = (
 export const handle_reschedule_reservation = (
   input: reschedule_reservation_input_type,
 ): tool_use_block_result_type => {
-  trace(
-    "src/agent/use_blocks/tool_handlers/tool_handlers",
-    "handle_reschedule_reservation",
-    input,
-  )
+  trace("src/agent/use_blocks/tool_handlers/tool_handlers", "handle_reschedule_reservation", input)
   return { status: "error", error: "reschedule_reservation is not yet implemented." }
 }
 

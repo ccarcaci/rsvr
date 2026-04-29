@@ -21,4 +21,3 @@ export const mock_session_module: mock_session_type = {
   find_session: mock(),
   add_message_to_session: mock(),
 }
-

@@ -7,7 +7,6 @@ mock_module("./agent/ai_client/ai_client", () => mock_ai_client_module)
 
 import { run_agent } from "./agent"
 
-const USER_ID = "D5F7BA6A-19C2-42F3-8080-17F098BB807D"
 const CURRENT_TIME_MS = 42
 
 describe("run_agent", () => {
@@ -76,20 +75,13 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(
-      CURRENT_TIME_MS,
-      "test:tool_dispatch",
-      "Reserve a table",
-    )
+    const result = await run_agent(CURRENT_TIME_MS, "test:tool_dispatch", "Reserve a table")
 
     //  --  assert
     expect(result).toBe("There are available slots on that date.")
     expect(call_count).toBe(2)
     expect(mock_use_block_module.use_blocks).toBeCalledTimes(1)
-    expect(mock_use_block_module.use_blocks).toBeCalledWith(
-      CURRENT_TIME_MS,
-      use_blocks_input,
-    )
+    expect(mock_use_block_module.use_blocks).toBeCalledWith(CURRENT_TIME_MS, use_blocks_input)
   })
 
   test("passes_tool_error_results_back_to_model_and_returns_final_text", async () => {
@@ -114,11 +106,7 @@ describe("run_agent", () => {
     })
 
     //  --  act
-    const result = await run_agent(
-      CURRENT_TIME_MS,
-      "test:unknown_tool",
-      "Do something unsupported",
-    )
+    const result = await run_agent(CURRENT_TIME_MS, "test:unknown_tool", "Do something unsupported")
 
     //  --  assert
     expect(result).toBe("I cannot do that.")

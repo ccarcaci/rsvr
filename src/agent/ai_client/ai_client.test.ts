@@ -14,8 +14,8 @@ import type {
   ToolUseBlock,
   Usage,
 } from "@anthropic-ai/sdk/resources"
-import { prompt } from "./ai_client"
 import type { session_entry_type } from "../types"
+import { prompt } from "./ai_client"
 
 const SENDER_KEY = "0A67E73B-4D82-415F-B574-740D5455E8D0"
 
@@ -36,12 +36,12 @@ const mock_anthropic_message = (
   content: [
     ...(text !== undefined
       ? [
-        {
-          citations: null,
-          text,
-          type: "text",
-        } as TextBlock,
-      ]
+          {
+            citations: null,
+            text,
+            type: "text",
+          } as TextBlock,
+        ]
       : []),
     ...blocks.map(
       (block) =>
@@ -70,15 +70,19 @@ describe("ai_client", () => {
     //  --  arrange
     const existing_session: session_entry_type = {
       last_active: 0,
-      history: [{
-        role: "assistant",
-        content: [{
-          id: "BF23DFBB-61FD-4603-9ABC-B8E2FF00F13C",
-          type: "tool_use",
-          name: "check_availability",
-          input: {},
-        }]
-      }]
+      history: [
+        {
+          role: "assistant",
+          content: [
+            {
+              id: "BF23DFBB-61FD-4603-9ABC-B8E2FF00F13C",
+              type: "tool_use",
+              name: "check_availability",
+              input: {},
+            },
+          ],
+        },
+      ],
     }
     mock_session_module.find_session.mockReturnValue(existing_session)
 
@@ -96,19 +100,31 @@ describe("ai_client", () => {
     const result = await prompt(42, SENDER_KEY, prompt_input)
 
     //  --  assert
-    expect(mock_session_module.add_message_to_session).nthCalledWith(1, 42, SENDER_KEY, mock_anthropic_prompt(prompt_input))
+    expect(mock_session_module.add_message_to_session).nthCalledWith(
+      1,
+      42,
+      SENDER_KEY,
+      mock_anthropic_prompt(prompt_input),
+    )
     expect(mock_session_module.find_session).toBeCalledWith(42, SENDER_KEY)
     expect(mock_anthropic_module.message_conversation).toBeCalledTimes(1)
     expect(mock_anthropic_module.message_conversation).toBeCalledWith(42, existing_session.history)
-    expect(mock_session_module.add_message_to_session).nthCalledWith(2, 42, SENDER_KEY, api_response)
+    expect(mock_session_module.add_message_to_session).nthCalledWith(
+      2,
+      42,
+      SENDER_KEY,
+      api_response,
+    )
     expect(result).toEqual({
       stop_reason: "end_turn",
       text_block: "Hello world",
-      use_blocks: [{
-        id: "7A0CAB80-703A-4249-8C88-E5F38CB219D7",
-        name: "find_business_id",
-        input: { business_name: "bar_at_the_end_of_universe" },
-      }],
+      use_blocks: [
+        {
+          id: "7A0CAB80-703A-4249-8C88-E5F38CB219D7",
+          name: "find_business_id",
+          input: { business_name: "bar_at_the_end_of_universe" },
+        },
+      ],
     })
   })
 
@@ -120,7 +136,11 @@ describe("ai_client", () => {
       {
         id: "589A6D23-B466-4077-ACD7-2E48B709C021",
         name: "check_availability",
-        input: { business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C", date: "2026-04-15", time: "19:00" },
+        input: {
+          business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C",
+          date: "2026-04-15",
+          time: "19:00",
+        },
       },
     ])
     mock_anthropic_module.message_conversation.mockResolvedValue(api_response)
@@ -136,7 +156,11 @@ describe("ai_client", () => {
         {
           id: "589A6D23-B466-4077-ACD7-2E48B709C021",
           name: "check_availability",
-          input: { business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C", date: "2026-04-15", time: "19:00" },
+          input: {
+            business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C",
+            date: "2026-04-15",
+            time: "19:00",
+          },
         },
       ],
     })
@@ -168,7 +192,11 @@ describe("ai_client", () => {
       {
         id: "7A3F9B2E-1C48-4D6F-A850-3E7C92D14B05",
         name: "check_availability",
-        input: { business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C", date: "2026-04-15", time: "19:00" },
+        input: {
+          business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C",
+          date: "2026-04-15",
+          time: "19:00",
+        },
       },
     ])
     mock_anthropic_module.message_conversation.mockResolvedValue(api_response)
@@ -184,7 +212,11 @@ describe("ai_client", () => {
         {
           id: "7A3F9B2E-1C48-4D6F-A850-3E7C92D14B05",
           name: "check_availability",
-          input: { business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C", date: "2026-04-15", time: "19:00" },
+          input: {
+            business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C",
+            date: "2026-04-15",
+            time: "19:00",
+          },
         },
       ],
     })
@@ -198,12 +230,21 @@ describe("ai_client", () => {
       {
         id: "2B8D4E6A-F130-4C7D-9E52-A1B3C8D7E6F5",
         name: "check_availability",
-        input: { business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C", date: "2026-04-15", time: "19:00" },
+        input: {
+          business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C",
+          date: "2026-04-15",
+          time: "19:00",
+        },
       },
       {
         id: "3C9E5F7B-2D41-4A8E-B063-F2C4D9E8F7A6",
         name: "create_reservation",
-        input: { business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C", user_id: "7C8D9E0F-1A2B-3C4D-5E6F-7A8B9C0D1E2F", slot_id: "SLOT-42", party_size: 2 },
+        input: {
+          business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C",
+          user_id: "7C8D9E0F-1A2B-3C4D-5E6F-7A8B9C0D1E2F",
+          slot_id: "SLOT-42",
+          party_size: 2,
+        },
       },
       {
         id: "4D0F6A8C-3E52-4B9F-C174-A3D5E0F9A8B7",
@@ -225,12 +266,21 @@ describe("ai_client", () => {
         {
           id: "2B8D4E6A-F130-4C7D-9E52-A1B3C8D7E6F5",
           name: "check_availability",
-          input: { business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C", date: "2026-04-15", time: "19:00" },
+          input: {
+            business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C",
+            date: "2026-04-15",
+            time: "19:00",
+          },
         },
         {
           id: "3C9E5F7B-2D41-4A8E-B063-F2C4D9E8F7A6",
           name: "create_reservation",
-          input: { business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C", user_id: "7C8D9E0F-1A2B-3C4D-5E6F-7A8B9C0D1E2F", slot_id: "SLOT-42", party_size: 2 },
+          input: {
+            business_id: "3F2A1B4C-9D7E-4F8A-B5C6-1D2E3F4A5B6C",
+            user_id: "7C8D9E0F-1A2B-3C4D-5E6F-7A8B9C0D1E2F",
+            slot_id: "SLOT-42",
+            party_size: 2,
+          },
         },
         {
           id: "4D0F6A8C-3E52-4B9F-C174-A3D5E0F9A8B7",

@@ -1,4 +1,4 @@
-import { anthropic_api_message_type } from "./ai_client/anthropic/types"
+import type { anthropic_api_message_type } from "./ai_client/anthropic/types"
 
 export type ai_client_prompt_result_type = {
   stop_reason: string
@@ -63,7 +63,7 @@ export type tool_handlers_result_type =
   | tool_handlers_find_reservation_result_type
 
 export type tool_use_block_result_success_type = {
-  id: string,
+  id: string
   status: "success"
   data: {
     tool_use_name: string
@@ -72,7 +72,7 @@ export type tool_use_block_result_success_type = {
 }
 
 export type tool_use_block_result_error_type = {
-  id: string,
+  id: string
   status: "error"
   error: string
 }
@@ -95,31 +95,31 @@ export type session_entry_type = {
 //  --
 
 export type check_availability_input_type = {
-  business_id: string,
+  business_id: string
   date: string
   time: string
   party_size?: number
 }
 
 export type create_reservation_input_type = {
-  business_id: string,
-  user_id: string,
+  business_id: string
+  user_id: string
   slot_id: string
   party_size?: number
   notes?: string
 }
 
 export type list_reservations_input_type = {
-  user_id: string,
+  user_id: string
 }
 
 export type find_reservation_input_type = {
-  user_id: string,
+  user_id: string
   reservation_id: string
 }
 
 export type cancel_reservation_input_type = {
-  user_id: string,
+  user_id: string
   reservation_id: string
 }
 

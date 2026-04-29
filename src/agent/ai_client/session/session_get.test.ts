@@ -66,7 +66,9 @@ describe("find_session", () => {
       find_session(t0 + THIRTY_MINUTES_MS - 1, "within_ttl:trigger")
 
       //  --  assert
-      expect(find_session(t0 + THIRTY_MINUTES_MS - 1, "within_ttl:user").history).toEqual([{ role: "user", content: "alive" }])
+      expect(find_session(t0 + THIRTY_MINUTES_MS - 1, "within_ttl:user").history).toEqual([
+        { role: "user", content: "alive" },
+      ])
     })
 
     test("does_not_evict_session_at_exactly_ttl_boundary", () => {
@@ -79,7 +81,9 @@ describe("find_session", () => {
       find_session(t0 + THIRTY_MINUTES_MS, "boundary_ttl:trigger")
 
       //  --  assert
-      expect(find_session(t0 + THIRTY_MINUTES_MS, "boundary_ttl:user").history).toEqual([{ role: "user", content: "alive" }])
+      expect(find_session(t0 + THIRTY_MINUTES_MS, "boundary_ttl:user").history).toEqual([
+        { role: "user", content: "alive" },
+      ])
     })
 
     test("evicts_only_stale_sessions_keeps_active_ones", () => {
@@ -97,7 +101,9 @@ describe("find_session", () => {
 
       //  --  assert
       expect(find_session(t_check, "selective_evict:old").history).toEqual([])
-      expect(find_session(t_check, "selective_evict:recent").history).toEqual([{ role: "user", content: "recent" }])
+      expect(find_session(t_check, "selective_evict:recent").history).toEqual([
+        { role: "user", content: "recent" },
+      ])
     })
   })
 })

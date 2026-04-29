@@ -34,9 +34,7 @@ describe("use_blocks", () => {
   })
 
   test("throws_when_use_blocks_requests_is_empty", () => {
-    expect(() => use_blocks(CURRENT_TIME_MS, [])).toThrow(
-      "Something went wrong, please try again.",
-    )
+    expect(() => use_blocks(CURRENT_TIME_MS, [])).toThrow("Something went wrong, please try again.")
   })
 
   test("dispatches_check_availability_with_input", () => {
@@ -71,7 +69,10 @@ describe("use_blocks", () => {
 
     //  --  assert
     expect(mock_tool_handlers_module.handle_create_reservation).toBeCalledTimes(1)
-    expect(mock_tool_handlers_module.handle_create_reservation).toBeCalledWith(CURRENT_TIME_MS, input)
+    expect(mock_tool_handlers_module.handle_create_reservation).toBeCalledWith(
+      CURRENT_TIME_MS,
+      input,
+    )
     expect(block_results).toEqual([result])
   })
 
@@ -136,7 +137,12 @@ describe("use_blocks", () => {
   test("dispatches_reschedule_reservation_with_input", () => {
     //  --  arrange
     const id = "A1B2C3D4-0006-0000-0000-000000000006"
-    const input = { user_id: USER_ID, reservation_id: "RES-001", new_date: "2026-04-20", new_time: "20:00" }
+    const input = {
+      user_id: USER_ID,
+      reservation_id: "RES-001",
+      new_date: "2026-04-20",
+      new_time: "20:00",
+    }
     const result: tool_use_block_result_type = {
       id,
       status: "error",
@@ -185,7 +191,11 @@ describe("use_blocks", () => {
     //  --  act
     const block_results = use_blocks(CURRENT_TIME_MS, [
       { id: list_id, name: "list_reservations", input: { user_id: USER_ID } },
-      { id: cancel_id, name: "cancel_reservation", input: { user_id: USER_ID, reservation_id: "RES-001" } },
+      {
+        id: cancel_id,
+        name: "cancel_reservation",
+        input: { user_id: USER_ID, reservation_id: "RES-001" },
+      },
     ] as tool_use_block_request_type[])
 
     //  --  assert

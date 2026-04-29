@@ -1,79 +1,10 @@
-import type { ToolResultBlockParam } from "@anthropic-ai/sdk/resources"
 import { logger } from "../shared/logger"
 import { trace } from "../tracer/tracing"
 import { prompt } from "./ai_client/ai_client"
-import { add_message_to_session, find_session } from "./ai_client/session/session"
-import type {
-  ai_client_prompt_result_type,
-  session_entry_type,
-  session_history_entry_type,
-  tool_use_block_result_type,
-} from "./types"
+import type { ai_client_prompt_result_type, tool_use_block_result_type } from "./types"
 import { use_blocks } from "./use_blocks/use_blocks"
 
 const MAX_TOOL_CALLS = 10
-
-//  --
-
-const handle_end_turn = (
-  current_time_ms: number,
-  business_id: string,
-  sender_key: string,
-  text_block: string,
-  session: session_entry_type,
-): string => {
-  trace(
-    "src/agent/agent",
-    "handle_end_turn",
-    current_time_ms,
-    business_id,
-    sender_key,
-    text_block,
-    session,
-  )
-  return text_block || "Done."
-}
-
-const refresh_session = (
-  current_time_ms: number,
-  sender_key: string,
-  current_business_id: string,
-  session: session_entry_type,
-  tool_result_blocks: ToolResultBlockParam[],
-) => {
-  trace(
-    "src/agent/agent",
-    "refresh_session",
-    current_time_ms,
-    sender_key,
-    current_business_id,
-    session,
-    tool_result_blocks,
-  )
-}
-
-const extract_business_id_from_tools = (
-  current_business_id: string,
-  tool_results: tool_use_block_result_type[],
-): string => {
-  trace("src/agent/agent", "extract_business_id_from_tools", current_business_id, tool_results)
-  if (current_business_id !== "") {
-    return current_business_id
-  }
-
-  for (const result of tool_results) {
-    if (
-      result.status === "success" &&
-      typeof result.data.content === "object" &&
-      result.data.content !== null &&
-      "resolved_business_id" in result.data.content
-    ) {
-      return result.data.content.resolved_business_id
-    }
-  }
-
-  return ""
-}
 
 //  --
 
@@ -92,7 +23,11 @@ export const run_agent = async (
       return "Something went wrong, please try again."
     }
 
-    const prompt_response: ai_client_prompt_result_type = await prompt(current_time_ms, sender_key, next_stage_input)
+    const prompt_response: ai_client_prompt_result_type = await prompt(
+      current_time_ms,
+      sender_key,
+      next_stage_input,
+    )
 
     if (prompt_response.stop_reason === "end_turn") {
       return prompt_response.text_block || "Done."
@@ -105,9 +40,6 @@ export const run_agent = async (
     }
 
     tool_call_count += prompt_response.use_blocks.length
-    next_stage_input = use_blocks(
-      current_time_ms,
-      prompt_response.use_blocks,
-    )
+    next_stage_input = use_blocks(current_time_ms, prompt_response.use_blocks)
   }
 }

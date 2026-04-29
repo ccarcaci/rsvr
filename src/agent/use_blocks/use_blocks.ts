@@ -25,21 +25,13 @@ const dispatch_tool = (
   current_time_ms: number,
   tool_use_block_request: tool_use_block_request_type,
 ): tool_use_block_result_type => {
-  trace(
-    "src/agent/use_blocks/use_blocks",
-    "dispatch_tool",
-    current_time_ms,
-    tool_use_block_request,
-  )
+  trace("src/agent/use_blocks/use_blocks", "dispatch_tool", current_time_ms, tool_use_block_request)
   const { id, name, input } = tool_use_block_request
   switch (name) {
     case "check_availability":
       return handle_check_availability(input as check_availability_input_type)
     case "create_reservation":
-      return handle_create_reservation(
-        current_time_ms,
-        input as create_reservation_input_type,
-      )
+      return handle_create_reservation(current_time_ms, input as create_reservation_input_type)
     case "list_reservations":
       return handle_list_reservations(input as list_reservations_input_type)
     case "find_reservation":
@@ -61,12 +53,7 @@ export const use_blocks = (
   current_time_ms: number,
   use_blocks_requests: tool_use_block_request_type[],
 ): tool_use_block_result_type[] => {
-  trace(
-    "src/agent/use_blocks/use_blocks",
-    "use_blocks",
-    current_time_ms,
-    use_blocks_requests,
-  )
+  trace("src/agent/use_blocks/use_blocks", "use_blocks", current_time_ms, use_blocks_requests)
   if (use_blocks_requests.length === 0) {
     logger.error("stop_reason=tool_use but no tool_use blocks found")
     throw new Error("Something went wrong, please try again.")
@@ -75,7 +62,7 @@ export const use_blocks = (
   let tool_use_block_results: tool_use_block_result_type[] = []
   for (const tool_use_block of use_blocks_requests) {
     const tool_result = dispatch_tool(current_time_ms, tool_use_block)
-    tool_use_block_results = [...tool_use_block_results, tool_result ]
+    tool_use_block_results = [...tool_use_block_results, tool_result]
   }
   return tool_use_block_results
 }

@@ -29,7 +29,7 @@ const deserialize_message = (message: Message): ai_client_prompt_result_type => 
 }
 
 const serialize_input = (input: string | tool_use_block_result_type[]): MessageParam => {
-  if(typeof input === "string") {
+  if (typeof input === "string") {
     return {
       role: "user",
       content: input,
@@ -51,7 +51,7 @@ const serialize_input = (input: string | tool_use_block_result_type[]): MessageP
         type: "tool_result",
         content: JSON.stringify(ub),
       }
-    })
+    }),
   }
 }
 
