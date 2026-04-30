@@ -30,6 +30,8 @@ help: ## Show this help message
 check_version: ## Check that installed Bun version matches .bun-version
 	@echo "Checking Bun version..."
 	@$(VERSION_CHECK_SCRIPT)
+	@echo "Check dependencies updates availability..."
+	@$(BUN) outdated
 
 .PHONY: install
 install: ## Install dependencies using bun

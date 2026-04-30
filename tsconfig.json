@@ -12,7 +12,8 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": ["bun"]
+    "types": ["bun"],
+    "rootDir": "/src"
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
